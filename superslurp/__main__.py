@@ -12,6 +12,7 @@ from superslurp.parser import parse_text
 
 def parse_superu_receipt(filename: str | Path) -> str:
     text = extract_text(filename)
+    # print(text)
     return json.dumps(parse_text(text), indent=4)
 
 

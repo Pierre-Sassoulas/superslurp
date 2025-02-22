@@ -26,9 +26,7 @@ optional-dependencies.dev = [
     "pylint",
     "pytest-cov",
 ]
-[project.scripts]
-superu-receipt-parser = "superslurp.__main__:main"
-
+scripts.superu-receipt-parser = "superslurp.__main__:main"
 
 [tool.setuptools]
 packages = [ "superslurp" ]

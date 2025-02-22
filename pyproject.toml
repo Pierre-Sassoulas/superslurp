@@ -1,0 +1,97 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>=61",
+    "setuptools-scm[toml]>=6.2.3",
+]
+
+[project]
+name = "superslurp"
+description = "A receipt parser for SuperU receipts"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dynamic = [
+    "version",
+]
+
+dependencies = [
+    "pypdf",
+]
+optional-dependencies.dev = [
+    "pre-commit",
+    "pylint",
+    "pytest-cov",
+]
+[project.scripts]
+superu-receipt-parser = "superslurp.__main__:main"
+
+
+[tool.setuptools]
+packages = [ "superslurp" ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+lint.select = [
+    "B",      # bugbear
+    "E",      # pycodestyle
+    "F",      # pyflakes
+    "FA100",  # add future annotations
+    "I",      # isort
+    "PGH004", # pygrep-hooks - Use specific rule codes when using noqa
+    "PIE",    # flake8-pie
+    "PYI",    # flake8-pyi
+    "RUF",    # ruff
+    "T100",   # flake8-debugger
+    "UP",     # pyupgrade
+    "W",      # pycodestyle
+]
+
+lint.isort.required-imports = [
+    "from __future__ import annotations",
+]
+# In order to be able to format for 88 char in ruff format
+lint.pycodestyle.max-line-length = 120
+lint.pydocstyle.convention = "pep257"
+lint.pyupgrade.keep-runtime-typing = false
+
+[tool.pylint.main]
+# Maximum number of characters on a single line.
+max-line-length = 120
+disable = [
+    "wrong-import-order",         # handled by isort / ruff
+    "wrong-import-position",      # handled by isort / ruff
+    "docstring-first-line-empty", # annoying shit
+    "missing-docstring",          # annoying shit
+    "magic-value-comparison",     # annoying shit
+]
+
+[tool.codespell]
+ignore-words-list = "superu"
+write-changes = true
+
+[tool.pyproject-fmt]
+indent = 4
+max_supported_python = "3.13"
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
+warn_unused_ignores = true
+
+[tool.djlint]
+ignore = ""

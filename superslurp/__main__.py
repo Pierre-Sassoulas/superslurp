@@ -7,13 +7,15 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
+from superslurp.check_consistency import check_consistency
 from superslurp.parser import parse_text
 
 
 def parse_superu_receipt(filename: str | Path) -> str:
     text = extract_text(filename)
-    # print(text)
-    return json.dumps(parse_text(text), indent=4)
+    receipt = parse_text(text)
+    check_consistency(receipt)
+    return json.dumps(receipt, indent=4)
 
 
 def extract_text(filename: str | Path) -> str:
@@ -31,7 +33,6 @@ def main(args: list[str] | None = None) -> int:
     print(f"Processing file: {parsed_args.filename}")
     parsed_content = parse_superu_receipt(parsed_args.filename)
     print(f"Result:\n{parsed_content}")
-    print("File processed successfully.")
     return 0
 
 

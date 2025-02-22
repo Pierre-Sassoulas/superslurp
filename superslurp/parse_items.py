@@ -54,7 +54,7 @@ def parse_items(text: str) -> list[Item]:
                 previous_line = None
                 continue
             new_line = f"{previous_line}{line}"
-            print(f"Couldn't handle {previous_line!r}, trying with:\n{new_line}")
+            # print(f"Couldn't handle {previous_line!r}, trying with:\n{new_line}")
             items_info = get_items_infos_from_line(new_line)
             # print("Items info:", items_info)
             if (
@@ -70,7 +70,7 @@ def parse_items(text: str) -> list[Item]:
                 previous_line = line
                 continue
             item = get_item_from_item_infos(current_category, items_info)
-        print(f"New item : {item}")
+        # print(f"New item : {item}")
         items.append(item)
     return items
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 import re
+from collections import defaultdict
 from typing import TypedDict
 
 
@@ -21,7 +22,6 @@ class Category(enum.Enum):
 
 
 class Item(TypedDict):
-    category: str
     name: str
     price: float
     quantity: int | None
@@ -29,9 +29,9 @@ class Item(TypedDict):
     tr: bool
 
 
-def parse_items(text: str) -> list[Item]:
+def parse_items(text: str) -> dict[Category, list[Item]]:
     current_category: Category = Category.UNDEFINED
-    items: list[Item] = []
+    items: dict[Category, list[Item]] = defaultdict(list)
     previous_line = None
     for line in text.split("\n"):
         if not line.strip():
@@ -40,6 +40,7 @@ def parse_items(text: str) -> list[Item]:
             new_category = Category(line.replace(">>>>", "").strip())
             # print(f"Changed category from {current_category} to {new_category.value}")
             current_category = new_category
+            previous_line = None
             continue
         if "COUPON N°" in line:
             # This is a reduction we don't care about
@@ -47,9 +48,10 @@ def parse_items(text: str) -> list[Item]:
         if previous_line is not None:
             if "Pourcentage: 30" in previous_line:
                 # This is a reduction on the previous item
-                items[-1]["price"] = items[-1]["price"] * 0.7
+                previous_item = items[current_category][-1]
+                items[current_category][-1]["price"] = previous_item["price"] * 0.7
                 print(
-                    f"Reducing the price of {items[-1]['name']} by 30%, new item: {items[-1]}"
+                    f"Reducing the price of {previous_item['name']} by 30%, new item: {previous_item}"
                 )
                 previous_line = None
                 continue
@@ -57,9 +59,7 @@ def parse_items(text: str) -> list[Item]:
             # print(f"Couldn't handle {previous_line!r}, trying with:\n{new_line}")
             items_info = get_items_infos_from_line(new_line)
             # print("Items info:", items_info)
-            if (
-                item := get_item_from_item_infos_multiple(current_category, items_info)
-            ) is None:
+            if (item := get_item_from_item_infos_multiple(items_info)) is None:
                 print(f"Couldn't handle {new_line}, skipping.")
                 continue
             previous_line = None
@@ -69,22 +69,19 @@ def parse_items(text: str) -> list[Item]:
                 print(f"Can't handle {items_info} alone, merging with next line.")
                 previous_line = line
                 continue
-            item = get_item_from_item_infos(current_category, items_info)
+            item = get_item_from_item_infos(items_info)
         # print(f"New item : {item}")
-        items.append(item)
+        items[current_category].append(item)
     return items
 
 
-def get_item_from_item_infos_multiple(
-    current_category: Category, items_info: list[str]
-) -> Item | None:
+def get_item_from_item_infos_multiple(items_info: list[str]) -> Item | None:
     if len(items_info) != 6:
         # Can't deal with this line
         return None
     name, tr, quantity, unit_price, *_ = items_info
     quantity = quantity.split(" x")[0]
     return {
-        "category": current_category.value,
         "name": name,
         "price": _get_price(unit_price),
         "quantity": int(quantity),
@@ -93,7 +90,7 @@ def get_item_from_item_infos_multiple(
     }
 
 
-def get_item_from_item_infos(current_category: Category, items_info: list[str]) -> Item:
+def get_item_from_item_infos(items_info: list[str]) -> Item:
     name, price, tr, quantity = "", "0,00 €", "", 1
     if len(items_info) > 4:
         # Sometimes there's two spaces by mistake in a name
@@ -109,7 +106,6 @@ def get_item_from_item_infos(current_category: Category, items_info: list[str]) 
         name, price, _ = items_info
     final_name, grams = _get_gram(name)
     item: Item = {
-        "category": current_category.value,
         "name": final_name,
         "price": _get_price(price),
         "quantity": quantity,

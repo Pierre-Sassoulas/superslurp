@@ -61,6 +61,7 @@ lint.pyupgrade.keep-runtime-typing = false
 # Maximum number of characters on a single line.
 max-line-length = 120
 disable = [
+    "redefined-outer-name",       # pytest fixtures
     "wrong-import-order",         # handled by isort / ruff
     "wrong-import-position",      # handled by isort / ruff
     "docstring-first-line-empty", # annoying shit

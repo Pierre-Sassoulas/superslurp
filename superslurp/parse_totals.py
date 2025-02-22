@@ -15,11 +15,11 @@ def parse_totals(text: str) -> tuple[float, float, int, float, float, float]:
         after_total.split("Dont articles éligibles TR")[1].split("€")[0].strip()
     )
     tr_paid = after_total.split("Payé en TITRES RESTAURANT")[1].split("€")[0].strip()
-    # print(
-    #     f"sub_total: {sub_total}, total_discount: {total_discount}, "
-    #     f"number_of_items: {number_of_items}, total: {total}, "
-    #     f"eligible_tr: {eligible_tr}, tr_paid: {tr_paid}"
-    # )
+    print(
+        f"sub_total: {sub_total}, total_discount: {total_discount}, "
+        f"number_of_items: {number_of_items}, total: {total}, "
+        f"eligible_tr: {eligible_tr}, tr_paid: {tr_paid}"
+    )
     return (
         _change_text_to_float(sub_total),
         _change_text_to_float(total_discount),

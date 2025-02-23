@@ -33,6 +33,10 @@ optional-dependencies.dev = [
     "pylint",
     "pytest-cov",
 ]
+urls."Bug Tracker" = "https://github.com/Pierre-Sassoulas/superslurp/issues"
+urls."homepage" = "https://github.com/Pierre-Sassoulas/superslurp"
+urls."Source Code" = "https://github.com/Pierre-Sassoulas/superslurp"
+
 scripts.superu-receipt-parser = "superslurp.__main__:main"
 
 [tool.setuptools]

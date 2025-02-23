@@ -4,18 +4,33 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from pypdf import PdfReader
 
 from superslurp.check_consistency import check_consistency
-from superslurp.parser import parse_text
+from superslurp.parser import Receipt, parse_text
+
+
+def make_json_serializable(
+    receipt: Receipt,
+) -> dict[str, dict[str, Any]]:
+    serializable_result: dict[str, Any] = {"items": {}}
+    for key, value in receipt.items():
+        if key == "items":
+            for category, items in receipt["items"].items():
+                serializable_result["items"][category.value] = items
+            continue
+        serializable_result[key] = value
+
+    return serializable_result
 
 
 def parse_superu_receipt(filename: str | Path) -> str:
     text = extract_text(filename)
     receipt = parse_text(text)
     check_consistency(receipt)
-    return json.dumps(receipt, indent=4)
+    return json.dumps(make_json_serializable(receipt), indent=4)
 
 
 def extract_text(filename: str | Path) -> str:

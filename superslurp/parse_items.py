@@ -1,32 +1,10 @@
 from __future__ import annotations
 
-import enum
 import re
 from collections import defaultdict
-from typing import TypedDict
 
-
-class Category(enum.Enum):
-    FRUITS_ET_LEGUMES = "FRUITS ET LEGUMES"
-    PAT_INDUSTRIELLE = "PAT INDUSTRIELLE"
-    EPICERIE = "EPICERIE"
-    BRICOLAGE_JARDINAGE_AUT = "BRICOLAGE JARDINAGE AUT"
-    FROMAGE_A_LA_COUPE = "FROMAGE A LA COUPE"
-    BEAUTE_SANTE = "BEAUTE SANTE"
-    CREMERIE_LS = "CREMERIE L.S."
-    VOL_LS_INDUST = "VOL.LS INDUST."
-    ENTRETIEN = "ENTRETIEN"
-    LIQUIDES = "LIQUIDES"
-
-    UNDEFINED = "AUTRE"
-
-
-class Item(TypedDict):
-    name: str
-    price: float
-    quantity: int | None
-    grams: float | None
-    tr: bool
+from superslurp.str_to_float import _change_text_to_float
+from superslurp.superslurp_typing import Category, Item
 
 
 def parse_items(text: str) -> dict[Category, list[Item]]:
@@ -45,23 +23,31 @@ def parse_items(text: str) -> dict[Category, list[Item]]:
         if "COUPON N°" in line:
             # This is a reduction we don't care about
             break
+        # pylint: disable-next=unsupported-membership-test
+        if "Pourcentage: 30" in line:
+            # This is a discount on the previous item
+            previous_item = items[current_category][-1]
+            discount = line.split("Pourcentage: 30")[1].split("€")[0].strip()
+            item: Item = {
+                "name": previous_item["name"],
+                "price": _change_text_to_float(discount),
+                "quantity": previous_item["quantity"],
+                "grams": previous_item["grams"],
+                "tr": previous_item["tr"],
+            }
+            print(f"Discount on {previous_item['name']} : {item}")
+            items[Category.DISCOUNT].append(item)
+            previous_line = None
         if previous_line is not None:
-            if "Pourcentage: 30" in previous_line:
-                # This is a reduction on the previous item
-                previous_item = items[current_category][-1]
-                items[current_category][-1]["price"] = previous_item["price"] * 0.7
-                print(
-                    f"Reducing the price of {previous_item['name']} by 30%, new item: {previous_item}"
-                )
-                previous_line = None
-                continue
             new_line = f"{previous_line}{line}"
             # print(f"Couldn't handle {previous_line!r}, trying with:\n{new_line}")
             items_info = get_items_infos_from_line(new_line)
             # print("Items info:", items_info)
-            if (item := get_item_from_item_infos_multiple(items_info)) is None:
+            if (possible_item := get_item_from_item_infos_multiple(items_info)) is None:
                 print(f"Couldn't handle {new_line}, skipping.")
                 continue
+            assert possible_item is not None  # mypy
+            item = possible_item
             previous_line = None
         else:
             items_info = get_items_infos_from_line(line)

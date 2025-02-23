@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import TypedDict
 
 from superslurp.parse_date import parse_date
-from superslurp.parse_items import Category, Item, parse_items
+from superslurp.parse_items import parse_items
 from superslurp.parse_store import Store, parse_store_info
 from superslurp.parse_totals import parse_totals
+from superslurp.superslurp_typing import Category, Item
 
 
 class Receipt(TypedDict):

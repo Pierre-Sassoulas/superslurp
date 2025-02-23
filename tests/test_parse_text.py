@@ -5,8 +5,9 @@ import json
 import pytest
 
 # pylint: disable-next=import-private-name
-from superslurp.parse_items import Category, Item, _get_gram
+from superslurp.parse_items import _get_gram
 from superslurp.parser import parse_text
+from superslurp.superslurp_typing import Category, Item
 
 
 @pytest.fixture

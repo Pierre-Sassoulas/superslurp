@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,9 +28,13 @@ def make_json_serializable(
 
 
 def parse_superu_receipt(filename: str | Path) -> str:
+    logging.debug("Converting pdf receipt to text...")
     text = extract_text(filename)
+    logging.debug("Extracted text, parsing receipt...")
     receipt = parse_text(text)
+    logging.debug("Parsing done, checking consistency...")
     check_consistency(receipt)
+    logging.debug("Rendering json result...")
     return json.dumps(make_json_serializable(receipt), indent=4)
 
 

@@ -15,14 +15,12 @@ def parse_items(text: str) -> dict[Category, list[Item]]:
         if not line.strip():
             continue
         if ">>>>" in line:
-            new_category = Category(line.replace(">>>>", "").strip())
-            # print(f"Changed category from {current_category} to {new_category.value}")
-            current_category = new_category
+            current_category = get_new_category(line)
             previous_line = None
             continue
         if "COUPON N°" in line:
             # This is a reduction we don't care about
-            break
+            continue
         # pylint: disable-next=unsupported-membership-test
         if "Pourcentage: 30" in line:
             # This is a discount on the previous item
@@ -59,6 +57,13 @@ def parse_items(text: str) -> dict[Category, list[Item]]:
         # print(f"New item : {item}")
         items[current_category].append(item)
     return items
+
+
+def get_new_category(line: str) -> Category:
+    try:
+        return Category(line.replace(">>>>", "").strip())
+    except ValueError as e:
+        raise ValueError(f"Missing value in enum '{Category!r}': {e}") from e
 
 
 def get_item_from_item_infos_multiple(items_info: list[str]) -> Item | None:

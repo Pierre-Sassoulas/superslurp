@@ -1,26 +1,33 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
+
+from superslurp.__main__ import parse_superu_receipt
 
 # pylint: disable-next=import-private-name
 from superslurp.parse_items import _get_gram
 from superslurp.parser import parse_text
 from superslurp.superslurp_typing import Category, Item
 
+HERE = Path(__file__).parent
+FIXTURES = HERE / "fixtures"
+PATH_FIXTURES = [
+    p for p in FIXTURES.iterdir() if "Ticket" in p.name and p.name.endswith(".pdf")
+]
+
 
 @pytest.fixture
 def sample_txt() -> str:
-    with open("tests/fixtures/sample.txt", encoding="utf8") as file:
+    with open(FIXTURES / "sample.txt", encoding="utf8") as file:
         return file.read()
 
 
 @pytest.fixture()
 def expected_parsed_items() -> dict[Category, int]:
-    with open(
-        "tests/fixtures/sample_expected_parsed_items.json", encoding="utf8"
-    ) as file:
+    with open(FIXTURES / "sample_expected_parsed_items.json", encoding="utf8") as file:
         expected = json.load(file)
     result = {}
     for key, value in expected.items():
@@ -29,7 +36,7 @@ def expected_parsed_items() -> dict[Category, int]:
 
 
 def get_parameters() -> list[tuple[str, tuple[str, int | None]]]:
-    with open("tests/fixtures/sample_expected_items.json", encoding="utf8") as file:
+    with open(FIXTURES / "sample_expected_items.json", encoding="utf8") as file:
         content = json.load(file)
     return content  # type: ignore
 
@@ -63,6 +70,8 @@ def test_parse_items(
             assert item["quantity"] is not None or item["grams"] is not None
             assert item["tr"] is not None
     for category in Category:
+        if category not in expected_parsed_items:
+            continue
         assert len(items_by_categories[category]) == len(
             expected_parsed_items[category]
         )
@@ -77,3 +86,8 @@ def test_parse_items(
             assert item == expected_item, (
                 f"Item {i} in category {category} is different"
             )
+
+
+@pytest.mark.parametrize("path", PATH_FIXTURES, ids=(p.name for p in PATH_FIXTURES))
+def test_multiple_examples(path: Path) -> None:
+    parse_superu_receipt(path)

@@ -1,0 +1,4 @@
+# Private test files, for obvious privacy reasons
+[submodule "tests/fixtures"]
+	path = tests/fixtures
+	url = git@github.com:Pierre-Sassoulas/superslurp-tests

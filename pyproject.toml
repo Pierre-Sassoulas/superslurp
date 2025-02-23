@@ -38,6 +38,8 @@ scripts.superu-receipt-parser = "superslurp.__main__:main"
 [tool.setuptools]
 packages = [ "superslurp" ]
 
+[tool.setuptools_scm]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 88

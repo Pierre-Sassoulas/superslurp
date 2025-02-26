@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from superslurp.safe_search import safe_search
+from superslurp.parse.safe_search import safe_search
 
 DATETIME_PATTERN = r"Opérateur        Date      Heure      TPV     Ticket  \n.*(\d2\/\d+\/\d+ +\d+:\d+)"
 

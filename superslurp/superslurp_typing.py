@@ -3,13 +3,19 @@ from __future__ import annotations
 import enum
 from typing import TypedDict
 
-from superslurp.parse_store import Store
+
+class Store(TypedDict):
+    store_name: str | None
+    address: str | None
+    phone: str | None
+    siret: str | None
+    naf: str | None
 
 
 class Item(TypedDict):
     name: str
     price: float
-    quantity: int | None
+    quantity: int
     grams: float | None
     tr: bool
 

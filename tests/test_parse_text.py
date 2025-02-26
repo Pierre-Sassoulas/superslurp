@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 
 from superslurp.__main__ import parse_superu_receipt
+from superslurp.parse import parse_text
 
 # pylint: disable-next=import-private-name
-from superslurp.parse_items import _get_gram
-from superslurp.parser import parse_text
+from superslurp.parse.parse_items import _get_gram
 from superslurp.superslurp_typing import Category, Items
 
 HERE = Path(__file__).parent

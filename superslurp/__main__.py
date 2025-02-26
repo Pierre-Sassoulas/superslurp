@@ -1,59 +1,24 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any
 
-from pypdf import PdfReader
-
-from superslurp.check_consistency import check_consistency
-from superslurp.parser import parse_text
-from superslurp.superslurp_typing import Receipt
-
-
-def make_json_serializable(
-    receipt: Receipt,
-) -> dict[str, dict[str, Any]]:
-    serializable_result: dict[str, Any] = {"items": {}}
-    for key, value in receipt.items():
-        if key == "items":
-            for category, items in receipt["items"].items():
-                serializable_result["items"][category.value] = items
-            continue
-        serializable_result[key] = value
-
-    return serializable_result
+from superslurp.check import check_consistency
+from superslurp.extract import convert_to_text
+from superslurp.parse import parse_text
+from superslurp.serialize import json_dump_receipt
 
 
 def parse_superu_receipt(filename: str | Path) -> str:
-    path = Path(filename)
-    cached_text_file = Path(path.parent / f".{path.name}.txt")
-    if not cached_text_file.exists():
-        logging.debug(f"Converting {path!r} to text...")
-        text = extract_text(filename)
-        with open(cached_text_file, "w", encoding="utf8") as f:
-            f.write(text)
-    else:
-        logging.debug("Reading text from cache without converting from pdf...")
-        with open(cached_text_file, encoding="utf8") as f:
-            text = f.read()
+    text = convert_to_text(filename)
     logging.debug("Extracted text, parsing receipt...")
     receipt = parse_text(text)
     logging.debug("Parsing done, checking consistency...")
     check_consistency(receipt)
     logging.debug("Rendering json result...")
-    return json.dumps(make_json_serializable(receipt), indent=4)
-
-
-def extract_text(filename: str | Path) -> str:
-    reader = PdfReader(filename)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text()
-    return text
+    return json_dump_receipt(receipt)
 
 
 def main(args: list[str] | None = None) -> int:

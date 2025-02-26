@@ -1,16 +1,7 @@
 from __future__ import annotations
 
-from typing import TypedDict
-
-from superslurp.safe_search import safe_search
-
-
-class Store(TypedDict):
-    store_name: str | None
-    address: str | None
-    phone: str | None
-    siret: str | None
-    naf: str | None
+from superslurp.parse.safe_search import safe_search
+from superslurp.superslurp_typing import Store
 
 
 def parse_store_info(store_info: str) -> Store:

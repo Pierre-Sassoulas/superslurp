@@ -4,12 +4,12 @@ import re
 from collections import defaultdict
 
 from superslurp.str_to_float import _change_text_to_float
-from superslurp.superslurp_typing import Category, Item
+from superslurp.superslurp_typing import Category, Item, Items
 
 
-def parse_items(text: str) -> dict[Category, list[Item]]:
+def parse_items(text: str) -> Items:
     current_category: Category = Category.UNDEFINED
-    items: dict[Category, list[Item]] = defaultdict(list)
+    items: Items = defaultdict(list)
     previous_line = None
     for line in text.split("\n"):
         if not line.strip():

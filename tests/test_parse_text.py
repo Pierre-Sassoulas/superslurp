@@ -10,7 +10,7 @@ from superslurp.__main__ import parse_superu_receipt
 # pylint: disable-next=import-private-name
 from superslurp.parse_items import _get_gram
 from superslurp.parser import parse_text
-from superslurp.superslurp_typing import Category, Item
+from superslurp.superslurp_typing import Category, Items
 
 HERE = Path(__file__).parent
 FIXTURES = HERE / "fixtures"
@@ -53,9 +53,7 @@ def test_quantity(name: str, expected: tuple[str, int | None]) -> None:
     )
 
 
-def test_parse_items(
-    sample_txt: str, expected_parsed_items: dict[Category, list[Item]]
-) -> None:
+def test_parse_items(sample_txt: str, expected_parsed_items: Items) -> None:
     receipt = parse_text(sample_txt)
 
     assert isinstance(receipt, dict)

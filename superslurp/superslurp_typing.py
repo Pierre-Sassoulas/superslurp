@@ -45,10 +45,13 @@ class Category(enum.Enum):
     UNDEFINED = ""
 
 
+Items = dict[Category, list[Item]]
+
+
 class Receipt(TypedDict):
     date: str | None
     store: Store
-    items: dict[Category, list[Item]]
+    items: Items
     subtotal: float
     total_discount: float
     total: float

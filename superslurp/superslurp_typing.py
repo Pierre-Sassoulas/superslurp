@@ -3,6 +3,8 @@ from __future__ import annotations
 import enum
 from typing import TypedDict
 
+from superslurp.parse_store import Store
+
 
 class Item(TypedDict):
     name: str
@@ -41,3 +43,18 @@ class Category(enum.Enum):
 
     DISCOUNT = "DISCOUNT"
     UNDEFINED = ""
+
+
+class Receipt(TypedDict):
+    date: str | None
+    store: Store
+    items: dict[Category, list[Item]]
+    subtotal: float
+    total_discount: float
+    total: float
+    number_of_items: int
+    eligible_tr: float
+    paid_tr: float
+    # card_balance_previous: float
+    # card_balance_earned: float
+    # card_balance_new: float

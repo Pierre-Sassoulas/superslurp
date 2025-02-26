@@ -10,7 +10,8 @@ from typing import Any
 from pypdf import PdfReader
 
 from superslurp.check_consistency import check_consistency
-from superslurp.parser import Receipt, parse_text
+from superslurp.parser import parse_text
+from superslurp.superslurp_typing import Receipt
 
 
 def make_json_serializable(

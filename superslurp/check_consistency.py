@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from superslurp.parser import Receipt
-from superslurp.superslurp_typing import Category, Item
+from superslurp.superslurp_typing import Category, Item, Receipt
 
 
 class ConsistencyError(Exception):

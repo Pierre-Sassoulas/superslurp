@@ -29,8 +29,8 @@ def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float,
                 recalculated_total_discount += actual_price
             else:
                 recalculated_sub_total += actual_price
-            # print(f"Adding {actual_price} to total")
             recalculated_total += actual_price
+            print(f"Added {actual_price} to total {recalculated_total}")
     return (
         recalculated_sub_total,
         recalculated_total,

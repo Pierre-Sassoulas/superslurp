@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from superslurp.serialize import json_dump_receipt
 from superslurp.superslurp_typing import Item, Receipt
 
 
@@ -9,8 +8,20 @@ class ConsistencyError(Exception):
         super().__init__(
             f"Something must be wrong with the parsing because {msg}."
             # Might want to comment next line some of the time:
-            f"\n\n{json_dump_receipt(receipt)}"
+            # f"\n\n{json_dump_receipt(receipt)}"
+            f"\n{self.show_items(receipt)}"
         )
+
+    def show_items(self, receipt: Receipt) -> str:
+        result = ""
+        s = 0.0
+        for category, items in receipt["items"].items():
+            for item in items:
+                p = item["price"]
+                q = item["quantity"]
+                s += p * q
+                result += f"{item['name']}: {p} * {q} ({s})\n"
+        return result
 
 
 class UndetectedAttributeError(ConsistencyError):

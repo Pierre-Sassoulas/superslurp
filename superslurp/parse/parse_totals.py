@@ -5,7 +5,7 @@ import re
 from superslurp.parse.str_to_float import _change_text_to_float
 
 total_and_number_of_items_pattern = re.compile(
-    r"TOTAL\s+(?P<number_of_items>\d+) Article\(s\)\s+(?P<total>\d+,\d+)"
+    r"TOTAL\s+(?P<number_of_items>\d+) Article\(s\)\s+(?P<total>\d+(,|.)\d+)"
 )
 
 
@@ -43,4 +43,5 @@ def get_total_and_number_of_items(text: str) -> tuple[float, int]:
     if (re_match := total_and_number_of_items_pattern.search(text)) is None:
         raise ValueError(f"Couldn't find the total and number of items in {text}")
     total_str = re_match.group("total")
-    return _change_text_to_float(total_str), int(re_match.group("number_of_items"))
+    total_as_float = _change_text_to_float(total_str)
+    return total_as_float, int(re_match.group("number_of_items"))

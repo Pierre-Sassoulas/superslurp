@@ -10,18 +10,20 @@ from superslurp.superslurp_typing import Category, Item
 class WrongNumberOfItemException(Exception): ...
 
 
-category_pattern = re.compile(
-    r">>>>(?P<category>[\w\. \n]+)\n(?P<items>[\n\w\s,€\.\/\%=]*)"
-)
+category_pattern = re.compile(r">>>>(?P<category>.*)\n(?P<items>(?:(?!>>>>)[\S\s])*)")
+# way_of_paying_pattern = re.compile(r"(?P<way_of_paying>\d{2} \n)+")
 items_pattern = re.compile(
-    r"(?P<name>[\w \.\/\%,=€°+]*)(?P<tr>\(T\))?[ \n]*(?P<quantity>[\d x,]+ €)?[ ]+(?P<price>[\d]+,[ \d€]+)[ ]?(?P<way_of_paying>\d{2} \n)+"  # noqa: E501
+    r"(?P<name>[\w .\/%,=€°+É]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
+    r"(?P<quantity>[\d x,]+ €)?[ ]+(?P<price>[\d]+,[ \d€]+)[ ]?(?P<way_of_paying>\d{2})+ \n"
 )
 
 
 def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list[Item]]:
     i = 0
     items: dict[Category, list[Item]] = defaultdict(list)
+    category_matches: str = []
     for match in category_pattern.finditer(text):
+        category_matches.append(match)
         i_cat = i
         category = Category(match.group("category").strip())
         items_info = match.group("items")
@@ -38,7 +40,9 @@ def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list
         #     )
     if i != expected_number_of_items:
         raise WrongNumberOfItemException(
-            f"Found {i} items in {text}, expected {expected_number_of_items}: {repr_items(items)}"
+            f"Expected {expected_number_of_items} items in\n{text}\n"
+            f"But parsing extracted {i}:\n{repr_items(items)}\n"
+            f"Preparsing of categories was:\n{category_matches}"
         )
     return items
 

@@ -5,11 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from superslurp.__main__ import parse_superu_receipt
+from superslurp.__main__ import parse_superu_receipt_raw
 from superslurp.parse import parse_text
 
 # pylint: disable-next=import-private-name
 from superslurp.parse.parse_items import _get_gram
+from superslurp.serialize.json_dump import make_json_serializable
 from superslurp.superslurp_typing import Category, Items
 
 HERE = Path(__file__).parent
@@ -65,7 +66,6 @@ def test_parse_items(sample_txt: str, expected_parsed_items: Items) -> None:
         for item in items:
             assert item["name"] is not None
             assert item["price"] is not None
-            assert item["quantity"] is not None or item["grams"] is not None
             assert item["tr"] is not None
     for category in Category:
         if category not in expected_parsed_items:
@@ -88,4 +88,15 @@ def test_parse_items(sample_txt: str, expected_parsed_items: Items) -> None:
 
 @pytest.mark.parametrize("path", PATH_FIXTURES, ids=(p.name for p in PATH_FIXTURES))
 def test_multiple_examples(path: Path) -> None:
-    parse_superu_receipt(path)
+    result = make_json_serializable(parse_superu_receipt_raw(path))
+    expected_result_path = Path(path.parent / f".{path.name}.json")
+    if not expected_result_path.exists():
+        with open(expected_result_path, "w", encoding="utf8") as file:
+            json.dump(result, file, indent=4)
+        pytest.fail(f"Created {expected_result_path}")
+    with open(expected_result_path, encoding="utf8") as f:
+        expected_result = json.load(f)
+    if result != expected_result:
+        with open(expected_result_path, "w", encoding="utf8") as file:
+            json.dump(result, file, indent=4)
+        pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")

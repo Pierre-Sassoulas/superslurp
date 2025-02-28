@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -8,17 +9,24 @@ from pathlib import Path
 from superslurp.check import check_consistency
 from superslurp.extract import convert_to_text
 from superslurp.parse import parse_text
-from superslurp.serialize import json_dump_receipt
+from superslurp.serialize.json_dump import make_json_serializable
+from superslurp.superslurp_typing import Receipt
 
 
 def parse_superu_receipt(filename: str | Path) -> str:
+    return json.dumps(
+        make_json_serializable(parse_superu_receipt_raw(filename)), indent=4
+    )
+
+
+def parse_superu_receipt_raw(filename: str | Path) -> Receipt:
     text = convert_to_text(filename)
     logging.debug("Extracted text, parsing receipt...")
     receipt = parse_text(text)
     logging.debug("Parsing done, checking consistency...")
     check_consistency(receipt)
     logging.debug("Rendering json result...")
-    return json_dump_receipt(receipt)
+    return receipt
 
 
 def main(args: list[str] | None = None) -> int:

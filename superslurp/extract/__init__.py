@@ -28,4 +28,4 @@ def convert_to_text(filename: str | Path) -> str:
         logging.debug("Reading text from cache without converting from pdf...")
         with open(cached_text_file, encoding="utf8") as f:
             text = f.read()
-    return text
+    return text.strip()

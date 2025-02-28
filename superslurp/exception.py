@@ -12,10 +12,12 @@ class ConsistencyError(Exception):
             f"\n{self.show_items(receipt)}"
         )
 
-    def show_items(self, receipt: Receipt) -> str:
+    @staticmethod
+    def show_items(receipt: Receipt) -> str:
         result = ""
         s = 0.0
         for category, items in receipt["items"].items():
+            result += f"{category} ({len(items)}):\n"
             for item in items:
                 p = item["price"]
                 q = item["quantity"]
@@ -30,8 +32,9 @@ class UndetectedAttributeError(ConsistencyError):
 
 
 class UnexpectedSumOfParsedItems(ConsistencyError):
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
+        *,
         receipt: Receipt,
         total: str,
         description: str,

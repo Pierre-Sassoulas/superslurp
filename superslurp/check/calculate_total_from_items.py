@@ -14,9 +14,13 @@ def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float,
             price = item["price"]
             quantity = item["quantity"]
             if price is None:
-                raise UndetectedAttributeError(item, "price")
+                raise UndetectedAttributeError(
+                    receipt=receipt, item=item, attribute="price"
+                )
             if quantity is None:
-                raise UndetectedAttributeError(item, "quantity")
+                raise UndetectedAttributeError(
+                    receipt=receipt, item=item, attribute="quantity"
+                )
             actual_price = price * quantity
             if item["tr"]:
                 recalculated_eligible_tr += actual_price
@@ -24,7 +28,8 @@ def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float,
                 print(f"Checking discount: {category} {actual_price}")
                 if actual_price > 0:
                     raise ConsistencyError(
-                        f"discounts should be negative, got {actual_price} for {item}"
+                        receipt=receipt,
+                        msg=f"discounts should be negative, got {actual_price} for {item}",
                     )
                 recalculated_total_discount += actual_price
             else:

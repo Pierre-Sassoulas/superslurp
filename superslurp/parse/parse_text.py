@@ -1,29 +1,53 @@
 from __future__ import annotations
 
+import re
+
 from superslurp.parse.parse_date import parse_date
 from superslurp.parse.parse_items import parse_items
-from superslurp.parse.parse_store import parse_store_info
-from superslurp.parse.parse_totals import get_total_and_number_of_items, parse_totals
+from superslurp.parse.parse_totals import (
+    _match_eligible_tr,
+    _match_sub_total,
+    _match_total_discount,
+    _match_tr_paid,
+)
+from superslurp.parse.str_to_float import _change_text_to_float
 from superslurp.superslurp_typing import Receipt
+
+everything_pattern = re.compile(
+    r"(?P<address>([\S ]*\n){3,4})Telephone :\s+(?P<telephone>.*)\nSIRET (?P<siret>\d+).+NAF (?P<naf>\S+)"
+    r"[\s\S]*(?P<items_text>\s+Opérateur[\s\S]*)"
+    r"TOTAL\s+(?P<number_of_items>\d+) Article\(s\)\s+(?P<total>\d+(,|.)\d+) €"
+)
 
 
 def parse_text(text: str) -> Receipt:
-    store_info, remainder = text.split("\nTVA  ")
-    receipt_date = parse_date(remainder)
-    total, number_of_items = get_total_and_number_of_items(text)
-    items_text_with_tail = remainder.split("                ===========")[0]
-    items_text = items_text_with_tail.split(">>>>")[1:]
-    reconstructed_text = ">>>>" + ">>>>".join(items_text)
-    items = parse_items(reconstructed_text, expected_number_of_items=number_of_items)
-    sub_total, total_discount, eligible_tr, tr_paid = parse_totals(text)
+    if (matches := everything_pattern.search(text)) is None:
+        raise ValueError(
+            f"Couldn't match the receipt using the current regex for {text}"
+        )
+    total_as_float = _change_text_to_float(matches.group("total"))
+    assert isinstance(total_as_float, float)  # total must match or we raise ValueError
+    number_of_items = int(matches.group("number_of_items"))
+    items_text = matches.group("items_text")
+    receipt_date = parse_date(items_text)
+    items = parse_items(items_text, expected_number_of_items=number_of_items)
+    paid_tr = _change_text_to_float(_match_tr_paid(text))
+    eligible_tr = _change_text_to_float(_match_eligible_tr(text))
+    total_discount = _change_text_to_float(_match_total_discount(text))
+    subtotal = _change_text_to_float(_match_sub_total(text))
     return {
-        "store": parse_store_info(store_info),
+        "store": {
+            "address": matches.group("address"),
+            "phone": matches.group("telephone"),
+            "siret": matches.group("siret"),
+            "naf": matches.group("naf"),
+        },
         "items": items,
         "date": str(receipt_date) if receipt_date else None,
-        "subtotal": sub_total,
+        "subtotal": subtotal,
         "total_discount": total_discount,
         "number_of_items": number_of_items,
-        "total": total,
+        "total": total_as_float,
         "eligible_tr": eligible_tr,
-        "paid_tr": tr_paid,
+        "paid_tr": paid_tr,
     }

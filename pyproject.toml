@@ -81,6 +81,7 @@ disable = [
     "missing-docstring",             # annoying shit
     "magic-value-comparison",        # annoying shit
     "logging-fstring-interpolation", # useless in our time and age
+    "consider-ternary-expression",   # no nuance at all
 ]
 
 [tool.codespell]

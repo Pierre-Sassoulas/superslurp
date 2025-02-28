@@ -5,7 +5,6 @@ from typing import TypedDict
 
 
 class Store(TypedDict):
-    store_name: str | None
     address: str | None
     phone: str | None
     siret: str | None
@@ -18,6 +17,7 @@ class Item(TypedDict):
     quantity: int
     grams: float | None
     tr: bool
+    way_of_paying: str | None
 
 
 class Category(enum.Enum):
@@ -58,12 +58,12 @@ class Receipt(TypedDict):
     date: str | None
     store: Store
     items: Items
-    subtotal: float
-    total_discount: float
+    subtotal: float | None
+    total_discount: float | None
     total: float
     number_of_items: int
-    eligible_tr: float
-    paid_tr: float
+    eligible_tr: float | None
+    paid_tr: float | None
     # card_balance_previous: float
     # card_balance_earned: float
     # card_balance_new: float

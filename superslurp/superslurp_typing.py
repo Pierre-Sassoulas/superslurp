@@ -54,9 +54,17 @@ class Category(enum.Enum):
 Items = dict[Category, list[Item]]
 
 
+class Card(TypedDict):
+    balance_previous: float
+    balance_earned: float
+    balance_used: float
+    balance_new: float
+
+
 class Receipt(TypedDict):
     date: str | None
     store: Store
+    card: Card
     items: Items
     subtotal: float | None
     total_discount: float | None
@@ -64,6 +72,3 @@ class Receipt(TypedDict):
     number_of_items: int
     eligible_tr: float | None
     paid_tr: float | None
-    # card_balance_previous: float
-    # card_balance_earned: float
-    # card_balance_new: float

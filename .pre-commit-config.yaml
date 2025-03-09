@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.9.8"
+    rev: "v0.9.10"
     hooks:
       - id: ruff
         args: ["--fix"]
@@ -27,11 +27,11 @@ repos:
     hooks:
       - id: mypy
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: "v2.5.0"
+    rev: "v2.5.1"
     hooks:
       - id: pyproject-fmt
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.5.2
+    rev: v3.5.3
     hooks:
       - id: prettier
         args: [--prose-wrap=always, --print-width=88]

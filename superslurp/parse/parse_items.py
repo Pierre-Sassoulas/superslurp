@@ -13,7 +13,7 @@ class WrongNumberOfItemException(Exception): ...
 category_pattern = re.compile(r">>>>(?P<category>.*)\n(?P<items>(?:(?!>>>>)[\S\s])*)")
 # way_of_paying_pattern = re.compile(r"(?P<way_of_paying>\d{2} \n)+")
 items_pattern = re.compile(
-    r"(?P<name>[\w .\/%,=€°+É]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
+    r"(?P<name>[\w .\/%,=€°+Éé\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
     r"(?P<quantity>[\d x,]+ €)?[ ]+(?P<price>[\d]+,[ \d€]+)[ ]?(?P<way_of_paying>\d{2})+ \n"
     r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>[\d]+,|.[ \d€]+)\n"
 )

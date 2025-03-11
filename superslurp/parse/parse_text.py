@@ -23,6 +23,7 @@ everything_pattern = re.compile(
     r"VOTRE SOLDE € CARTE U PRECEDENT[ :]+(?P<previous_u>\d+(,|.)\d+) €\n"
     r"(VOS € CARTE U GAGNES[ :]+(?P<u_won>\d+(,|.)\d+) €\n){0,1}"
     r"(VOS € CARTE U UTILISES[ :]+(?P<u_used>\d+(,|.)\d+) €\n){0,1}"
+    r"(VOS € CARTE U GAGNES[ :]+(?P<u_won_when_used>\d+(,|.)\d+) €\n){0,1}"
     r"VOTRE NOUVEAU SOLDE € CARTE U[ :]+(?P<new_u>\d+(,|.)\d+) €"
 )
 
@@ -43,18 +44,10 @@ def parse_text(text: str) -> Receipt:
     total_discount = _change_text_to_float(_match_total_discount(text))
     subtotal = _change_text_to_float(_match_sub_total(text))
     card_balance_previous = _change_text_to_float(matches.group("previous_u"))
-    card_balance_earned = (
-        _change_text_to_float(matches.group("u_won")) if matches.group("u_won") else 0.0
-    )
-    card_balance_used = (
-        _change_text_to_float(matches.group("u_used"))
-        if matches.group("u_used")
-        else 0.0
-    )
+    card_balance_earned = _handle_card_balance_earned(matches)
+    card_balance_used = _handle_card_balance_used(matches)
     card_balance_new = _change_text_to_float(matches.group("new_u"))
     assert card_balance_previous is not None
-    assert card_balance_earned is not None
-    assert card_balance_used is not None
     assert card_balance_new is not None
     return {
         "store": {
@@ -78,3 +71,26 @@ def parse_text(text: str) -> Receipt:
             "balance_new": card_balance_new,
         },
     }
+
+
+def _handle_card_balance_used(matches: re.Match[str]) -> float:
+    card_balance_used = (
+        _change_text_to_float(matches.group("u_used"))
+        if matches.group("u_used")
+        else 0.0
+    )
+    assert card_balance_used is not None
+    return card_balance_used
+
+
+def _handle_card_balance_earned(matches: re.Match[str]) -> float:
+    u_won = matches.group("u_won")
+    u_won_when_used = matches.group("u_won_when_used")
+    if u_won:
+        card_balance_earned = _change_text_to_float(u_won)
+    elif u_won_when_used:
+        card_balance_earned = _change_text_to_float(u_won_when_used)
+    else:
+        card_balance_earned = 0.0
+    assert card_balance_earned is not None
+    return card_balance_earned

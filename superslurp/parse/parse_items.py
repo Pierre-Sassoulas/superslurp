@@ -54,17 +54,19 @@ def parse_items(text: str, expected_number_of_items: int) -> Items:
         if nb_parsed_category == 0:
             err_msg = (
                 f"No items found in {category}, that's impossible.\n"
-                f"In:\n<\n{text}\n>\nnothing matched by {items_patterns!r}"
+                f"In:\n<\n{items_info}\n>\nnothing matched by {items_patterns!r}"
             )
-            logging.debug(err_msg)
+            logging.error(err_msg)
             raise WrongNumberOfItemException(err_msg)
         nb_parsed += nb_parsed_category
     if nb_parsed != expected_number_of_items:
-        raise WrongNumberOfItemException(
+        err_msg = (
             f"Expected {expected_number_of_items} items not {nb_parsed} in\n{text}\n"
             f"But parsing extracted:\n{repr_items(items)}\n"
             f"Pre-parsing of categories was:\n{category}"
         )
+        logging.error(err_msg)
+        raise WrongNumberOfItemException(err_msg)
     return items
 
 

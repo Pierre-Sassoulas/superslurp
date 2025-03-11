@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import logging
+
 from superslurp.superslurp_typing import Item, Receipt
 
 
 class ConsistencyError(Exception):
     def __init__(self, receipt: Receipt, msg: str):
-        super().__init__(
+        msg = (
             f"Something must be wrong with the parsing because {msg}."
             # Might want to comment next line some of the time:
             # f"\n\n{json_dump_receipt(receipt)}"
             f"\n{self.show_items(receipt)}"
         )
+        super().__init__(msg)
+        logging.error(msg)
 
     @staticmethod
     def show_items(receipt: Receipt) -> str:
@@ -22,7 +26,7 @@ class ConsistencyError(Exception):
                 p = item["price"]
                 q = item["quantity"]
                 s += p * q
-                result += f"{item['name']}: {p} * {q} ({s})\n"
+                result += f"{item['name']}: {p} * {q} ({s:.2f})\n"
         return result
 
 

@@ -25,14 +25,15 @@ items_pattern = re.compile(
 
 
 def iter_categories_and_items(text: str) -> Generator[tuple[Category, str]]:
-    logging.debug(f"Parsing:\n<\n{text}\n>")
+    logging.debug(f"Parsing with {category_pattern}:\n<\n{text}\n>")
     if not (category_matches := list(category_pattern.finditer(text))):
         if (
-            single_undefined_category := single_undefined_category_pattern.search(text)
+            items_without_category := single_undefined_category_pattern.search(text)
         ) is not None:
-            yield Category.UNDEFINED, single_undefined_category.group("items")
-        print("Couldn't find any category in:\n", text, "\n\n")
-        raise AssertionError(f"Couldn't find any category in {text}")
+            yield Category.UNDEFINED, items_without_category.group("items")
+        err_msg = f"Using {single_undefined_category_pattern}, couldn't find any category in:\n<\n{text}\n>\n"
+        print(err_msg)
+        raise AssertionError(err_msg)
     for match in category_matches:
         category = Category(match.group("category").strip())
         items_info = match.group("items")
@@ -44,7 +45,6 @@ def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list
     items: dict[Category, list[Item]] = defaultdict(list)
     category = Category.UNDEFINED
     for category, items_info in iter_categories_and_items(text):
-        logging.debug(f"Parsing {category=}:\n<\n{items_info}\n>")
         items_parsed += _handle_items_in_category(items, category, items_info)
     if items_parsed != expected_number_of_items:
         raise WrongNumberOfItemException(
@@ -57,6 +57,7 @@ def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list
 
 def _handle_items_in_category(items: Items, category: Category, items_info: str) -> int:
     items_parsed = 0
+    logging.debug(f"Parsing {category=} with {items_pattern}:\n<\n{items_info}\n>")
     for item_info in items_pattern.finditer(items_info):
         logging.debug(f"Item found in {category}: {item_info}")
         if "Pourcentage" in item_info.group(0):

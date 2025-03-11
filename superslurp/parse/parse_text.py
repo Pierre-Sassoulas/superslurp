@@ -43,12 +43,6 @@ def parse_text(text: str) -> Receipt:
     eligible_tr = _change_text_to_float(_match_eligible_tr(text))
     total_discount = _change_text_to_float(_match_total_discount(text))
     subtotal = _change_text_to_float(_match_sub_total(text))
-    card_balance_previous = _change_text_to_float(matches.group("previous_u"))
-    card_balance_earned = _handle_card_balance_earned(matches)
-    card_balance_used = _handle_card_balance_used(matches)
-    card_balance_new = _change_text_to_float(matches.group("new_u"))
-    assert card_balance_previous is not None
-    assert card_balance_new is not None
     return {
         "store": {
             "address": matches.group("address"),
@@ -65,12 +59,24 @@ def parse_text(text: str) -> Receipt:
         "eligible_tr": eligible_tr,
         "paid_tr": paid_tr,
         "card": {
-            "balance_previous": card_balance_previous,
-            "balance_earned": card_balance_earned,
-            "balance_used": card_balance_used,
-            "balance_new": card_balance_new,
+            "balance_previous": _handle_card_balance_previous(matches),
+            "balance_earned": _handle_card_balance_earned(matches),
+            "balance_used": _handle_card_balance_used(matches),
+            "balance_new": _handle_card_balance_new(matches),
         },
     }
+
+
+def _handle_card_balance_new(matches: re.Match[str]) -> float:
+    card_balance_new = _change_text_to_float(matches.group("new_u"))
+    assert card_balance_new is not None
+    return card_balance_new
+
+
+def _handle_card_balance_previous(matches: re.Match[str]) -> float:
+    card_balance_previous = _change_text_to_float(matches.group("previous_u"))
+    assert card_balance_previous is not None
+    return card_balance_previous
 
 
 def _handle_card_balance_used(matches: re.Match[str]) -> float:

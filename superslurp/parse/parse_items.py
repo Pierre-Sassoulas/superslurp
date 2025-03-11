@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import re
 from collections import defaultdict
+from collections.abc import Generator
 
 from superslurp.repr.items import repr_items
 from superslurp.superslurp_typing import Category, Item, Items
@@ -11,6 +13,9 @@ class WrongNumberOfItemException(Exception): ...
 
 
 category_pattern = re.compile(r">>>>(?P<category>.*)\n(?P<items>(?:(?!>>>>)[\S\s])*)")
+single_undefined_category_pattern = re.compile(
+    r"Ticket  \n[\w \/:]+[\n ]+(?P<items>(?:(?!==)[\S\s])*)\n[\n =]+"
+)
 # way_of_paying_pattern = re.compile(r"(?P<way_of_paying>\d{2} \n)+")
 items_pattern = re.compile(
     r"(?P<name>[\w .\/%,=€°+Éé\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
@@ -19,37 +24,39 @@ items_pattern = re.compile(
 )
 
 
-def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list[Item]]:
-    items_parsed_so_far = 0
-    items: dict[Category, list[Item]] = defaultdict(list)
+def iter_categories_and_items(text: str) -> Generator[tuple[Category, str]]:
+    logging.debug(f"Parsing:\n<\n{text}\n>")
     if not (category_matches := list(category_pattern.finditer(text))):
-        items_parsed_so_far = _handle_items_in_category(
-            items, Category.UNDEFINED, text, text, items_parsed_so_far
-        )
-    else:
-        for match in category_matches:
-            category = Category(match.group("category").strip())
-            items_info = match.group("items")
-            items_parsed_so_far = _handle_items_in_category(
-                items, category, text, items_info, items_parsed_so_far
-            )
-    if items_parsed_so_far != expected_number_of_items:
+        if (
+            single_undefined_category := single_undefined_category_pattern.search(text)
+        ) is not None:
+            yield Category.UNDEFINED, single_undefined_category.group("items")
+        print("Couldn't find any category in:\n", text, "\n\n")
+        raise AssertionError(f"Couldn't find any category in {text}")
+    for match in category_matches:
+        category = Category(match.group("category").strip())
+        items_info = match.group("items")
+        yield category, items_info
+
+
+def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list[Item]]:
+    items_parsed = 0
+    items: dict[Category, list[Item]] = defaultdict(list)
+    category = Category.UNDEFINED
+    for category, items_info in iter_categories_and_items(text):
+        logging.debug(f"Parsing {category=}:\n<\n{items_info}\n>")
+        items_parsed += _handle_items_in_category(items, category, items_info)
+    if items_parsed != expected_number_of_items:
         raise WrongNumberOfItemException(
             f"Expected {expected_number_of_items} items in\n{text}\n"
-            f"But parsing extracted {items_parsed_so_far}:\n{repr_items(items)}\n"
-            f"Preparsing of categories was:\n{category_matches}"
+            f"But parsing extracted {items_parsed}:\n{repr_items(items)}\n"
+            f"Preparsing of categories was:\n{category}"
         )
     return items
 
 
-def _handle_items_in_category(
-    items: Items,
-    category: Category,
-    text: str,
-    items_info: str,
-    items_parsed_so_far: int,
-) -> int:
-    items_parsed_before_this_category = items_parsed_so_far
+def _handle_items_in_category(items: Items, category: Category, items_info: str) -> int:
+    items_parsed = 0
     for item_info in items_pattern.finditer(items_info):
         print(f"Item found in {category}: {item_info}")
         if "Pourcentage" in item_info.group(0):
@@ -65,15 +72,14 @@ def _handle_items_in_category(
             )
             continue
         item = get_item_from_item_infos(item_info)
-        items_parsed_so_far += item["quantity"]
+        items_parsed += item["quantity"]
         items[category].append(item)
-    if items_parsed_so_far == items_parsed_before_this_category:
+    if items_parsed == 0:
         raise WrongNumberOfItemException(
             f"No item found in {category}, that's impossible:"
-            f"In\n{text}\n\n, more precisely in\n{items_info}\n"
-            f"nothing matched by {items_pattern}"
+            f"In\n\n{items_info}\n\nnothing matched by {items_pattern!r}"
         )
-    return items_parsed_so_far
+    return items_parsed
 
 
 def get_new_category(line: str) -> Category:

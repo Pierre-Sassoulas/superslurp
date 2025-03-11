@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
+from _pytest.logging import LogCaptureFixture  # pylint: disable=import-private-name
 
 from superslurp.__main__ import parse_superu_receipt_raw
 from superslurp.parse import parse_text
@@ -87,7 +89,8 @@ def test_parse_items(sample_txt: str, expected_parsed_items: Items) -> None:
 
 
 @pytest.mark.parametrize("path", PATH_FIXTURES, ids=(p.name for p in PATH_FIXTURES))
-def test_multiple_examples(path: Path) -> None:
+def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
+    caplog.set_level(logging.DEBUG)
     result = make_json_serializable(parse_superu_receipt_raw(path))
     expected_result_path = Path(path.parent / f".{path.name}.json")
     if not expected_result_path.exists():

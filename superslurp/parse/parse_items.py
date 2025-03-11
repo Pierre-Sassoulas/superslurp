@@ -12,56 +12,60 @@ from superslurp.superslurp_typing import Category, Item, Items
 class WrongNumberOfItemException(Exception): ...
 
 
-items_pattern = re.compile(
-    r"(?P<name>[\w .\/%,=€°+Éé\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
-    r"(?P<quantity>[\d x,]+ €)?[ ]+(?P<price>[\d]+[,|\.][ \d€]+)[ ]?(?P<way_of_paying>\d{2})+ \n"
-    r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>[\d]+[,|\.][ \d€]+)\n"
-)
+items_patterns = [
+    re.compile(
+        r"(?P<name>[\w .\/%,=€°+Éé\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
+        r"(?P<quantity>[\d x,]+ €)?[ ]+(?P<price>[\d]+[,|\.][ \d€]+)[ ]?(?P<way_of_paying>\d{2})+ \n"
+        r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>[\d]+[,|\.][ \d€]+)\n"
+    )
+]
 
 
-def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list[Item]]:
-    items_parsed = 0
+def parse_items(text: str, expected_number_of_items: int) -> Items:
+    nb_parsed = 0
     items: dict[Category, list[Item]] = defaultdict(list)
     category = Category.UNDEFINED
     for category, items_info in iter_categories_and_items(text):
-        items_parsed += _handle_items_in_category(items, category, items_info)
-    if items_parsed != expected_number_of_items:
+        nb_parsed_category = 0
+        for items_pattern in items_patterns:
+            logging.debug(
+                f"Parsing {category=} with {items_pattern}:\n<\n{items_info}\n>"
+            )
+            if not (matched_items := items_pattern.finditer(items_info)):
+                logging.debug(f"Matched nothing with {items_pattern}")
+                continue
+            for item_info in matched_items:
+                logging.debug(f"Item found in {category}: {item_info}")
+                if "Pourcentage" in item_info.group(0):
+                    items[category].append(
+                        {
+                            "name": items[category][-1]["name"],
+                            "price": -_get_price(item_info.group("discount")),
+                            "quantity": items[category][-1]["quantity"],
+                            "grams": items[category][-1]["grams"],
+                            "tr": items[category][-1]["tr"],
+                            "way_of_paying": items[category][-1]["way_of_paying"],
+                        }
+                    )
+                    continue
+                item = get_item_from_item_infos(item_info)
+                nb_parsed_category += item["quantity"]
+                items[category].append(item)
+        if nb_parsed_category == 0:
+            err_msg = (
+                f"No items found in {category}, that's impossible.\n"
+                f"In:\n<\n{text}\n>\nnothing matched by {items_patterns!r}"
+            )
+            logging.debug(err_msg)
+            raise WrongNumberOfItemException(err_msg)
+        nb_parsed += nb_parsed_category
+    if nb_parsed != expected_number_of_items:
         raise WrongNumberOfItemException(
-            f"Expected {expected_number_of_items} items in\n{text}\n"
-            f"But parsing extracted {items_parsed}:\n{repr_items(items)}\n"
-            f"Preparsing of categories was:\n{category}"
+            f"Expected {expected_number_of_items} items not {nb_parsed} in\n{text}\n"
+            f"But parsing extracted:\n{repr_items(items)}\n"
+            f"Pre-parsing of categories was:\n{category}"
         )
     return items
-
-
-def _handle_items_in_category(items: Items, category: Category, items_info: str) -> int:
-    items_parsed = 0
-    logging.debug(f"Parsing {category=} with {items_pattern}:\n<\n{items_info}\n>")
-    for item_info in items_pattern.finditer(items_info):
-        logging.debug(f"Item found in {category}: {item_info}")
-        if "Pourcentage" in item_info.group(0):
-            items[category].append(
-                {
-                    "name": items[category][-1]["name"],
-                    "price": -_get_price(item_info.group("discount")),
-                    "quantity": items[category][-1]["quantity"],
-                    "grams": items[category][-1]["grams"],
-                    "tr": items[category][-1]["tr"],
-                    "way_of_paying": items[category][-1]["way_of_paying"],
-                }
-            )
-            continue
-        item = get_item_from_item_infos(item_info)
-        items_parsed += item["quantity"]
-        items[category].append(item)
-    if items_parsed == 0:
-        err_msg = (
-            f"No item found in {category}, that's impossible:"
-            f"In\n<\n{items_info}\n>\nnothing matched by {items_pattern!r}"
-        )
-        logging.debug(err_msg)
-        raise WrongNumberOfItemException(err_msg)
-    return items_parsed
 
 
 def get_new_category(line: str) -> Category:

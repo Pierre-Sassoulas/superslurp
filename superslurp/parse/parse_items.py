@@ -14,7 +14,7 @@ class WrongNumberOfItemException(Exception): ...
 
 category_pattern = re.compile(r">>>>(?P<category>.*)\n(?P<items>(?:(?!>>>>)[\S\s])*)")
 single_undefined_category_pattern = re.compile(
-    r"Ticket  \n[\w \/:]+[\n ]+(?P<items>(?:(?!==)[\S\s])*)\n[\n =]+"
+    r"Ticket  \n[\w \/:]+[\n ]+(?P<items>(?:(?!==)[\S\s])*\n)[\n =]+"
 )
 # way_of_paying_pattern = re.compile(r"(?P<way_of_paying>\d{2} \n)+")
 items_pattern = re.compile(

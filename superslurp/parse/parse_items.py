@@ -30,7 +30,11 @@ def iter_categories_and_items(text: str) -> Generator[tuple[Category, str]]:
         if (
             items_without_category := single_undefined_category_pattern.search(text)
         ) is not None:
+            logging.debug(
+                f"Category could not be found, will continue parsing using {Category.UNDEFINED}."
+            )
             yield Category.UNDEFINED, items_without_category.group("items")
+            return
         err_msg = f"Using {single_undefined_category_pattern}, couldn't find any category in:\n<\n{text}\n>\n"
         print(err_msg)
         raise AssertionError(err_msg)

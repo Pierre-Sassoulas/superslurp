@@ -14,9 +14,9 @@ class WrongNumberOfItemException(Exception): ...
 
 items_patterns = [
     re.compile(
-        r"(?P<name>[\w .\/%,=€°+Éé\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
-        r"(?P<quantity>[\d x,]+ €)?[ ]+(?P<price>[\d]+[,|\.][ \d€]+)[ ]?(?P<way_of_paying>\d{2})+ \n"
-        r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>[\d]+[,|\.][ \d€]+)\n"
+        r"(?P<name>[\w .\/%,='€°+Éé)\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
+        r"(?P<quantity>[\d x,]+ €)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ \n"
+        r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>\d+[,|\.][ \d€]+)\n"
     )
 ]
 

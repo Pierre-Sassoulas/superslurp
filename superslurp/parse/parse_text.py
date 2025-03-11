@@ -17,13 +17,13 @@ everything_pattern = re.compile(
     r"(?P<address>([\S ]*\n){3,4})"
     r"Telephone :\s+(?P<telephone>.*)\n"
     r"SIRET (?P<siret>\d+).+NAF (?P<naf>\S+)\n"
-    r"(?P<tva>TVA  \S+)\s*"
+    r"(?P<tva>TVA {2}\S+)\s*"
     r"(?P<items_text>Opérateur[\s\S]*)"
     r"TOTAL\s+(?P<number_of_items>\d+) Article\(s\)\s+(?P<total>\d+(,|.)\d+) €[\s\S]*"
     r"VOTRE SOLDE € CARTE U PRECEDENT[ :]+(?P<previous_u>\d+(,|.)\d+) €\n"
-    r"(VOS € CARTE U GAGNES[ :]+(?P<u_won>\d+(,|.)\d+) €\n){0,1}"
-    r"(VOS € CARTE U UTILISES[ :]+(?P<u_used>\d+(,|.)\d+) €\n){0,1}"
-    r"(VOS € CARTE U GAGNES[ :]+(?P<u_won_when_used>\d+(,|.)\d+) €\n){0,1}"
+    r"(VOS € CARTE U GAGNES[ :]+(?P<u_won>\d+(,|.)\d+) €\n)?"
+    r"(VOS € CARTE U UTILISES[ :]+(?P<u_used>\d+(,|.)\d+) €\n)?"
+    r"(VOS € CARTE U GAGNES[ :]+(?P<u_won_when_used>\d+(,|.)\d+) €\n)?"
     r"VOTRE NOUVEAU SOLDE € CARTE U[ :]+(?P<new_u>\d+(,|.)\d+) €"
 )
 

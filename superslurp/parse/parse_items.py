@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 import re
 from collections import defaultdict
-from collections.abc import Generator
 
+from superslurp.parse.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
 from superslurp.superslurp_typing import Category, Item, Items
 
@@ -12,36 +12,11 @@ from superslurp.superslurp_typing import Category, Item, Items
 class WrongNumberOfItemException(Exception): ...
 
 
-category_pattern = re.compile(r">>>>(?P<category>.*)\n(?P<items>(?:(?!>>>>)[\S\s])*)")
-single_undefined_category_pattern = re.compile(
-    r"Ticket  \n[\w \/:]+[\n ]+(?P<items>(?:(?!==)[\S\s])*\n)[\n =]+"
-)
-# way_of_paying_pattern = re.compile(r"(?P<way_of_paying>\d{2} \n)+")
 items_pattern = re.compile(
     r"(?P<name>[\w .\/%,=€°+Éé\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
     r"(?P<quantity>[\d x,]+ €)?[ ]+(?P<price>[\d]+[,|\.][ \d€]+)[ ]?(?P<way_of_paying>\d{2})+ \n"
     r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>[\d]+[,|\.][ \d€]+)\n"
 )
-
-
-def iter_categories_and_items(text: str) -> Generator[tuple[Category, str]]:
-    logging.debug(f"Parsing with {category_pattern}:\n<\n{text}\n>")
-    if not (category_matches := list(category_pattern.finditer(text))):
-        if (
-            items_without_category := single_undefined_category_pattern.search(text)
-        ) is not None:
-            logging.debug(
-                f"Category could not be found, will continue parsing using {Category.UNDEFINED}."
-            )
-            yield Category.UNDEFINED, items_without_category.group("items")
-            return
-        err_msg = f"Using {single_undefined_category_pattern}, couldn't find any category in:\n<\n{text}\n>\n"
-        print(err_msg)
-        raise AssertionError(err_msg)
-    for match in category_matches:
-        category = Category(match.group("category").strip())
-        items_info = match.group("items")
-        yield category, items_info
 
 
 def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list[Item]]:
@@ -80,10 +55,12 @@ def _handle_items_in_category(items: Items, category: Category, items_info: str)
         items_parsed += item["quantity"]
         items[category].append(item)
     if items_parsed == 0:
-        raise WrongNumberOfItemException(
+        err_msg = (
             f"No item found in {category}, that's impossible:"
-            f"In\n\n{items_info}\n\nnothing matched by {items_pattern!r}"
+            f"In\n<\n{items_info}\n>\nnothing matched by {items_pattern!r}"
         )
+        logging.debug(err_msg)
+        raise WrongNumberOfItemException(err_msg)
     return items_parsed
 
 

@@ -56,7 +56,10 @@ def test_quantity(name: str, expected: tuple[str, int | None]) -> None:
     )
 
 
-def test_parse_items(sample_txt: str, expected_parsed_items: Items) -> None:
+def test_parse_items(
+    sample_txt: str, expected_parsed_items: Items, caplog: LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG)
     receipt = parse_text(sample_txt)
 
     assert isinstance(receipt, dict)

@@ -58,7 +58,7 @@ def parse_items(text: str, expected_number_of_items: int) -> dict[Category, list
 def _handle_items_in_category(items: Items, category: Category, items_info: str) -> int:
     items_parsed = 0
     for item_info in items_pattern.finditer(items_info):
-        print(f"Item found in {category}: {item_info}")
+        logging.debug(f"Item found in {category}: {item_info}")
         if "Pourcentage" in item_info.group(0):
             items[category].append(
                 {

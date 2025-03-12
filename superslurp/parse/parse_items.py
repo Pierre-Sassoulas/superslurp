@@ -14,8 +14,8 @@ class WrongNumberOfItemException(Exception): ...
 
 items_patterns = [
     re.compile(
-        r"(?P<name>[\w .\/%,='€°+Éé)\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
-        r"(?P<quantity>[\d x,]+ €)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ \n"
+        r"(?P<name>[\w .\/%,=\-\"'€°+Éé)\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
+        r"(?P<quantity>[\d kgx,]+ €(\/kg)?)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ \n"
         r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>\d+[,|\.][ \d€]+)\n"
     )
 ]
@@ -81,6 +81,9 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
     if (matched_name := item_info.group("name")) is None:
         raise ValueError(f"Nothing matched the name in {item_info}")
     name = matched_name.strip()
+    assert name, f"Name is empty: {name}"
+    if len(name) < 10:
+        logging.warning(f"Name is really short, that suspicious: {name}")
     if (quantity := _parse_quantity(item_info.group("quantity"))) == 1:
         price = item_info.group("price")
     else:

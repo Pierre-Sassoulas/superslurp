@@ -20,7 +20,7 @@ jobs:
       url: https://pypi.org/project/superslurp/
     steps:
       - name: Check out code from Github
-        uses: actions/checkout@v4.3.0
+        uses: actions/checkout@v5.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         id: python
         uses: actions/setup-python@v5.6.0

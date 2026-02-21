@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -117,6 +118,9 @@ def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
         with open(expected_result_path, "w", encoding="utf8") as file:
             json.dump(result, file, indent=4)
         pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
+    date = str(result["date"])
+    assert date != "None", f"date is null for {path.name}"
+    datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
 
 
 @pytest.mark.parametrize("path", V2_FIXTURES, ids=(p.name for p in V2_FIXTURES))

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from superslurp.parse.safe_search import safe_search
 
-DATETIME_PATTERN = r"Opérateur        Date      Heure      TPV     Ticket  \n.*(\d2\/\d+\/\d+ +\d+:\d+)"
+DATETIME_PATTERN = r"Opérateur        Date      Heure      TPV     Ticket  \n.*(\d{2}\/\d+\/\d+ +\d+:\d+)"
 
 
 def parse_date(text: str) -> datetime | None:

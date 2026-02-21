@@ -61,14 +61,10 @@ def _parse_store(text: str) -> Store:
     phone = safe_search(r"Téléphone\s+(\d+)", text)
     siret = safe_search(r"SIRET\s+(\d+)", text)
     naf = safe_search(r"NAF\s+(\S+)", text)
-    store_name = safe_search(
-        r"SIRET\s+\d+\s+NAF\s+\S+.*?\n.*?(\S.*\S)\s*\n.*Date\s+Heure",
-        text,
-        default=None,
-    )
-    if store_name is None:
-        store_name = safe_search(r"^\s+(\S.*\S)\s*$", text.split("SIRET")[0])
-    address = safe_search(r"Rue\s+(.*?)\n\s+(.*?)\n", text)
+    # Store name is on the line before SIRET
+    store_name = safe_search(r"(\S.*\S)\s*\n\s*SIRET\s+\d+", text, default=None)
+    # Address: street line + postal code + city line
+    address = _parse_address(text)
     return {
         "store_name": store_name,
         "address": address,
@@ -76,6 +72,20 @@ def _parse_store(text: str) -> Store:
         "siret": siret,
         "naf": naf,
     }
+
+
+def _parse_address(text: str) -> str | None:
+    m = re.search(
+        r"(?:Rue|Avenue|Boulevard|Place|Chemin|Allée)\s+(.*?)\n"
+        r"\s+(\d{5})\s+(.*?)\n",
+        text,
+    )
+    if m is None:
+        return None
+    street = m.group(0).split("\n")[0].strip()
+    city = m.group(3).strip()
+    postal = m.group(2).strip()
+    return f"{street}\n{city}\n{postal}\n"
 
 
 def _parse_date(text: str) -> str | None:

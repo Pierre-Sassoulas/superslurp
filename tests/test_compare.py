@@ -3,7 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from superslurp.compare.aggregate import compare_receipt_dicts, compare_receipt_files
+from superslurp.compare.aggregate import (
+    _compute_rolling_average,
+    compare_receipt_dicts,
+    compare_receipt_files,
+)
 from superslurp.compare.matcher import FuzzyMatcher
 from superslurp.compare.normalize import is_bio, normalize_for_matching
 
@@ -257,3 +261,110 @@ def test_compare_receipt_files_fixtures() -> None:
         assert "id" in store
         assert "store_name" in store
         assert "location" in store
+
+
+# --- session totals ---
+
+
+def test_session_totals_basic() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {"name": "X", "price": 10.0, "quantity": 2, "grams": None},
+                    {"name": "Y", "price": 5.0, "quantity": 1, "grams": None},
+                ]
+            },
+        },
+        {
+            "date": "2025-02-20 11:00:00",
+            "items": {"A": [{"name": "X", "price": 3.0, "quantity": 1, "grams": None}]},
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    totals = result["session_totals"]
+    assert len(totals) == 2
+    assert totals[0]["date"] == "2025-01-15"
+    assert totals[0]["total"] == 25.0  # 10*2 + 5*1
+    assert totals[1]["date"] == "2025-02-20"
+    assert totals[1]["total"] == 3.0
+
+
+def test_session_totals_skips_null_date() -> None:
+    receipts: list[dict[str, Any]] = [
+        {
+            "date": None,
+            "items": {"A": [{"name": "X", "price": 1.0, "quantity": 1, "grams": None}]},
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    assert not result["session_totals"]
+
+
+# --- rolling average ---
+
+
+def test_rolling_average_single_week() -> None:
+    """A single session produces one rolling avg point."""
+    totals = [{"session_id": 1, "date": "2025-03-05", "total": 70.0}]
+    avg = _compute_rolling_average(totals)
+    assert len(avg) >= 1
+    # The point covering that session should have value based on
+    # a window that includes the session's week
+    values = [p["value"] for p in avg]
+    assert any(v > 0 for v in values)
+
+
+def test_rolling_average_two_consecutive_weeks() -> None:
+    """Two sessions in consecutive weeks."""
+    totals = [
+        {"session_id": 1, "date": "2025-03-03", "total": 100.0},
+        {"session_id": 2, "date": "2025-03-10", "total": 50.0},
+    ]
+    avg = _compute_rolling_average(totals)
+    assert len(avg) >= 2
+    # Both points should be positive
+    for point in avg:
+        assert point["value"] > 0
+
+
+def test_rolling_average_gap_skipped() -> None:
+    """Sessions 6+ months apart should not produce points in the gap."""
+    totals = [
+        {"session_id": 1, "date": "2025-01-06", "total": 80.0},
+        {"session_id": 2, "date": "2025-07-07", "total": 60.0},
+    ]
+    avg = _compute_rolling_average(totals)
+    dates = [p["date"] for p in avg]
+    # No point should fall in the gap (e.g. April)
+    assert not any("2025-04" in d for d in dates)
+
+
+def test_rolling_average_is_smoothed() -> None:
+    """Five consecutive weekly sessions: middle point averages all five."""
+    # All on Mondays
+    totals = [
+        {"session_id": i + 1, "date": f"2025-03-{3 + 7 * i:02d}", "total": float(v)}
+        for i, v in enumerate([10, 20, 30, 40, 50])
+    ]
+    avg = _compute_rolling_average(totals)
+    # The middle week (2025-03-17) should average all 5 = 30.0
+    mid = next((p for p in avg if p["date"] == "2025-03-17"), None)
+    assert mid is not None
+    assert mid["value"] == 30.0
+
+
+def test_compare_output_contains_totals_and_rolling() -> None:
+    """compare_receipt_dicts includes session_totals and rolling_average."""
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {"A": [{"name": "X", "price": 5.0, "quantity": 1, "grams": None}]},
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    assert "session_totals" in result
+    assert "rolling_average" in result
+    assert len(result["session_totals"]) == 1
+    assert len(result["rolling_average"]) >= 1

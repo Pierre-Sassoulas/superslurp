@@ -77,31 +77,20 @@ DATA.products.forEach(p => {
   });
 });
 
-// --- Session totals chart ---
+// --- Session totals (pre-computed in Python) ---
+const sessionTotalsRaw = DATA.session_totals;
 function buildSessionTotals() {
-  const totals = {};
-  DATA.products.forEach(p => {
-    p.observations.forEach(obs => {
-      if (!totals[obs.session_id]) totals[obs.session_id] = 0;
-      totals[obs.session_id] += obs.price * obs.quantity;
-    });
+  return sessionTotalsRaw.map(e => {
+    const session = sessionMap[e.session_id];
+    const store = session && session.store_id
+      ? storeMap[session.store_id] : null;
+    return {
+      sessionId: e.session_id,
+      date: session ? session.date : e.date,
+      total: e.total,
+      label: store ? store.location : "?"
+    };
   });
-  const entries = Object.entries(totals)
-    .map(([sid, total]) => {
-      const sessionId = parseInt(sid);
-      const session = sessionMap[sessionId];
-      const store = session.store_id ? storeMap[session.store_id] : null;
-      return {
-        sessionId: sessionId,
-        date: session.date,
-        total: Math.round(total * 100) / 100,
-        label: store ? store.location : "?"
-      };
-    })
-    .filter(e => e.date)
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  return entries;
 }
 
 function showSessionDetail(entry) {
@@ -150,60 +139,8 @@ function showSessionDetail(entry) {
 
 const sessionTotals = buildSessionTotals();
 
-// Rolling average: per-week buckets, each point = average of
-// current week + 2 weeks before + 2 weeks after (5-week window).
-// Skip weeks that fall in data gaps (>4 weeks from any session).
-function buildRollingAvg(totals) {
-  if (totals.length === 0) return [];
-  const weekMs = 7 * 24 * 3600 * 1000;
-  const dayMs = 24 * 3600 * 1000;
-  const points = totals.map(e => ({
-    ts: new Date(e.date).getTime(), total: e.total
-  }));
-  // Monday-aligned week start for first session
-  const firstTs = points[0].ts;
-  const day = new Date(firstTs).getDay();
-  const mondayOff = day === 0 ? -6 : 1 - day;
-  const minWeek = firstTs + mondayOff * dayMs;
-  const maxTs = points[points.length - 1].ts;
-
-  // Sum per week bucket
-  const weekSums = {};
-  for (let w = minWeek; w <= maxTs + weekMs; w += weekMs) {
-    let sum = 0;
-    points.forEach(p => {
-      if (p.ts >= w && p.ts < w + weekMs) sum += p.total;
-    });
-    weekSums[w] = sum;
-  }
-  const weekKeys = Object.keys(weekSums)
-    .map(Number).sort((a, b) => a - b);
-
-  // 5-week rolling average, skip if no session within 4 weeks
-  const maxGap = 4 * weekMs;
-  const result = [];
-  weekKeys.forEach((w, i) => {
-    const nearest = points.reduce(
-      (best, p) => Math.min(best, Math.abs(p.ts - w)), Infinity
-    );
-    if (nearest > maxGap) return;
-    let sum = 0, count = 0;
-    for (let j = i - 2; j <= i + 2; j++) {
-      if (j >= 0 && j < weekKeys.length) {
-        sum += weekSums[weekKeys[j]];
-        count++;
-      }
-    }
-    const label = new Date(w).toISOString().slice(0, 10);
-    result.push({
-      date: label,
-      value: Math.round((sum / count) * 100) / 100
-    });
-  });
-  return result;
-}
-
-const rollingAvg = buildRollingAvg(sessionTotals);
+// Rolling average (pre-computed in Python)
+const rollingAvg = DATA.rolling_average;
 
 // x-labels: union of rolling avg dates + session dates, sorted
 const allDates = new Set(rollingAvg.map(r => r.date));

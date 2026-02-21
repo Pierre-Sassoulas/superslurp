@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -101,6 +102,84 @@ def _process_receipt(
             products.setdefault(key, []).append(obs)
 
 
+def _compute_session_totals(
+    sessions: list[dict[str, Any]],
+    products: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Compute the total spent per session."""
+    totals: dict[int, float] = {}
+    for product in products:
+        for obs in product["observations"]:
+            sid = obs["session_id"]
+            totals[sid] = totals.get(sid, 0) + obs["price"] * obs["quantity"]
+    result = []
+    for session in sessions:
+        sid = session["id"]
+        if sid in totals and session["date"] is not None:
+            result.append(
+                {
+                    "session_id": sid,
+                    "date": session["date"][:10],
+                    "total": round(totals[sid], 2),
+                }
+            )
+    result.sort(key=lambda e: str(e["date"]))
+    return result
+
+
+def _build_weekly_sums(
+    points: list[tuple[datetime, float]],
+) -> tuple[list[datetime], list[float]]:
+    """Bucket session totals into Monday-aligned weeks."""
+    week = timedelta(weeks=1)
+    first_dt = points[0][0]
+    min_week = first_dt - timedelta(days=first_dt.weekday())
+    max_dt = points[-1][0]
+    week_starts: list[datetime] = []
+    week_sums: list[float] = []
+    w = min_week
+    while w <= max_dt + week:
+        total = sum(t for dt, t in points if w <= dt < w + week)
+        week_starts.append(w)
+        week_sums.append(total)
+        w += week
+    return week_starts, week_sums
+
+
+def _compute_rolling_average(
+    session_totals: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Compute a 5-week rolling average (current week +/- 2 weeks).
+
+    Returns one data point per week. Weeks more than 4 weeks away from
+    any session are skipped (data gaps).
+    """
+    if not session_totals:
+        return []
+
+    points = [
+        (datetime.strptime(e["date"], "%Y-%m-%d"), e["total"]) for e in session_totals
+    ]
+    week_starts, week_sums = _build_weekly_sums(points)
+
+    max_gap_secs = timedelta(weeks=4).total_seconds()
+    result = []
+    for i, w_start in enumerate(week_starts):
+        nearest = min(abs((dt - w_start).total_seconds()) for dt, _ in points)
+        if nearest > max_gap_secs:
+            continue
+        window = [
+            week_sums[j] for j in range(max(0, i - 2), min(len(week_sums), i + 3))
+        ]
+        result.append(
+            {
+                "date": w_start.strftime("%Y-%m-%d"),
+                "value": round(sum(window) / len(window), 2),
+            }
+        )
+    return result
+
+
 def compare_receipt_dicts(
     receipts: list[dict[str, Any]], threshold: float = 0.90
 ) -> dict[str, Any]:
@@ -122,9 +201,14 @@ def compare_receipt_dicts(
             }
         )
     result.sort(key=lambda p: str(p["canonical_name"]))
+    session_list = sorted(sessions.values(), key=lambda s: s["id"])
+    session_totals = _compute_session_totals(session_list, result)
+    rolling_avg = _compute_rolling_average(session_totals)
     return {
         "stores": list(stores.values()),
-        "sessions": sorted(sessions.values(), key=lambda s: s["id"]),
+        "sessions": session_list,
+        "session_totals": session_totals,
+        "rolling_average": rolling_avg,
         "products": result,
     }
 

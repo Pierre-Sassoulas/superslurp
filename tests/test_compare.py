@@ -9,7 +9,11 @@ from superslurp.compare.aggregate import (
     compare_receipt_files,
 )
 from superslurp.compare.matcher import FuzzyMatcher
-from superslurp.compare.normalize import is_bio, normalize_for_matching
+from superslurp.compare.normalize import (
+    extract_unit_count,
+    is_bio,
+    normalize_for_matching,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -368,3 +372,105 @@ def test_compare_output_contains_totals_and_rolling() -> None:
     assert "rolling_average" in result
     assert len(result["session_totals"]) == 1
     assert len(result["rolling_average"]) >= 1
+
+
+# --- unit count & price per unit ---
+
+
+def test_extract_unit_count_x_pattern() -> None:
+    assert extract_unit_count("OEUFS PA CAL.MIXTE U X12") == 12
+    assert extract_unit_count("OEUFS LABEL X6") == 6
+
+
+def test_extract_unit_count_btex_pattern() -> None:
+    assert extract_unit_count("OEUFS PA LR CAL.MIXTE U BTEX12") == 12
+
+
+def test_extract_unit_count_with_off() -> None:
+    assert extract_unit_count("OEUF.PA.MOYEN LR LOUE X10+5OFF") == 15
+
+
+def test_extract_unit_count_leading() -> None:
+    assert extract_unit_count("18 OEUFS FRAIS") == 18
+
+
+def test_extract_unit_count_none() -> None:
+    assert extract_unit_count("OEUFS DATE COURTE") is None
+    assert extract_unit_count("SUCRE POUDRE") is None
+
+
+def test_normalize_strips_unit_count() -> None:
+    assert normalize_for_matching("OEUFS PA CAL.MIXTE U X12") == "OEUFS"
+    assert normalize_for_matching("18 OEUFS FRAIS") == "OEUFS"
+
+
+def test_price_per_unit_in_observation() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {
+                        "name": "OEUFS PA CAL.MIXTE U X12",
+                        "price": 3.0,
+                        "quantity": 1,
+                        "grams": None,
+                    },
+                    {
+                        "name": "SUCRE POUDRE",
+                        "price": 1.50,
+                        "quantity": 1,
+                        "grams": 1000.0,
+                    },
+                ]
+            },
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    eggs = next(p for p in result["products"] if "OEUF" in p["canonical_name"])
+    assert eggs["observations"][0]["unit_count"] == 12
+    assert eggs["observations"][0]["price_per_unit"] == 0.25
+    sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
+    assert sugar["observations"][0]["unit_count"] is None
+    assert sugar["observations"][0]["price_per_unit"] is None
+
+
+def test_eggs_grouped_together() -> None:
+    """Different egg variants should all be grouped as one product."""
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {
+                        "name": "OEUFS PA CAL.MIXTE U X12",
+                        "price": 3.0,
+                        "quantity": 1,
+                        "grams": None,
+                    },
+                    {
+                        "name": "OEUFS PLEIN AIR MOYEN X12",
+                        "price": 3.95,
+                        "quantity": 1,
+                        "grams": None,
+                    },
+                    {
+                        "name": "18 OEUFS FRAIS",
+                        "price": 5.66,
+                        "quantity": 1,
+                        "grams": None,
+                    },
+                    {
+                        "name": "OEUFS CAL.MIXTE U BIO BTE X6",
+                        "price": 2.39,
+                        "quantity": 1,
+                        "grams": None,
+                    },
+                ]
+            },
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    egg_products = [p for p in result["products"] if "OEUF" in p["canonical_name"]]
+    assert len(egg_products) == 1
+    assert len(egg_products[0]["observations"]) == 4

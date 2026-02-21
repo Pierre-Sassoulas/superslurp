@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from superslurp.compare.matcher import FuzzyMatcher
-from superslurp.compare.normalize import is_bio
+from superslurp.compare.normalize import extract_unit_count, is_bio
 
 
 def _extract_location(store: dict[str, Any]) -> str | None:
@@ -70,6 +70,10 @@ def _build_observation(
     price_per_kg: float | None = None
     if grams is not None:
         price_per_kg = round((price / grams) * 1000, 2)
+    unit_count = extract_unit_count(item["name"])
+    price_per_unit: float | None = None
+    if unit_count is not None:
+        price_per_unit = round(price / unit_count, 4)
     obs: dict[str, Any] = {
         "session_id": session_id,
         "price": price,
@@ -77,6 +81,8 @@ def _build_observation(
         "grams": grams,
         "discount": item.get("discount"),
         "price_per_kg": price_per_kg,
+        "unit_count": unit_count,
+        "price_per_unit": price_per_unit,
     }
     if is_bio(item["name"]):
         obs["bio"] = True

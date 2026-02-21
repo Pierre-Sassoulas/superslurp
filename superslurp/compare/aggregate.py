@@ -43,10 +43,26 @@ def _get_store_id(
     return int(stores[key]["id"])
 
 
-def _build_observation(
-    item: dict[str, Any],
+def _get_session_id(
     date: str | None,
     store_id: int | None,
+    sessions: dict[tuple[str | None, int | None], dict[str, Any]],
+) -> int:
+    """Return the session id for this receipt, registering it if new."""
+    key = (date, store_id)
+    if key not in sessions:
+        session_id = len(sessions) + 1
+        sessions[key] = {
+            "id": session_id,
+            "date": date,
+            "store_id": store_id,
+        }
+    return int(sessions[key]["id"])
+
+
+def _build_observation(
+    item: dict[str, Any],
+    session_id: int,
 ) -> dict[str, Any]:
     price: float = item["price"]
     grams: float | None = item.get("grams")
@@ -54,24 +70,16 @@ def _build_observation(
     if grams is not None:
         price_per_kg = round((price / grams) * 1000, 2)
     obs: dict[str, Any] = {
-        "date": date,
+        "session_id": session_id,
         "price": price,
         "quantity": item.get("quantity", 1),
         "grams": grams,
         "discount": item.get("discount"),
         "price_per_kg": price_per_kg,
-        "store_id": store_id,
     }
     if is_bio(item["name"]):
         obs["bio"] = True
     return obs
-
-
-def _sort_key_observation(obs: dict[str, Any]) -> tuple[int, str]:
-    """Sort by date ascending, nulls last."""
-    if obs["date"] is None:
-        return (1, "")
-    return (0, obs["date"])
 
 
 def _process_receipt(
@@ -79,15 +87,17 @@ def _process_receipt(
     matcher: FuzzyMatcher,
     products: dict[str, list[dict[str, Any]]],
     stores: dict[tuple[str | None, str | None], dict[str, Any]],
+    sessions: dict[tuple[str | None, int | None], dict[str, Any]],
 ) -> None:
     date = receipt.get("date")
     store_data: dict[str, Any] = receipt.get("store", {})
     store_id = _get_store_id(store_data, stores)
+    session_id = _get_session_id(date, store_id, sessions)
     items_by_category: dict[str, list[dict[str, Any]]] = receipt.get("items", {})
     for category_items in items_by_category.values():
         for item in category_items:
             key = matcher.match(item["name"])
-            obs = _build_observation(item, date, store_id)
+            obs = _build_observation(item, session_id)
             products.setdefault(key, []).append(obs)
 
 
@@ -98,13 +108,13 @@ def compare_receipt_dicts(
     matcher = FuzzyMatcher(threshold=threshold)
     products: dict[str, list[dict[str, Any]]] = {}
     stores: dict[tuple[str | None, str | None], dict[str, Any]] = {}
+    sessions: dict[tuple[str | None, int | None], dict[str, Any]] = {}
 
     for receipt in receipts:
-        _process_receipt(receipt, matcher, products, stores)
+        _process_receipt(receipt, matcher, products, stores, sessions)
 
     result = []
     for canonical_name, observations in products.items():
-        observations.sort(key=_sort_key_observation)
         result.append(
             {
                 "canonical_name": canonical_name,
@@ -114,6 +124,7 @@ def compare_receipt_dicts(
     result.sort(key=lambda p: str(p["canonical_name"]))
     return {
         "stores": list(stores.values()),
+        "sessions": sorted(sessions.values(), key=lambda s: s["id"]),
         "products": result,
     }
 

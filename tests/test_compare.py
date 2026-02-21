@@ -133,11 +133,15 @@ def test_compare_receipt_dicts_basic() -> None:
     assert product["canonical_name"] == "SUCRE POUDRE"
     assert len(product["observations"]) == 2
     assert product["observations"][0]["grams"] == 1000.0
-    # Sorted by date
-    assert product["observations"][0]["date"] == "2025-01-15 10:00:00"
-    assert product["observations"][1]["date"] == "2025-02-20 11:00:00"
+    # Observations reference sessions
+    assert product["observations"][0]["session_id"] == 1
+    assert product["observations"][1]["session_id"] == 2
+    # Sessions carry date + store_id
+    assert len(result["sessions"]) == 2
+    assert result["sessions"][0]["date"] == "2025-01-15 10:00:00"
+    assert result["sessions"][1]["date"] == "2025-02-20 11:00:00"
+    assert result["sessions"][0]["store_id"] == 1
     # Store reference
-    assert product["observations"][0]["store_id"] == 1
     assert len(result["stores"]) == 1
     assert result["stores"][0]["id"] == 1
     assert result["stores"][0]["store_name"] == "SUPER U"
@@ -189,7 +193,7 @@ def test_compare_receipt_dicts_no_grams() -> None:
     assert product["observations"][0]["price_per_kg"] is None
 
 
-def test_compare_receipt_dicts_null_date_last() -> None:
+def test_compare_receipt_dicts_null_date_session() -> None:
     receipts: list[dict[str, Any]] = [
         {
             "date": None,
@@ -201,9 +205,9 @@ def test_compare_receipt_dicts_null_date_last() -> None:
         },
     ]
     result = compare_receipt_dicts(receipts)
-    obs = result["products"][0]["observations"]
-    assert obs[0]["date"] == "2025-01-01 00:00:00"
-    assert obs[1]["date"] is None
+    sessions = result["sessions"]
+    assert sessions[0]["date"] is None
+    assert sessions[1]["date"] == "2025-01-01 00:00:00"
 
 
 def test_compare_receipt_dicts_sorted_by_name() -> None:
@@ -239,9 +243,14 @@ def test_compare_receipt_files_fixtures() -> None:
         assert "observations" in product
         assert len(product["observations"]) > 0
         for obs in product["observations"]:
-            assert "date" in obs
+            assert "session_id" in obs
             assert "price" in obs
-            assert "store_id" in obs
+    assert "sessions" in result
+    assert len(result["sessions"]) > 0
+    for session in result["sessions"]:
+        assert "id" in session
+        assert "date" in session
+        assert "store_id" in session
     assert "stores" in result
     assert len(result["stores"]) > 0
     for store in result["stores"]:

@@ -149,39 +149,127 @@ function showSessionDetail(entry) {
 }
 
 const sessionTotals = buildSessionTotals();
+
+// Build EUR/week amortized curve using linear x (days since epoch)
+function toDays(dateStr) {
+  return new Date(dateStr).getTime() / (24 * 3600 * 1000);
+}
+
+function buildWeeklyRate(totals) {
+  if (totals.length === 0) return [];
+  const weekDays = 7;
+  const points = totals.map(e => ({
+    day: toDays(e.date), total: e.total
+  }));
+  const minDay = Math.floor(points[0].day / weekDays) * weekDays;
+  const maxDay = points[points.length - 1].day;
+  const result = [];
+  for (let d = minDay; d <= maxDay; d += weekDays) {
+    let sum = 0;
+    points.forEach(p => {
+      if (p.day >= d && p.day < d + weekDays) sum += p.total;
+    });
+    const date = new Date(d * 24 * 3600 * 1000);
+    const label = date.toISOString().slice(0, 10);
+    result.push({
+      day: d, date: label,
+      value: Math.round(sum * 100) / 100
+    });
+  }
+  return result;
+}
+
+const weeklyRate = buildWeeklyRate(sessionTotals);
+
+// Merge all x-labels (weekly + session dates), sorted
+const allDates = new Set(weeklyRate.map(w => w.date));
+sessionTotals.forEach(e => allDates.add(e.date.slice(0, 10)));
+const xLabels = Array.from(allDates).sort();
+
 const sessionChart = new Chart(document.getElementById("sessionChart"), {
-  type: "line",
+  type: "bar",
   data: {
-    labels: sessionTotals.map(e => e.date.slice(0, 10)),
-    datasets: [{
-      label: "Session total (EUR)",
-      data: sessionTotals.map(e => e.total),
-      borderColor: "#2563eb",
-      backgroundColor: "rgba(37,99,235,0.1)",
-      fill: true,
-      tension: 0.2,
-      pointRadius: 4,
-    }]
+    labels: xLabels,
+    datasets: [
+      {
+        label: "EUR/week",
+        type: "line",
+        data: xLabels.map(d => {
+          const w = weeklyRate.find(w => w.date === d);
+          return w ? w.value : null;
+        }),
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37,99,235,0.08)",
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+        spanGaps: true,
+        order: 2,
+      },
+      {
+        label: "Session (click for details)",
+        type: "line",
+        data: xLabels.map(d => {
+          const s = sessionTotals.find(
+            e => e.date.slice(0, 10) === d
+          );
+          return s ? s.total : null;
+        }),
+        borderColor: "transparent",
+        backgroundColor: "rgba(220,38,38,0.7)",
+        pointRadius: 5,
+        pointHoverRadius: 8,
+        pointBackgroundColor: "rgba(220,38,38,0.7)",
+        showLine: false,
+        order: 1,
+      }
+    ]
   },
   options: {
     responsive: true,
     onClick: function(evt, elements) {
-      if (elements.length > 0) {
-        showSessionDetail(sessionTotals[elements[0].index]);
+      const sessionEls = elements.filter(
+        el => el.datasetIndex === 1
+      );
+      if (sessionEls.length > 0) {
+        const date = xLabels[sessionEls[0].index];
+        const entry = sessionTotals.find(
+          e => e.date.slice(0, 10) === date
+        );
+        if (entry) showSessionDetail(entry);
       }
     },
     plugins: {
       tooltip: {
+        filter: function(item) {
+          return item.raw !== null;
+        },
         callbacks: {
           afterLabel: function(ctx) {
-            return sessionTotals[ctx.dataIndex].label + " (click for details)";
+            if (ctx.datasetIndex === 1) {
+              const date = xLabels[ctx.dataIndex];
+              const entry = sessionTotals.find(
+                e => e.date.slice(0, 10) === date
+              );
+              return entry
+                ? entry.label + " (click for details)"
+                : "";
+            }
+            return "";
           }
         }
       }
     },
     scales: {
-      y: { beginAtZero: false, title: { display: true, text: "EUR" } },
-      x: { title: { display: true, text: "Date" } }
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: "EUR" }
+      },
+      x: {
+        title: { display: true, text: "Date" },
+        ticks: { maxTicksLimit: 30 }
+      }
     }
   }
 });

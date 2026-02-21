@@ -150,39 +150,27 @@ function showSessionDetail(entry) {
 
 const sessionTotals = buildSessionTotals();
 
-// Build EUR/week amortized curve using linear x (days since epoch)
-function toDays(dateStr) {
-  return new Date(dateStr).getTime() / (24 * 3600 * 1000);
-}
-
-function buildWeeklyRate(totals) {
+// Build EUR/month — only months that have sessions
+function buildMonthlyRate(totals) {
   if (totals.length === 0) return [];
-  const weekDays = 7;
-  const points = totals.map(e => ({
-    day: toDays(e.date), total: e.total
-  }));
-  const minDay = Math.floor(points[0].day / weekDays) * weekDays;
-  const maxDay = points[points.length - 1].day;
-  const result = [];
-  for (let d = minDay; d <= maxDay; d += weekDays) {
-    let sum = 0;
-    points.forEach(p => {
-      if (p.day >= d && p.day < d + weekDays) sum += p.total;
-    });
-    const date = new Date(d * 24 * 3600 * 1000);
-    const label = date.toISOString().slice(0, 10);
-    result.push({
-      day: d, date: label,
+  const byMonth = {};
+  totals.forEach(e => {
+    const month = e.date.slice(0, 7);
+    if (!byMonth[month]) byMonth[month] = 0;
+    byMonth[month] += e.total;
+  });
+  return Object.entries(byMonth)
+    .map(([month, sum]) => ({
+      month: month,
       value: Math.round(sum * 100) / 100
-    });
-  }
-  return result;
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month));
 }
 
-const weeklyRate = buildWeeklyRate(sessionTotals);
+const monthlyRate = buildMonthlyRate(sessionTotals);
 
-// Merge all x-labels (weekly + session dates), sorted
-const allDates = new Set(weeklyRate.map(w => w.date));
+// x-labels: union of months + individual session dates, sorted
+const allDates = new Set(monthlyRate.map(m => m.month));
 sessionTotals.forEach(e => allDates.add(e.date.slice(0, 10)));
 const xLabels = Array.from(allDates).sort();
 
@@ -192,11 +180,11 @@ const sessionChart = new Chart(document.getElementById("sessionChart"), {
     labels: xLabels,
     datasets: [
       {
-        label: "EUR/week",
+        label: "EUR/month",
         type: "line",
         data: xLabels.map(d => {
-          const w = weeklyRate.find(w => w.date === d);
-          return w ? w.value : null;
+          const m = monthlyRate.find(m => m.month === d);
+          return m ? m.value : null;
         }),
         borderColor: "#2563eb",
         backgroundColor: "rgba(37,99,235,0.08)",

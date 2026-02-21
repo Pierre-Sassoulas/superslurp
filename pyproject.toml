@@ -74,18 +74,22 @@ lint.pyupgrade.keep-runtime-typing = false
 # Maximum number of characters on a single line.
 max-line-length = 120
 disable = [
-    "redefined-outer-name",          # pytest fixtures
-    "wrong-import-order",            # handled by isort / ruff
-    "wrong-import-position",         # handled by isort / ruff
-    "docstring-first-line-empty",    # annoying shit
-    "missing-docstring",             # annoying shit
-    "magic-value-comparison",        # annoying shit
-    "logging-fstring-interpolation", # useless in our time and age
-    "consider-ternary-expression",   # no nuance at all
+    "redefined-outer-name",           # pytest fixtures
+    "wrong-import-order",             # handled by isort / ruff
+    "wrong-import-position",          # handled by isort / ruff
+    "docstring-first-line-empty",     # annoying shit
+    "missing-docstring",              # annoying shit
+    "magic-value-comparison",         # annoying shit
+    "logging-fstring-interpolation",  # useless in our time and age
+    "consider-ternary-expression",    # no nuance at all
+    "while-used",                     # while loops are fine
+    "redefined-variable-type",        # narrowing types is fine
+    "consider-using-assignment-expr", # walrus operator preference
+    "unsubscriptable-object",         # false positive with TypedDict
 ]
 
 [tool.codespell]
-ignore-words-list = "superu"
+ignore-words-list = "superu,thes,jus"
 write-changes = true
 
 [tool.pyproject-fmt]

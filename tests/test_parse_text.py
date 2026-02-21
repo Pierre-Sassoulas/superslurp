@@ -120,7 +120,6 @@ def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
 
 
 @pytest.mark.parametrize("path", V2_FIXTURES, ids=(p.name for p in V2_FIXTURES))
-@pytest.mark.xfail(reason="V2 parser not yet implemented", raises=NotImplementedError)
 def test_multiple_examples_v2(path: Path, caplog: LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
     result = make_json_serializable(parse_superu_receipt_raw(path))

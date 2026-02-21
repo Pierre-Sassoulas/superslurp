@@ -45,6 +45,14 @@ def _assert_date_matches_filename(result: dict[str, Any], path: Path) -> None:
         f"date mismatch for {path.name}: "
         f"parsed {parsed.date()}, filename {filename_date.date()}"
     )
+    diff_minutes = abs((parsed - filename_date).total_seconds()) / 60
+    # Allow up to 2h offset (UTC vs CEST in 2024 receipts) + 10min transaction time
+    assert diff_minutes < 130, (
+        f"time mismatch for {path.name}: "
+        f"parsed {parsed.strftime('%H:%M')}, "
+        f"filename {filename_date.strftime('%H:%M')}, "
+        f"diff {diff_minutes:.0f}min"
+    )
 
 
 @pytest.fixture

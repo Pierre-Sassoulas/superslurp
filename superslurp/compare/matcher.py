@@ -8,24 +8,21 @@ from superslurp.compare.normalize import normalize_for_matching
 class FuzzyMatcher:  # pylint: disable=too-few-public-methods
     """Groups product names by fuzzy similarity.
 
-    Match key is (normalized_name, grams). Grams must match exactly
-    for items to be grouped together.
+    Returns the canonical name for a given product name.
     """
 
     def __init__(self, threshold: float = 0.90) -> None:
         self.threshold = threshold
-        # Maps (canonical_normalized, grams) -> original canonical name
-        self._canonicals: dict[tuple[str, float | None], str] = {}
+        # Maps canonical_normalized -> original canonical name
+        self._canonicals: dict[str, str] = {}
 
-    def match(self, name: str, grams: float | None) -> tuple[str, float | None]:
-        """Return the (canonical_name, grams) key for the given product."""
+    def match(self, name: str) -> str:
+        """Return the canonical name for the given product."""
         normalized = normalize_for_matching(name)
-        for (canon_norm, canon_grams), canon_name in self._canonicals.items():
-            if canon_grams != grams:
-                continue
+        for canon_norm, canon_name in self._canonicals.items():
             ratio = SequenceMatcher(None, normalized, canon_norm).ratio()
             if ratio >= self.threshold:
-                return canon_name, grams
+                return canon_name
         # New canonical entry — keep first-seen name as canonical
-        self._canonicals[(normalized, grams)] = name
-        return name, grams
+        self._canonicals[normalized] = name
+        return name

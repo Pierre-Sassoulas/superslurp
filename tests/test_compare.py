@@ -30,37 +30,30 @@ def test_normalize_collapse_whitespace() -> None:
 
 def test_matcher_exact() -> None:
     m = FuzzyMatcher(threshold=0.90)
-    key1 = m.match("BRIOCHE TRESSEE PASQUIER", 630.0)
-    key2 = m.match("BRIOCHE TRESSEE PASQUIER", 630.0)
+    key1 = m.match("BRIOCHE TRESSEE PASQUIER")
+    key2 = m.match("BRIOCHE TRESSEE PASQUIER")
     assert key1 == key2
-    assert key1 == ("BRIOCHE TRESSEE PASQUIER", 630.0)
+    assert key1 == "BRIOCHE TRESSEE PASQUIER"
 
 
 def test_matcher_accent_variation() -> None:
     m = FuzzyMatcher(threshold=0.90)
-    key1 = m.match("CREME BRULEE", None)
-    key2 = m.match("CRÈME BRÛLÉE", None)
+    key1 = m.match("CREME BRULEE")
+    key2 = m.match("CRÈME BRÛLÉE")
     assert key1 == key2
-
-
-def test_matcher_different_grams_separate() -> None:
-    m = FuzzyMatcher(threshold=0.90)
-    key1 = m.match("LAIT ENTIER U", 1000.0)
-    key2 = m.match("LAIT ENTIER U", 500.0)
-    assert key1 != key2
 
 
 def test_matcher_different_products() -> None:
     m = FuzzyMatcher(threshold=0.90)
-    key1 = m.match("BRIOCHE TRESSEE PASQUIER", 630.0)
-    key2 = m.match("SUCRE POUDRE BLANC", 1000.0)
+    key1 = m.match("BRIOCHE TRESSEE PASQUIER")
+    key2 = m.match("SUCRE POUDRE BLANC")
     assert key1 != key2
 
 
 def test_matcher_fuzzy_match() -> None:
     m = FuzzyMatcher(threshold=0.90)
-    key1 = m.match("CHOCO.PATIS.NOIR 52% U", 600.0)
-    key2 = m.match("CHOCO PATIS NOIR 52% U", 600.0)
+    key1 = m.match("CHOCO.PATIS.NOIR 52% U")
+    key2 = m.match("CHOCO PATIS NOIR 52% U")
     assert key1 == key2
 
 
@@ -105,8 +98,8 @@ def test_compare_receipt_dicts_basic() -> None:
     assert len(products) == 1
     product = products[0]
     assert product["canonical_name"] == "SUCRE POUDRE"
-    assert product["grams"] == 1000.0
     assert len(product["observations"]) == 2
+    assert product["observations"][0]["grams"] == 1000.0
     # Sorted by date
     assert product["observations"][0]["date"] == "2025-01-15 10:00:00"
     assert product["observations"][1]["date"] == "2025-02-20 11:00:00"
@@ -183,7 +176,6 @@ def test_compare_receipt_files_fixtures() -> None:
     assert len(result["products"]) > 0
     for product in result["products"]:
         assert "canonical_name" in product
-        assert "grams" in product
         assert "observations" in product
         assert len(product["observations"]) > 0
         for obs in product["observations"]:

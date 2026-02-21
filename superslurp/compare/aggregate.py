@@ -27,9 +27,9 @@ def _build_observation(
     date: str | None,
     store_name: str | None,
     location: str | None,
-    grams: float | None,
 ) -> dict[str, Any]:
     price: float = item["price"]
+    grams: float | None = item.get("grams")
     price_per_kg: float | None = None
     if grams is not None:
         price_per_kg = round((price / grams) * 1000, 2)
@@ -37,6 +37,7 @@ def _build_observation(
         "date": date,
         "price": price,
         "quantity": item.get("quantity", 1),
+        "grams": grams,
         "discount": item.get("discount"),
         "price_per_kg": price_per_kg,
         "store": store_name,
@@ -54,7 +55,7 @@ def _sort_key_observation(obs: dict[str, Any]) -> tuple[int, str]:
 def _process_receipt(
     receipt: dict[str, Any],
     matcher: FuzzyMatcher,
-    products: dict[tuple[str, float | None], list[dict[str, Any]]],
+    products: dict[str, list[dict[str, Any]]],
 ) -> None:
     date = receipt.get("date")
     store_data: dict[str, Any] = receipt.get("store", {})
@@ -63,9 +64,8 @@ def _process_receipt(
     items_by_category: dict[str, list[dict[str, Any]]] = receipt.get("items", {})
     for category_items in items_by_category.values():
         for item in category_items:
-            grams: float | None = item.get("grams")
-            key = matcher.match(item["name"], grams)
-            obs = _build_observation(item, date, store_name, location, grams)
+            key = matcher.match(item["name"])
+            obs = _build_observation(item, date, store_name, location)
             products.setdefault(key, []).append(obs)
 
 
@@ -74,19 +74,18 @@ def compare_receipt_dicts(
 ) -> dict[str, Any]:
     """Aggregate items across parsed receipt dicts into a price comparison."""
     matcher = FuzzyMatcher(threshold=threshold)
-    # (canonical_name, grams) -> list of observations
-    products: dict[tuple[str, float | None], list[dict[str, Any]]] = {}
+    # canonical_name -> list of observations
+    products: dict[str, list[dict[str, Any]]] = {}
 
     for receipt in receipts:
         _process_receipt(receipt, matcher, products)
 
     result = []
-    for (canonical_name, grams), observations in products.items():
+    for canonical_name, observations in products.items():
         observations.sort(key=_sort_key_observation)
         result.append(
             {
                 "canonical_name": canonical_name,
-                "grams": grams,
                 "observations": observations,
             }
         )

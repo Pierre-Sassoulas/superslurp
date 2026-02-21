@@ -14,7 +14,8 @@ from superslurp.parse.str_to_float import _change_text_to_float
 from superslurp.superslurp_typing import Receipt
 
 everything_pattern = re.compile(
-    r"(?P<address>([\S ]*\n){3,4})"
+    r"(?P<store_name>[\S ]*)\n"
+    r"(?P<address>([\S ]*\n){2,3})"
     r"Telephone :\s+(?P<telephone>.*)\n"
     r"SIRET (?P<siret>\d+).+NAF (?P<naf>\S+)\n"
     r"(?P<tva>TVA {2}\S+)\s*"
@@ -45,6 +46,7 @@ def parse_text(text: str) -> Receipt:
     subtotal = _change_text_to_float(_match_sub_total(text))
     return {
         "store": {
+            "store_name": matches.group("store_name"),
             "address": matches.group("address"),
             "phone": matches.group("telephone"),
             "siret": matches.group("siret"),

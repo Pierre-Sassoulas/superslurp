@@ -5,6 +5,7 @@ from typing import TypedDict
 
 
 class Store(TypedDict):
+    store_name: str | None
     address: str | None
     phone: str | None
     siret: str | None

@@ -25,28 +25,28 @@ def _extract_location(store: dict[str, Any]) -> str | None:
 
 def _get_store_id(
     store_data: dict[str, Any],
-    stores: dict[str, dict[str, Any]],
-) -> str | None:
+    stores: dict[tuple[str | None, str | None], dict[str, Any]],
+) -> int | None:
     """Return the store id for this receipt's store, registering it if new."""
     store_name = store_data.get("store_name")
     location = _extract_location(store_data)
     if store_name is None and location is None:
         return None
-    # Use (store_name, location) as natural key
-    store_id = f"{store_name or ''} - {location or ''}"
-    if store_id not in stores:
-        stores[store_id] = {
+    key = (store_name, location)
+    if key not in stores:
+        store_id = len(stores) + 1
+        stores[key] = {
             "id": store_id,
             "store_name": store_name,
             "location": location,
         }
-    return store_id
+    return int(stores[key]["id"])
 
 
 def _build_observation(
     item: dict[str, Any],
     date: str | None,
-    store_id: str | None,
+    store_id: int | None,
 ) -> dict[str, Any]:
     price: float = item["price"]
     grams: float | None = item.get("grams")
@@ -78,7 +78,7 @@ def _process_receipt(
     receipt: dict[str, Any],
     matcher: FuzzyMatcher,
     products: dict[str, list[dict[str, Any]]],
-    stores: dict[str, dict[str, Any]],
+    stores: dict[tuple[str | None, str | None], dict[str, Any]],
 ) -> None:
     date = receipt.get("date")
     store_data: dict[str, Any] = receipt.get("store", {})
@@ -97,7 +97,7 @@ def compare_receipt_dicts(
     """Aggregate items across parsed receipt dicts into a price comparison."""
     matcher = FuzzyMatcher(threshold=threshold)
     products: dict[str, list[dict[str, Any]]] = {}
-    stores: dict[str, dict[str, Any]] = {}
+    stores: dict[tuple[str | None, str | None], dict[str, Any]] = {}
 
     for receipt in receipts:
         _process_receipt(receipt, matcher, products, stores)

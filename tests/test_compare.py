@@ -137,8 +137,9 @@ def test_compare_receipt_dicts_basic() -> None:
     assert product["observations"][0]["date"] == "2025-01-15 10:00:00"
     assert product["observations"][1]["date"] == "2025-02-20 11:00:00"
     # Store reference
-    assert product["observations"][0]["store_id"] == "SUPER U - VILLE"
+    assert product["observations"][0]["store_id"] == 1
     assert len(result["stores"]) == 1
+    assert result["stores"][0]["id"] == 1
     assert result["stores"][0]["store_name"] == "SUPER U"
     assert result["stores"][0]["location"] == "VILLE"
 

@@ -5,7 +5,7 @@ from typing import Any
 
 from superslurp.compare.aggregate import compare_receipt_dicts, compare_receipt_files
 from superslurp.compare.matcher import FuzzyMatcher
-from superslurp.compare.normalize import normalize_for_matching
+from superslurp.compare.normalize import is_bio, normalize_for_matching
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -23,6 +23,29 @@ def test_normalize_accents() -> None:
 
 def test_normalize_collapse_whitespace() -> None:
     assert normalize_for_matching("a   b\t c") == "A B C"
+
+
+def test_normalize_strips_colors() -> None:
+    assert normalize_for_matching("AIL BLANC") == "AIL"
+    assert normalize_for_matching("AIL VIOLET") == "AIL"
+
+
+def test_normalize_strips_packaging() -> None:
+    assert normalize_for_matching("AIL BLC U BIO FILET") == "AIL"
+
+
+def test_normalize_strips_count_pattern() -> None:
+    assert normalize_for_matching("AIL BLANC 3 TETES") == "AIL"
+
+
+def test_normalize_strips_origin() -> None:
+    assert normalize_for_matching("NECTARINE JAUNE FR") == "NECTARINE"
+
+
+def test_is_bio() -> None:
+    assert is_bio("AIL BLC U BIO FILET") is True
+    assert is_bio("AUBERGINE") is False
+    assert is_bio("ABRICOT BIO") is True
 
 
 # --- matcher ---
@@ -46,7 +69,7 @@ def test_matcher_accent_variation() -> None:
 def test_matcher_different_products() -> None:
     m = FuzzyMatcher(threshold=0.90)
     key1 = m.match("BRIOCHE TRESSEE PASQUIER")
-    key2 = m.match("SUCRE POUDRE BLANC")
+    key2 = m.match("SUCRE POUDRE")
     assert key1 != key2
 
 
@@ -55,6 +78,16 @@ def test_matcher_fuzzy_match() -> None:
     key1 = m.match("CHOCO.PATIS.NOIR 52% U")
     key2 = m.match("CHOCO PATIS NOIR 52% U")
     assert key1 == key2
+
+
+def test_matcher_groups_produce_variants() -> None:
+    m = FuzzyMatcher(threshold=0.90)
+    key1 = m.match("AIL BLANC")
+    key2 = m.match("AIL BLANC 3 TETES")
+    key3 = m.match("AIL BLC U BIO FILET")
+    key4 = m.match("AIL VIOLET")
+    key5 = m.match("AIL VIOLET 3 TETES")
+    assert key1 == key2 == key3 == key4 == key5
 
 
 # --- aggregate (unit) ---
@@ -106,6 +139,30 @@ def test_compare_receipt_dicts_basic() -> None:
     # Store/location extracted
     assert product["observations"][0]["store"] == "SUPER U"
     assert product["observations"][0]["location"] == "VILLE"
+
+
+def test_compare_receipt_dicts_bio_flag() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {
+                        "name": "AIL BLC U BIO FILET",
+                        "price": 4.70,
+                        "quantity": 1,
+                        "grams": 250.0,
+                    },
+                    {"name": "AIL BLANC", "price": 3.13, "quantity": 1, "grams": None},
+                ]
+            },
+        }
+    ]
+    result = compare_receipt_dicts(receipts)
+    assert len(result["products"]) == 1
+    obs = result["products"][0]["observations"]
+    assert obs[0].get("bio") is True
+    assert "bio" not in obs[1]
 
 
 def test_compare_receipt_dicts_no_grams() -> None:

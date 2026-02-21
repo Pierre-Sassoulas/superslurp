@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from superslurp.compare.matcher import FuzzyMatcher
+from superslurp.compare.normalize import is_bio
 
 
 def _extract_location(store: dict[str, Any]) -> str | None:
@@ -33,7 +34,7 @@ def _build_observation(
     price_per_kg: float | None = None
     if grams is not None:
         price_per_kg = round((price / grams) * 1000, 2)
-    return {
+    obs: dict[str, Any] = {
         "date": date,
         "price": price,
         "quantity": item.get("quantity", 1),
@@ -43,6 +44,9 @@ def _build_observation(
         "store": store_name,
         "location": location,
     }
+    if is_bio(item["name"]):
+        obs["bio"] = True
+    return obs
 
 
 def _sort_key_observation(obs: dict[str, Any]) -> tuple[int, str]:

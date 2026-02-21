@@ -34,6 +34,8 @@ _HTML_TEMPLATE = """\
   #sessionDetail .close-btn { float: right; cursor: pointer; background: none; border: none;
                                font-size: 1.2rem; color: #666; }
   #sessionDetail .close-btn:hover { color: #333; }
+  .product-link { color: #2563eb; text-decoration: none; }
+  .product-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -117,7 +119,9 @@ function showSessionDetail(entry) {
   items.forEach(it => {
     const o = it.obs;
     html += '<tr>';
-    html += '<td>' + it.name + (o.bio ? ' [BIO]' : '') + '</td>';
+    html += '<td><a href="#" class="product-link" data-name="'
+      + it.name + '">' + it.name
+      + (o.bio ? ' [BIO]' : '') + '</a></td>';
     html += '<td class="num">' + o.quantity + '</td>';
     html += '<td class="num">' + o.price.toFixed(2) + '</td>';
     html += '<td class="num">' + (o.grams != null ? o.grams : '-') + '</td>';
@@ -131,6 +135,16 @@ function showSessionDetail(entry) {
   document.getElementById("closeSession").onclick = function() {
     panel.classList.add("hidden");
   };
+  panel.querySelectorAll(".product-link").forEach(link => {
+    link.onclick = function(e) {
+      e.preventDefault();
+      const name = this.getAttribute("data-name");
+      document.getElementById("productInput").value = name;
+      showProduct(name);
+      document.getElementById("priceChart")
+        .scrollIntoView({ behavior: "smooth" });
+    };
+  });
   panel.scrollIntoView({ behavior: "smooth" });
 }
 

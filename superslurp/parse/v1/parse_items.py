@@ -15,7 +15,7 @@ class WrongNumberOfItemException(Exception): ...
 items_patterns = [
     re.compile(
         r"(?P<name>[\w .\/%,=\-\"'€°+Éé)\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
-        r"(?P<quantity>[\d kgx,]+ €(\/kg)?)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ ?\n"
+        r"(?P<quantity>[\d kgx,.]+ €(\/kg)?)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ ?\n"
         r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>\d+[,|\.][ \d€]+)\n"
     ),
     # Weighted items where name + way_of_paying are on line 1, weight + price on line 2

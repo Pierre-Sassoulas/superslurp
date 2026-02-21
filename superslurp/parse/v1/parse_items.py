@@ -85,7 +85,10 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
     name, grams = _get_gram(raw_name)
-    if (quantity := _parse_quantity(item_info.group("quantity"))) == 1:
+    quantity_str = item_info.group("quantity")
+    if grams is None and quantity_str and "kg" in quantity_str:
+        grams = _get_grams_from_quantity(quantity_str)
+    if (quantity := _parse_quantity(quantity_str)) == 1:
         price = item_info.group("price")
     else:
         price = item_info.group("quantity").split("x")[1]
@@ -136,6 +139,14 @@ def _get_gram(name: str) -> tuple[str, float | None]:
             grams *= int(multiplier[:-1])
     name = name.replace(search.group(0), "")
     return name.strip(), grams
+
+
+def _get_grams_from_quantity(quantity_str: str) -> float | None:
+    """Extract grams from a weighted quantity string like '0,980 kg  x  3,75 €/kg'."""
+    match = re.search(r"([\d,]+)\s*kg", quantity_str)
+    if match is None:
+        return None
+    return float(match.group(1).replace(",", ".")) * 1000
 
 
 def _get_discount(item_info: re.Match[str]) -> str | None:

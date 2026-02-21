@@ -17,7 +17,12 @@ items_patterns = [
         r"(?P<name>[\w .\/%,=\-\"'€°+Éé)\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
         r"(?P<quantity>[\d kgx,]+ €(\/kg)?)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ ?\n"
         r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>\d+[,|\.][ \d€]+)\n"
-    )
+    ),
+    # Weighted items where name + way_of_paying are on line 1, weight + price on line 2
+    re.compile(
+        r"(?P<name>[\w .\/%,=\-\"'€°+Éé)\*]*)(?P<tr>\(T\))? +(?P<way_of_paying>\d{2}) ?\n"
+        r"\s+(?P<quantity>[\d,]+ kg\s+x\s+[\d,]+ €/kg)\s+(?P<price>\d+[,|\.]\d+ €)\n"
+    ),
 ]
 
 
@@ -107,7 +112,10 @@ def _parse_quantity(quantity: str | None) -> int:
         return 1
     quantity = quantity.strip()
     if " x" in quantity:
-        return int(quantity.split(" x")[0])
+        before_x = quantity.split(" x")[0].strip()
+        if "kg" in before_x:
+            return 1
+        return int(before_x)
     return int(quantity)
 
 

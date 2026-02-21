@@ -4,7 +4,7 @@ import logging
 import re
 from collections import defaultdict
 
-from superslurp.parse.parse_categories import iter_categories_and_items
+from superslurp.parse.v1.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
 from superslurp.superslurp_typing import Category, Item, Items
 

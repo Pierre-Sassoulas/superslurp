@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import re
 
-from superslurp.parse.parse_date import parse_date
-from superslurp.parse.parse_items import parse_items
-from superslurp.parse.parse_totals import (
+from superslurp.parse.str_to_float import _change_text_to_float
+from superslurp.parse.v1.parse_date import parse_date
+from superslurp.parse.v1.parse_items import parse_items
+from superslurp.parse.v1.parse_totals import (
     _match_eligible_tr,
     _match_sub_total,
     _match_total_discount,
     _match_tr_paid,
 )
-from superslurp.parse.str_to_float import _change_text_to_float
 from superslurp.superslurp_typing import Receipt
 
 everything_pattern = re.compile(
@@ -29,7 +29,7 @@ everything_pattern = re.compile(
 )
 
 
-def parse_text(text: str) -> Receipt:
+def parse_text_v1(text: str) -> Receipt:
     if (matches := everything_pattern.search(text)) is None:
         raise ValueError(
             f"Couldn't match the receipt using the current regex for {text}"

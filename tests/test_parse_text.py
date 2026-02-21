@@ -11,7 +11,7 @@ from superslurp.__main__ import parse_superu_receipt_raw
 from superslurp.parse import parse_text
 
 # pylint: disable-next=import-private-name
-from superslurp.parse.parse_items import _get_gram
+from superslurp.parse.v1.parse_items import _get_gram
 from superslurp.serialize.json_dump import make_json_serializable
 from superslurp.superslurp_typing import Category, Items
 
@@ -20,6 +20,17 @@ FIXTURES = HERE / "fixtures"
 PATH_FIXTURES = [
     p for p in FIXTURES.iterdir() if "Ticket" in p.name and p.name.endswith(".pdf")
 ]
+
+
+def _is_v1_fixture(path: Path) -> bool:
+    txt_path = path.parent / f".{path.name}.txt"
+    if txt_path.exists():
+        return "Telephone :" in txt_path.read_text(encoding="utf8")
+    return True
+
+
+V1_FIXTURES = [p for p in PATH_FIXTURES if _is_v1_fixture(p)]
+V2_FIXTURES = [p for p in PATH_FIXTURES if not _is_v1_fixture(p)]
 
 
 @pytest.fixture
@@ -91,8 +102,26 @@ def test_parse_items(
             )
 
 
-@pytest.mark.parametrize("path", PATH_FIXTURES, ids=(p.name for p in PATH_FIXTURES))
+@pytest.mark.parametrize("path", V1_FIXTURES, ids=(p.name for p in V1_FIXTURES))
 def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
+    caplog.set_level(logging.DEBUG)
+    result = make_json_serializable(parse_superu_receipt_raw(path))
+    expected_result_path = Path(path.parent / f".{path.name}.json")
+    if not expected_result_path.exists():
+        with open(expected_result_path, "w", encoding="utf8") as file:
+            json.dump(result, file, indent=4)
+        pytest.fail(f"Created {expected_result_path}")
+    with open(expected_result_path, encoding="utf8") as f:
+        expected_result = json.load(f)
+    if result != expected_result:
+        with open(expected_result_path, "w", encoding="utf8") as file:
+            json.dump(result, file, indent=4)
+        pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
+
+
+@pytest.mark.parametrize("path", V2_FIXTURES, ids=(p.name for p in V2_FIXTURES))
+@pytest.mark.xfail(reason="V2 parser not yet implemented", raises=NotImplementedError)
+def test_multiple_examples_v2(path: Path, caplog: LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
     result = make_json_serializable(parse_superu_receipt_raw(path))
     expected_result_path = Path(path.parent / f".{path.name}.json")

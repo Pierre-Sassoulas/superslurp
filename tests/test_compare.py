@@ -136,9 +136,11 @@ def test_compare_receipt_dicts_basic() -> None:
     # Sorted by date
     assert product["observations"][0]["date"] == "2025-01-15 10:00:00"
     assert product["observations"][1]["date"] == "2025-02-20 11:00:00"
-    # Store/location extracted
-    assert product["observations"][0]["store"] == "SUPER U"
-    assert product["observations"][0]["location"] == "VILLE"
+    # Store reference
+    assert product["observations"][0]["store_id"] == "SUPER U - VILLE"
+    assert len(result["stores"]) == 1
+    assert result["stores"][0]["store_name"] == "SUPER U"
+    assert result["stores"][0]["location"] == "VILLE"
 
 
 def test_compare_receipt_dicts_bio_flag() -> None:
@@ -238,5 +240,10 @@ def test_compare_receipt_files_fixtures() -> None:
         for obs in product["observations"]:
             assert "date" in obs
             assert "price" in obs
-            assert "store" in obs
-            assert "location" in obs
+            assert "store_id" in obs
+    assert "stores" in result
+    assert len(result["stores"]) > 0
+    for store in result["stores"]:
+        assert "id" in store
+        assert "store_name" in store
+        assert "location" in store

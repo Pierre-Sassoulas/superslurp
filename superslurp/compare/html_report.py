@@ -150,27 +150,63 @@ function showSessionDetail(entry) {
 
 const sessionTotals = buildSessionTotals();
 
-// Build EUR/month — only months that have sessions
-function buildMonthlyRate(totals) {
+// Rolling average: per-week buckets, each point = average of
+// current week + 2 weeks before + 2 weeks after (5-week window).
+// Skip weeks that fall in data gaps (>4 weeks from any session).
+function buildRollingAvg(totals) {
   if (totals.length === 0) return [];
-  const byMonth = {};
-  totals.forEach(e => {
-    const month = e.date.slice(0, 7);
-    if (!byMonth[month]) byMonth[month] = 0;
-    byMonth[month] += e.total;
+  const weekMs = 7 * 24 * 3600 * 1000;
+  const dayMs = 24 * 3600 * 1000;
+  const points = totals.map(e => ({
+    ts: new Date(e.date).getTime(), total: e.total
+  }));
+  // Monday-aligned week start for first session
+  const firstTs = points[0].ts;
+  const day = new Date(firstTs).getDay();
+  const mondayOff = day === 0 ? -6 : 1 - day;
+  const minWeek = firstTs + mondayOff * dayMs;
+  const maxTs = points[points.length - 1].ts;
+
+  // Sum per week bucket
+  const weekSums = {};
+  for (let w = minWeek; w <= maxTs + weekMs; w += weekMs) {
+    let sum = 0;
+    points.forEach(p => {
+      if (p.ts >= w && p.ts < w + weekMs) sum += p.total;
+    });
+    weekSums[w] = sum;
+  }
+  const weekKeys = Object.keys(weekSums)
+    .map(Number).sort((a, b) => a - b);
+
+  // 5-week rolling average, skip if no session within 4 weeks
+  const maxGap = 4 * weekMs;
+  const result = [];
+  weekKeys.forEach((w, i) => {
+    const nearest = points.reduce(
+      (best, p) => Math.min(best, Math.abs(p.ts - w)), Infinity
+    );
+    if (nearest > maxGap) return;
+    let sum = 0, count = 0;
+    for (let j = i - 2; j <= i + 2; j++) {
+      if (j >= 0 && j < weekKeys.length) {
+        sum += weekSums[weekKeys[j]];
+        count++;
+      }
+    }
+    const label = new Date(w).toISOString().slice(0, 10);
+    result.push({
+      date: label,
+      value: Math.round((sum / count) * 100) / 100
+    });
   });
-  return Object.entries(byMonth)
-    .map(([month, sum]) => ({
-      month: month,
-      value: Math.round(sum * 100) / 100
-    }))
-    .sort((a, b) => a.month.localeCompare(b.month));
+  return result;
 }
 
-const monthlyRate = buildMonthlyRate(sessionTotals);
+const rollingAvg = buildRollingAvg(sessionTotals);
 
-// x-labels: union of months + individual session dates, sorted
-const allDates = new Set(monthlyRate.map(m => m.month));
+// x-labels: union of rolling avg dates + session dates, sorted
+const allDates = new Set(rollingAvg.map(r => r.date));
 sessionTotals.forEach(e => allDates.add(e.date.slice(0, 10)));
 const xLabels = Array.from(allDates).sort();
 
@@ -180,11 +216,11 @@ const sessionChart = new Chart(document.getElementById("sessionChart"), {
     labels: xLabels,
     datasets: [
       {
-        label: "EUR/month",
+        label: "EUR/week (5-week rolling avg)",
         type: "line",
         data: xLabels.map(d => {
-          const m = monthlyRate.find(m => m.month === d);
-          return m ? m.value : null;
+          const r = rollingAvg.find(r => r.date === d);
+          return r ? r.value : null;
         }),
         borderColor: "#2563eb",
         backgroundColor: "rgba(37,99,235,0.08)",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from superslurp.compare.aggregate import compare_receipt_dicts, compare_receipt_files
 from superslurp.compare.matcher import FuzzyMatcher
@@ -70,7 +71,7 @@ def test_compare_receipt_dicts_basic() -> None:
     receipts = [
         {
             "date": "2025-01-15 10:00:00",
-            "_source": "receipt1.json",
+            "store": {"store_name": "SUPER U", "address": "1 RUE\nVILLE\n38000"},
             "items": {
                 "EPICERIE": [
                     {
@@ -85,7 +86,7 @@ def test_compare_receipt_dicts_basic() -> None:
         },
         {
             "date": "2025-02-20 11:00:00",
-            "_source": "receipt2.json",
+            "store": {"store_name": "SUPER U", "address": "1 RUE\nVILLE\n38000"},
             "items": {
                 "EPICERIE": [
                     {
@@ -109,16 +110,9 @@ def test_compare_receipt_dicts_basic() -> None:
     # Sorted by date
     assert product["observations"][0]["date"] == "2025-01-15 10:00:00"
     assert product["observations"][1]["date"] == "2025-02-20 11:00:00"
-    # Stats
-    stats = product["stats"]
-    assert stats["observation_count"] == 2
-    assert stats["min_price"] == 1.50
-    assert stats["max_price"] == 1.60
-    assert stats["avg_price"] == 1.55
-    # price_per_kg present because grams is not None
-    assert "min_price_per_kg" in stats
-    assert stats["min_price_per_kg"] == 1.50
-    assert stats["max_price_per_kg"] == 1.60
+    # Store/location extracted
+    assert product["observations"][0]["store"] == "SUPER U"
+    assert product["observations"][0]["location"] == "VILLE"
 
 
 def test_compare_receipt_dicts_no_grams() -> None:
@@ -140,22 +134,17 @@ def test_compare_receipt_dicts_no_grams() -> None:
     result = compare_receipt_dicts(receipts)
     product = result["products"][0]
     assert product["observations"][0]["price_per_kg"] is None
-    assert "min_price_per_kg" not in product["stats"]
 
 
 def test_compare_receipt_dicts_null_date_last() -> None:
-    receipts = [
+    receipts: list[dict[str, Any]] = [
         {
             "date": None,
-            "items": {
-                "A": [{"name": "X", "price": 1.0, "quantity": 1, "grams": None}]
-            },
+            "items": {"A": [{"name": "X", "price": 1.0, "quantity": 1, "grams": None}]},
         },
         {
             "date": "2025-01-01 00:00:00",
-            "items": {
-                "A": [{"name": "X", "price": 2.0, "quantity": 1, "grams": None}]
-            },
+            "items": {"A": [{"name": "X", "price": 2.0, "quantity": 1, "grams": None}]},
         },
     ]
     result = compare_receipt_dicts(receipts)
@@ -196,12 +185,9 @@ def test_compare_receipt_files_fixtures() -> None:
         assert "canonical_name" in product
         assert "grams" in product
         assert "observations" in product
-        assert "stats" in product
         assert len(product["observations"]) > 0
-        stats = product["stats"]
-        assert stats["observation_count"] == len(product["observations"])
-        assert stats["min_price"] <= stats["max_price"]
         for obs in product["observations"]:
             assert "date" in obs
             assert "price" in obs
-            assert "source" in obs
+            assert "store" in obs
+            assert "location" in obs

@@ -7,10 +7,26 @@ from typing import Any
 from superslurp.compare.matcher import FuzzyMatcher
 
 
+def _extract_location(store: dict[str, Any]) -> str | None:
+    """Extract city/location from a store's address lines."""
+    address = store.get("address")
+    if not address:
+        return None
+    lines = [line.strip() for line in address.strip().split("\n") if line.strip()]
+    # V1: line 0 = street, line 1 = city, line 2 = postal code
+    # V2: line 0 = partial street (used as fallback)
+    if len(lines) >= 2:
+        return str(lines[1])
+    if lines:
+        return str(lines[0])
+    return None
+
+
 def _build_observation(
     item: dict[str, Any],
     date: str | None,
-    source: str | None,
+    store_name: str | None,
+    location: str | None,
     grams: float | None,
 ) -> dict[str, Any]:
     price: float = item["price"]
@@ -23,26 +39,9 @@ def _build_observation(
         "quantity": item.get("quantity", 1),
         "discount": item.get("discount"),
         "price_per_kg": price_per_kg,
-        "source": source,
+        "store": store_name,
+        "location": location,
     }
-
-
-def _compute_stats(
-    observations: list[dict[str, Any]], grams: float | None
-) -> dict[str, Any]:
-    prices = [o["price"] for o in observations]
-    stats: dict[str, Any] = {
-        "observation_count": len(observations),
-        "min_price": round(min(prices), 2),
-        "max_price": round(max(prices), 2),
-        "avg_price": round(sum(prices) / len(prices), 2),
-    }
-    if grams is not None:
-        ppk = [o["price_per_kg"] for o in observations]
-        stats["min_price_per_kg"] = round(min(ppk), 2)
-        stats["max_price_per_kg"] = round(max(ppk), 2)
-        stats["avg_price_per_kg"] = round(sum(ppk) / len(ppk), 2)
-    return stats
 
 
 def _sort_key_observation(obs: dict[str, Any]) -> tuple[int, str]:
@@ -52,31 +51,34 @@ def _sort_key_observation(obs: dict[str, Any]) -> tuple[int, str]:
     return (0, obs["date"])
 
 
+def _process_receipt(
+    receipt: dict[str, Any],
+    matcher: FuzzyMatcher,
+    products: dict[tuple[str, float | None], list[dict[str, Any]]],
+) -> None:
+    date = receipt.get("date")
+    store_data: dict[str, Any] = receipt.get("store", {})
+    store_name = store_data.get("store_name")
+    location = _extract_location(store_data)
+    items_by_category: dict[str, list[dict[str, Any]]] = receipt.get("items", {})
+    for category_items in items_by_category.values():
+        for item in category_items:
+            grams: float | None = item.get("grams")
+            key = matcher.match(item["name"], grams)
+            obs = _build_observation(item, date, store_name, location, grams)
+            products.setdefault(key, []).append(obs)
+
+
 def compare_receipt_dicts(
     receipts: list[dict[str, Any]], threshold: float = 0.90
 ) -> dict[str, Any]:
-    """Aggregate items across parsed receipt dicts into a price comparison.
-
-    Each dict in the list is a serialized Receipt (as loaded from JSON)
-    with an optional ``"_source"`` key for the filename.
-    """
+    """Aggregate items across parsed receipt dicts into a price comparison."""
     matcher = FuzzyMatcher(threshold=threshold)
     # (canonical_name, grams) -> list of observations
     products: dict[tuple[str, float | None], list[dict[str, Any]]] = {}
 
     for receipt in receipts:
-        date = receipt.get("date")
-        source = receipt.get("_source")
-        items_by_category: dict[str, list[dict[str, Any]]] = receipt.get(
-            "items", {}
-        )
-        for category_items in items_by_category.values():
-            for item in category_items:
-                grams: float | None = item.get("grams")
-                name: str = item["name"]
-                key = matcher.match(name, grams)
-                obs = _build_observation(item, date, source, grams)
-                products.setdefault(key, []).append(obs)
+        _process_receipt(receipt, matcher, products)
 
     result = []
     for (canonical_name, grams), observations in products.items():
@@ -86,16 +88,13 @@ def compare_receipt_dicts(
                 "canonical_name": canonical_name,
                 "grams": grams,
                 "observations": observations,
-                "stats": _compute_stats(observations, grams),
             }
         )
-    result.sort(key=lambda p: p["canonical_name"])
+    result.sort(key=lambda p: str(p["canonical_name"]))
     return {"products": result}
 
 
-def compare_receipt_files(
-    paths: list[Path], threshold: float = 0.90
-) -> dict[str, Any]:
+def compare_receipt_files(paths: list[Path], threshold: float = 0.90) -> dict[str, Any]:
     """Load JSON receipt files and aggregate items for price comparison."""
     receipts: list[dict[str, Any]] = []
     for path in paths:
@@ -103,6 +102,5 @@ def compare_receipt_files(
             data = json.load(f)
         if not isinstance(data, dict) or "items" not in data:
             continue
-        data["_source"] = path.name
         receipts.append(data)
     return compare_receipt_dicts(receipts, threshold=threshold)

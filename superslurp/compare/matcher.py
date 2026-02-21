@@ -5,7 +5,7 @@ from difflib import SequenceMatcher
 from superslurp.compare.normalize import normalize_for_matching
 
 
-class FuzzyMatcher:
+class FuzzyMatcher:  # pylint: disable=too-few-public-methods
     """Groups product names by fuzzy similarity.
 
     Match key is (normalized_name, grams). Grams must match exactly
@@ -17,9 +17,7 @@ class FuzzyMatcher:
         # Maps (canonical_normalized, grams) -> original canonical name
         self._canonicals: dict[tuple[str, float | None], str] = {}
 
-    def match(
-        self, name: str, grams: float | None
-    ) -> tuple[str, float | None]:
+    def match(self, name: str, grams: float | None) -> tuple[str, float | None]:
         """Return the (canonical_name, grams) key for the given product."""
         normalized = normalize_for_matching(name)
         for (canon_norm, canon_grams), canon_name in self._canonicals.items():

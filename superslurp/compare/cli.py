@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from superslurp.compare.aggregate import compare_receipt_files
+from superslurp.compare.html_report import generate_html
 
 
 def main() -> None:
@@ -42,9 +43,11 @@ def main() -> None:
         sys.exit(1)
 
     result = compare_receipt_files(paths, threshold=args.threshold)
-    output_json = json.dumps(result, indent=2, ensure_ascii=False)
 
-    if args.output:
+    if args.output and args.output.suffix == ".html":
+        args.output.write_text(generate_html(result), encoding="utf8")
+    elif args.output:
+        output_json = json.dumps(result, indent=2, ensure_ascii=False)
         args.output.write_text(output_json, encoding="utf8")
     else:
-        print(output_json)
+        print(json.dumps(result, indent=2, ensure_ascii=False))

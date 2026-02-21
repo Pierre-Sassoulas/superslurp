@@ -22,6 +22,9 @@ def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float,
                     receipt=receipt, item=item, attribute="quantity"
                 )
             actual_price = price * quantity
+            discount = item.get("discount") or 0.0
+            actual_price -= discount
+            recalculated_total_discount -= discount
             if item["tr"]:
                 recalculated_eligible_tr += actual_price
             if category is Category.DISCOUNT:
@@ -31,9 +34,7 @@ def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float,
                         receipt=receipt,
                         msg=f"discounts should be negative, got {actual_price} for {item}",
                     )
-                recalculated_total_discount += actual_price
-            else:
-                recalculated_sub_total += actual_price
+            recalculated_sub_total += actual_price
             recalculated_total += actual_price
             print(f"Added {actual_price} to total {recalculated_total}")
     return (

@@ -12,16 +12,18 @@ from superslurp.superslurp_typing import Category, Item, Items
 class WrongNumberOfItemException(Exception): ...
 
 
+_NAME_CHAR = r"(?:(?!\(T\))[\w .\/%,=\-\"'€°+Éé()\*])"
+
 items_patterns = [
     re.compile(
-        r"(?P<name>[\w .\/%,=\-\"'€°+Éé)\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
+        rf"(?P<name>{_NAME_CHAR}*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
         r"(?P<quantity>[\d kgx,.]+ €(\/kg)?)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ ?\n"
         r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>\d+[,|\.][ \d€]+)\n"
         r"|\s+[^\n]+-(?P<inline_discount>\d+[,\.]\d+ €)\s*\n"
     ),
     # Weighted items where name + way_of_paying are on line 1, weight + price on line 2
     re.compile(
-        r"(?P<name>[\w .\/%,=\-\"'€°+Éé)\*]*)(?P<tr>\(T\))? +(?P<way_of_paying>\d{2}) ?\n"
+        rf"(?P<name>{_NAME_CHAR}*)(?P<tr>\(T\))? +(?P<way_of_paying>\d{{2}}) ?\n"
         r"\s+(?P<quantity>[\d,]+ kg\s+x\s+[\d,]+ €/kg)\s+(?P<price>\d+[,|\.]\d+ €)\n"
     ),
 ]
@@ -44,16 +46,7 @@ def parse_items(text: str, expected_number_of_items: int) -> Items:
                 logging.debug(f"Item found in {category}: {item_info}")
                 discount_str = _get_discount(item_info)
                 if discount_str is not None:
-                    items[category].append(
-                        {
-                            "name": items[category][-1]["name"],
-                            "price": -_get_price(discount_str),
-                            "quantity": 1,
-                            "grams": items[category][-1]["grams"],
-                            "tr": items[category][-1]["tr"],
-                            "way_of_paying": items[category][-1]["way_of_paying"],
-                        }
-                    )
+                    items[category][-1]["discount"] = _get_price(discount_str)
                     continue
                 item = get_item_from_item_infos(item_info)
                 nb_parsed_category += item["quantity"]
@@ -105,6 +98,7 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
         "grams": grams,
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
+        "discount": None,
     }
     return item
 

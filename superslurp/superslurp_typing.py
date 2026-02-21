@@ -19,6 +19,7 @@ class Item(TypedDict):
     grams: float | None
     tr: bool
     way_of_paying: str | None
+    discount: float | None
 
 
 class Category(enum.Enum):

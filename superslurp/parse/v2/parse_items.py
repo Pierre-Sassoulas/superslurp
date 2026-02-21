@@ -35,18 +35,9 @@ def parse_items_v2(  # pylint: disable=too-many-locals
         if m := DISCOUNT_PATTERN.match(line):
             discount_price = _parse_price(m.group(2))
             total_discount -= discount_price
-            assert last_item is not None
-            prev: Item = last_item
-            items[category].append(
-                {
-                    "name": prev["name"],
-                    "price": -discount_price,
-                    "quantity": 1,
-                    "grams": prev["grams"],
-                    "tr": prev["tr"],
-                    "way_of_paying": prev["way_of_paying"],
-                }
-            )
+            if last_item is None:
+                raise ValueError("Discount line found before any item")
+            last_item["discount"] = discount_price  # pylint: disable=unsupported-assignment-operation
             i += 1
             continue
 
@@ -83,6 +74,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "grams": grams,
                 "tr": tr,
                 "way_of_paying": way_of_paying,
+                "discount": None,
             }
             items[category].append(item)
             last_item = item

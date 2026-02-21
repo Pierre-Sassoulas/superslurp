@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from _pytest.logging import LogCaptureFixture  # pylint: disable=import-private-name
@@ -32,6 +33,18 @@ def _is_v1_fixture(path: Path) -> bool:
 
 V1_FIXTURES = [p for p in PATH_FIXTURES if _is_v1_fixture(p)]
 V2_FIXTURES = [p for p in PATH_FIXTURES if not _is_v1_fixture(p)]
+
+
+def _assert_date_matches_filename(result: dict[str, Any], path: Path) -> None:
+    date = str(result["date"])
+    assert date != "None", f"date is null for {path.name}"
+    parsed = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+    # Filename format: Ticket de caisse_DDMMYYYY-HHMMSS.pdf
+    filename_date = datetime.strptime(path.stem.split("_")[1], "%d%m%Y-%H%M%S")
+    assert parsed.date() == filename_date.date(), (
+        f"date mismatch for {path.name}: "
+        f"parsed {parsed.date()}, filename {filename_date.date()}"
+    )
 
 
 @pytest.fixture
@@ -118,9 +131,7 @@ def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
         with open(expected_result_path, "w", encoding="utf8") as file:
             json.dump(result, file, indent=4)
         pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
-    date = str(result["date"])
-    assert date != "None", f"date is null for {path.name}"
-    datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+    _assert_date_matches_filename(result, path)
 
 
 @pytest.mark.parametrize("path", V2_FIXTURES, ids=(p.name for p in V2_FIXTURES))
@@ -138,3 +149,4 @@ def test_multiple_examples_v2(path: Path, caplog: LogCaptureFixture) -> None:
         with open(expected_result_path, "w", encoding="utf8") as file:
             json.dump(result, file, indent=4)
         pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
+    _assert_date_matches_filename(result, path)

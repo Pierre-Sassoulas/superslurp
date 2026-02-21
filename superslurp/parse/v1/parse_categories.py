@@ -6,7 +6,9 @@ from collections.abc import Generator
 
 from superslurp.superslurp_typing import Category
 
-category_pattern = re.compile(r">>>>(?P<category>.*)\n(?P<items>(?:(?!>>>>)[\S\s])*)")
+category_pattern = re.compile(
+    r">>>>(?P<category>.*)\n(?P<items>(?:(?!>>>>|====)[\S\s])*)"
+)
 single_undefined_category_pattern = re.compile(
     r"Ticket  \n[\w \/:]+[\n ]+(?P<items>(?:(?!==)[\S\s])*\n)[\n =]+"
 )

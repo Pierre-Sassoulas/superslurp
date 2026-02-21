@@ -17,6 +17,7 @@ items_patterns = [
         r"(?P<name>[\w .\/%,=\-\"'€°+Éé)\*]*)(?P<tr>\(T\))?(\d\d)?[ \n]*"
         r"(?P<quantity>[\d kgx,.]+ €(\/kg)?)? +(?P<price>\d+[,|\.][ \d€]+) ?(?P<way_of_paying>\d{2})+ ?\n"
         r"|\s*Pourcentage:\s*(?P<pourcentage>\d+)\s*-(?P<discount>\d+[,|\.][ \d€]+)\n"
+        r"|\s+[^\n]+-(?P<inline_discount>\d+[,\.]\d+ €)\s*\n"
     ),
     # Weighted items where name + way_of_paying are on line 1, weight + price on line 2
     re.compile(
@@ -41,12 +42,13 @@ def parse_items(text: str, expected_number_of_items: int) -> Items:
                 continue
             for item_info in matched_items:
                 logging.debug(f"Item found in {category}: {item_info}")
-                if "Pourcentage" in item_info.group(0):
+                discount_str = _get_discount(item_info)
+                if discount_str is not None:
                     items[category].append(
                         {
                             "name": items[category][-1]["name"],
-                            "price": -_get_price(item_info.group("discount")),
-                            "quantity": items[category][-1]["quantity"],
+                            "price": -_get_price(discount_str),
+                            "quantity": 1,
                             "grams": items[category][-1]["grams"],
                             "tr": items[category][-1]["tr"],
                             "way_of_paying": items[category][-1]["way_of_paying"],
@@ -140,6 +142,17 @@ def _get_gram(name: str) -> tuple[str, float | None]:
             grams *= int(multiplier[:-1])
     name = name.replace(search.group(0), "")
     return name.strip(), grams
+
+
+def _get_discount(item_info: re.Match[str]) -> str | None:
+    for group_name in ("discount", "inline_discount"):
+        try:
+            value = item_info.group(group_name)
+        except IndexError:
+            continue
+        if value is not None:
+            return value
+    return None
 
 
 def _get_price(price: str) -> float:

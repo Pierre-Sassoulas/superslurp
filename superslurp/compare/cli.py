@@ -9,9 +9,9 @@ from superslurp.compare.aggregate import compare_receipt_files
 from superslurp.compare.html_report import generate_html
 
 
-def main() -> None:
+def main_aggregate() -> None:
     parser = argparse.ArgumentParser(
-        description="Compare product prices across SuperU receipts."
+        description="Aggregate parsed receipt JSONs into a comparison JSON."
     )
     parser.add_argument(
         "directory",
@@ -43,11 +43,38 @@ def main() -> None:
         sys.exit(1)
 
     result = compare_receipt_files(paths, threshold=args.threshold)
+    output_json = json.dumps(result, indent=2, ensure_ascii=False)
 
-    if args.output and args.output.suffix == ".html":
-        args.output.write_text(generate_html(result), encoding="utf8")
-    elif args.output:
-        output_json = json.dumps(result, indent=2, ensure_ascii=False)
+    if args.output:
         args.output.write_text(output_json, encoding="utf8")
     else:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(output_json)
+
+
+def main_report() -> None:
+    parser = argparse.ArgumentParser(
+        description="Generate an HTML dashboard from an aggregate JSON."
+    )
+    parser.add_argument(
+        "aggregate",
+        help="Aggregate JSON file path, or '-' for stdin.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output file path. Prints to stdout if not specified.",
+    )
+    args = parser.parse_args()
+
+    if args.aggregate == "-":
+        data = json.load(sys.stdin)
+    else:
+        data = json.loads(Path(args.aggregate).read_text(encoding="utf8"))
+
+    html = generate_html(data)
+
+    if args.output:
+        args.output.write_text(html, encoding="utf8")
+    else:
+        print(html)

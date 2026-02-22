@@ -37,8 +37,9 @@ urls."Bug Tracker" = "https://github.com/Pierre-Sassoulas/superslurp/issues"
 urls."homepage" = "https://github.com/Pierre-Sassoulas/superslurp"
 urls."Source Code" = "https://github.com/Pierre-Sassoulas/superslurp"
 
-scripts.superu-compare = "superslurp.compare.cli:main"
+scripts.superu-aggregate-parsed-receipt = "superslurp.compare.cli:main_aggregate"
 scripts.superu-receipt-parser = "superslurp.__main__:main"
+scripts.superu-report-from-aggregate = "superslurp.compare.cli:main_report"
 
 [tool.setuptools]
 packages = [ "superslurp", "superslurp.compare" ]

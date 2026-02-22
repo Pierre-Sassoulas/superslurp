@@ -42,7 +42,10 @@ _HTML_TEMPLATE = """\
   #productDetail table { width: 100%%; border-collapse: collapse; font-size: 0.9rem; }
   #productDetail th, #productDetail td { text-align: left; padding: 0.3rem 0.6rem;
                                           border-bottom: 1px solid #eee; }
-  #productDetail th { background: #f9fafb; position: sticky; top: 0; }
+  #productDetail th { background: #f9fafb; position: sticky; top: 0; cursor: pointer; user-select: none; }
+  #productDetail th:hover { background: #eef2ff; }
+  #productDetail th .sort-arrow { font-size: 0.7em; margin-left: 0.3em; opacity: 0.4; }
+  #productDetail th.sort-active .sort-arrow { opacity: 1; }
   #productDetail td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .session-link { color: #2563eb; text-decoration: none; cursor: pointer; }
   .session-link:hover { text-decoration: underline; }
@@ -446,10 +449,17 @@ function showProduct(name) {
   // Observations table
   const detailDiv = document.getElementById("productDetail");
   let html = '<h3>Observations</h3>';
-  html += '<table><thead><tr><th>Date</th><th>Original name</th>'
-    + '<th>Price</th><th>Grams</th><th>EUR/kg</th>'
-    + '<th>Units</th><th>EUR/unit</th>'
-    + '<th>Discount</th><th>BIO</th></tr></thead><tbody>';
+  html += '<table><thead><tr>'
+    + makeSortableHeader('Date', 'str')
+    + makeSortableHeader('Original name', 'str')
+    + makeSortableHeader('Price', 'num')
+    + makeSortableHeader('Grams', 'num')
+    + makeSortableHeader('EUR/kg', 'num')
+    + makeSortableHeader('Units', 'num')
+    + makeSortableHeader('EUR/unit', 'num')
+    + makeSortableHeader('Discount', 'num')
+    + makeSortableHeader('BIO', 'str')
+    + '</tr></thead><tbody>';
   points.forEach(p => {
     html += '<tr>';
     html += '<td><a href="#" class="session-link" data-session-id="'
@@ -467,6 +477,7 @@ function showProduct(name) {
   html += '</tbody></table>';
   detailDiv.innerHTML = html;
   detailDiv.classList.remove("hidden");
+  bindSortHandlers(detailDiv);
   detailDiv.querySelectorAll(".session-link").forEach(link => {
     link.onclick = function(e) {
       e.preventDefault();

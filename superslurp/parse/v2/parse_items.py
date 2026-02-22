@@ -68,6 +68,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 price = total_price
 
             item: Item = {
+                "raw": line.strip(),
                 "name": name,
                 "price": price,
                 "quantity": quantity,

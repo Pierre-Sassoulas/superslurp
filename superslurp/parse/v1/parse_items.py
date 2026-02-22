@@ -95,6 +95,7 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
     tr = item_info.group("tr")
     way_of_paying = item_info.group("way_of_paying")
     item: Item = {
+        "raw": item_info.group(0).strip(),
         "name": name,
         "price": _get_price(price),
         "quantity": quantity,

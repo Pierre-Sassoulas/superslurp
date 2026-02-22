@@ -13,6 +13,7 @@ class Store(TypedDict):
 
 
 class Item(TypedDict):
+    raw: str
     name: str
     price: float
     quantity: int

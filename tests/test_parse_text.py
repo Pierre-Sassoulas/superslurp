@@ -9,12 +9,11 @@ from typing import Any
 import pytest
 from _pytest.logging import LogCaptureFixture  # pylint: disable=import-private-name
 
-from superslurp.__main__ import parse_superu_receipt_raw
+from superslurp.__main__ import parse_superu_receipt
 from superslurp.parse import parse_text
 
 # pylint: disable-next=import-private-name
 from superslurp.parse.v1.parse_items import _get_gram
-from superslurp.serialize.json_dump import make_json_serializable
 from superslurp.superslurp_typing import Category, Items
 
 HERE = Path(__file__).parent
@@ -136,17 +135,17 @@ def _assert_store_has_siret_naf(result: dict[str, Any], path: Path) -> None:
 @pytest.mark.parametrize("path", V1_FIXTURES, ids=(p.name for p in V1_FIXTURES))
 def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
-    result = make_json_serializable(parse_superu_receipt_raw(path))
+    result = parse_superu_receipt(path, debug=True)
     expected_result_path = Path(path.parent / f".{path.name}.json")
     if not expected_result_path.exists():
         with open(expected_result_path, "w", encoding="utf8") as file:
-            json.dump(result, file, indent=4)
+            json.dump(result, file, indent=4, ensure_ascii=False)
         pytest.fail(f"Created {expected_result_path}")
     with open(expected_result_path, encoding="utf8") as f:
         expected_result = json.load(f)
     if result != expected_result:
         with open(expected_result_path, "w", encoding="utf8") as file:
-            json.dump(result, file, indent=4)
+            json.dump(result, file, indent=4, ensure_ascii=False)
         pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
     _assert_date_matches_filename(result, path)
     _assert_store_has_siret_naf(result, path)
@@ -155,17 +154,17 @@ def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
 @pytest.mark.parametrize("path", V2_FIXTURES, ids=(p.name for p in V2_FIXTURES))
 def test_multiple_examples_v2(path: Path, caplog: LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
-    result = make_json_serializable(parse_superu_receipt_raw(path))
+    result = parse_superu_receipt(path, debug=True)
     expected_result_path = Path(path.parent / f".{path.name}.json")
     if not expected_result_path.exists():
         with open(expected_result_path, "w", encoding="utf8") as file:
-            json.dump(result, file, indent=4)
+            json.dump(result, file, indent=4, ensure_ascii=False)
         pytest.fail(f"Created {expected_result_path}")
     with open(expected_result_path, encoding="utf8") as f:
         expected_result = json.load(f)
     if result != expected_result:
         with open(expected_result_path, "w", encoding="utf8") as file:
-            json.dump(result, file, indent=4)
+            json.dump(result, file, indent=4, ensure_ascii=False)
         pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
     _assert_date_matches_filename(result, path)
     _assert_store_has_siret_naf(result, path)

@@ -6,7 +6,6 @@ requires = [
 ]
 
 [project]
-
 name = "superslurp"
 description = "A parser for SuperU receipts"
 readme = "README.md"
@@ -24,7 +23,6 @@ classifiers = [
 dynamic = [
     "version",
 ]
-
 dependencies = [
     "pypdf",
 ]
@@ -36,7 +34,6 @@ optional-dependencies.dev = [
 urls."Bug Tracker" = "https://github.com/Pierre-Sassoulas/superslurp/issues"
 urls."homepage" = "https://github.com/Pierre-Sassoulas/superslurp"
 urls."Source Code" = "https://github.com/Pierre-Sassoulas/superslurp"
-
 scripts.superu-aggregate-parsed-receipt = "superslurp.compare.cli:main_aggregate"
 scripts.superu-receipt-parser = "superslurp.__main__:main"
 scripts.superu-report-from-aggregate = "superslurp.compare.cli:main_report"
@@ -63,7 +60,6 @@ lint.select = [
     "UP",     # pyupgrade
     "W",      # pycodestyle
 ]
-
 lint.isort.required-imports = [
     "from __future__ import annotations",
 ]
@@ -72,10 +68,10 @@ lint.pycodestyle.max-line-length = 120
 lint.pydocstyle.convention = "pep257"
 lint.pyupgrade.keep-runtime-typing = false
 
-[tool.pylint.main]
+[tool.pylint]
 # Maximum number of characters on a single line.
-max-line-length = 120
-disable = [
+main.max-line-length = 120
+main.disable = [
     "redefined-outer-name",           # pytest fixtures
     "wrong-import-order",             # handled by isort / ruff
     "wrong-import-position",          # handled by isort / ruff

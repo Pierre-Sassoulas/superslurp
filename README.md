@@ -14,68 +14,34 @@ from superslurp import parse_superu_receipt
 result = parse_superu_receipt("Ticket de caisse_01032022-165652.pdf")
 ```
 
+The receipt line `QUENELLE NATURE U X6 240G  /  3 x 0,85 €  2,55 €  11` is parsed as:
+
 ```json
 {
-  "items": {
-    "FRUITS": [
-      {
-        "name": "BANANE CAVENDISH SCB",
-        "price": 3.32,
-        "quantity": 1,
-        "units": null,
-        "grams": 1964.0,
-        "tr": true,
-        "way_of_paying": "11",
-        "discount": null
-      },
-      {
-        "name": "KIWI HAYWARD",
-        "price": 0.5,
-        "quantity": 10,
-        "units": null,
-        "grams": null,
-        "tr": true,
-        "way_of_paying": "11",
-        "discount": null
-      }
-    ],
-    "PATISSERIE": [
-      {
-        "name": "BUCHETTE ABRI VAN",
-        "price": 4.4,
-        "quantity": 1,
-        "units": 2,
-        "grams": null,
-        "tr": true,
-        "way_of_paying": "11",
-        "discount": 1.32
-      }
-    ],
-    "POISSON LS UVCI": [
-      {
-        "name": "FILET LIMAND NORD MEUNIER U",
-        "price": 3.6,
-        "quantity": 2,
-        "units": null,
-        "grams": 200.0,
-        "tr": true,
-        "way_of_paying": "11",
-        "discount": null
-      }
-    ]
-  }
+  "name": "QUENELLE NATURE U",
+  "price": 0.85,
+  "quantity": 3,
+  "units": 6,
+  "grams": 240.0,
+  "tr": false,
+  "way_of_paying": "11",
+  "discount": null
 }
 ```
 
-Pass `debug=True` to include the original receipt line on each item (`"raw"` field):
+Pass `debug=True` to include the original receipt line (`"raw"` field):
 
 ```python
+from superslurp import parse_superu_receipt
+
 result = parse_superu_receipt("receipt.pdf", debug=True)
 ```
 
 Pass a `synonyms` dict to expand receipt abbreviations in item names:
 
 ```python
+from superslurp import parse_superu_receipt
+
 synonyms = {"TABS": "TABLETTES", "VAISS": "VAISSELLE"}
 result = parse_superu_receipt("receipt.pdf", synonyms=synonyms)
 # "TABS LAVE VAISS.STANDARD U" → "TABLETTES LAVE VAISSELLE STANDARD U"
@@ -89,15 +55,19 @@ superu-receipt-parser receipt.pdf --synonyms synonyms.json
 
 ## 2. Aggregate receipts
 
-Compare items across multiple parsed receipts with fuzzy matching. Products are grouped
-under a canonical name, each observation tracking price, grams, units, and discount.
+Compare items across multiple parsed receipts. Products are grouped under a canonical
+name using fuzzy matching (via difflib).
 
 ```python
+from pathlib import Path
+
 from superslurp.compare.aggregate import compare_receipt_files
+
+synonyms = {"TABS": "TABLETTES", "VAISS": "VAISSELLE"}
 
 result = compare_receipt_files(
     paths=[Path("receipt1.json"), Path("receipt2.json")],
-    threshold=0.90,       # fuzzy matching threshold (default: 0.90)
+    threshold=0.90,       # difflib threshold (default: 0.90)
     synonyms=synonyms,    # optional, same format as parse
 )
 ```
@@ -110,7 +80,7 @@ products with their observations:
   "stores": [{ "id": "123_456", "store_name": "...", "location": "..." }],
   "sessions": [{ "id": 1, "date": "2025-01-15 10:00:00", "store_id": "123_456" }],
   "session_totals": [{ "session_id": 1, "date": "2025-01-15", "total": 42.5 }],
-  "rolling_average": [{ "date": "2025-01-13", "value": 85.3 }],
+  "rolling_average": [{ "date": "2025-01-13", "value": 85.3 }, "..."],
   "products": [
     {
       "canonical_name": "OEUFS",
@@ -145,8 +115,12 @@ totals chart with rolling average, a per-product price evolution chart, and sort
 detail tables.
 
 ```python
+import json
+from pathlib import Path
+
 from superslurp.compare.html_report import generate_html
 
+aggregate_result = json.loads(Path("aggregate.json").read_text(encoding="utf8"))
 html = generate_html(aggregate_result)
 Path("report.html").write_text(html)
 ```

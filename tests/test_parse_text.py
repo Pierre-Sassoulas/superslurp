@@ -132,10 +132,18 @@ def _assert_store_has_siret_naf(result: dict[str, Any], path: Path) -> None:
     assert naf, f"naf missing or empty for {path.name}"
 
 
+def _load_synonyms() -> dict[str, str]:
+    synonyms_path = FIXTURES / "synonyms.json"
+    with open(synonyms_path, encoding="utf8") as f:
+        raw = json.load(f)
+    return {k.upper(): v.upper() for k, v in raw.items()}
+
+
 @pytest.mark.parametrize("path", V1_FIXTURES, ids=(p.name for p in V1_FIXTURES))
 def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
-    result = parse_superu_receipt(path, debug=True)
+    synonyms = _load_synonyms()
+    result = parse_superu_receipt(path, debug=True, synonyms=synonyms)
     expected_result_path = Path(path.parent / f".{path.name}.json")
     if not expected_result_path.exists():
         with open(expected_result_path, "w", encoding="utf8") as file:
@@ -154,7 +162,8 @@ def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
 @pytest.mark.parametrize("path", V2_FIXTURES, ids=(p.name for p in V2_FIXTURES))
 def test_multiple_examples_v2(path: Path, caplog: LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
-    result = parse_superu_receipt(path, debug=True)
+    synonyms = _load_synonyms()
+    result = parse_superu_receipt(path, debug=True, synonyms=synonyms)
     expected_result_path = Path(path.parent / f".{path.name}.json")
     if not expected_result_path.exists():
         with open(expected_result_path, "w", encoding="utf8") as file:

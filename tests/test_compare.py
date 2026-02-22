@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from superslurp.compare.aggregate import (
     _compute_rolling_average,
@@ -251,34 +254,25 @@ def test_compare_receipt_dicts_sorted_by_name() -> None:
 
 
 def test_compare_receipt_files_fixtures() -> None:
-    """Load a few real fixture JSONs and verify basic structure."""
+    """Load real fixture JSONs with synonyms and write comparison result."""
     json_files = sorted(FIXTURES.glob(".Ticket*.json"))[:5]
     if not json_files:
         return  # skip if no fixtures available
-    result = compare_receipt_files(json_files)
-    assert "products" in result
-    assert len(result["products"]) > 0
-    for product in result["products"]:
-        assert "canonical_name" in product
-        assert "observations" in product
-        assert len(product["observations"]) > 0
-        for obs in product["observations"]:
-            assert "session_id" in obs
-            assert "price" in obs
-    assert "sessions" in result
-    assert len(result["sessions"]) > 0
-    for session in result["sessions"]:
-        assert "id" in session
-        assert "date" in session
-        assert "store_id" in session
-    assert "stores" in result
-    assert len(result["stores"]) > 0
-    for store in result["stores"]:
-        assert "id" in store
-        assert "store_name" in store
-        assert "location" in store
-        assert "siret" in store
-        assert "naf" in store
+    synonyms_path = FIXTURES / "synonyms.json"
+    with open(synonyms_path, encoding="utf8") as f:
+        synonyms: dict[str, str] = json.load(f)
+    result = compare_receipt_files(json_files, synonyms=synonyms)
+    expected_path = FIXTURES / ".compare_result.json"
+    if not expected_path.exists():
+        with open(expected_path, "w", encoding="utf8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+        pytest.fail(f"Created {expected_path}")
+    with open(expected_path, encoding="utf8") as f:
+        expected = json.load(f)
+    if result != expected:
+        with open(expected_path, "w", encoding="utf8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+        pytest.fail(f"Result changed, updated {expected_path}")
 
 
 # --- session totals ---
@@ -488,3 +482,102 @@ def test_eggs_grouped_together() -> None:
     egg_products = [p for p in result["products"] if "OEUF" in p["canonical_name"]]
     assert len(egg_products) == 1
     assert len(egg_products[0]["observations"]) == 4
+
+
+# --- synonyms ---
+
+
+def test_normalize_with_synonyms() -> None:
+    synonyms = {"BLED": "BLEDINA", "CRST": "CROISSANT"}
+    assert (
+        normalize_for_matching("BLED BOL CAR/RZ/JAMB 8M", synonyms)
+        == "BLEDINA BOL CAR/RZ/JAMB 8M"
+    )
+    assert normalize_for_matching("CRST CHOCO", synonyms) == "CROISSANT CHOCO"
+
+
+def test_normalize_synonyms_after_dot_expansion() -> None:
+    synonyms = {"BLED": "BLEDINA"}
+    assert "BLEDINA" in normalize_for_matching("BLED.BOL", synonyms)
+
+
+def test_normalize_synonyms_none_unchanged() -> None:
+    assert normalize_for_matching("BLED BOL") == "BLED BOL"
+
+
+def test_matcher_with_synonyms() -> None:
+    m = FuzzyMatcher(threshold=0.90, synonyms={"BLED": "BLEDINA"})
+    key1 = m.match("BLED BOL CAR/RZ/JAMB 8M")
+    key2 = m.match("BLEDINA BOL CAR/RZ/JAMB 8M")
+    assert key1 == key2
+    assert "BLEDINA" in key1
+
+
+def test_normalize_multiword_synonym_priority() -> None:
+    """Multi-word patterns fire before single-word fallbacks."""
+    synonyms = {
+        "CHOCO PATIS": "CHOCOLAT PATISSIER",
+        "CHOCO": "CHOCOLAT",
+        "PATIS": "PATISSERIE",
+    }
+    # Multi-word match: CHOCO PATIS → CHOCOLAT PATISSIER
+    result = normalize_for_matching("CHOCO.PATIS.NOIR 52%", synonyms)
+    assert result == "CHOCOLAT PATISSIER 52%"
+    # Single-word fallback: standalone PATIS → PATISSERIE
+    result = normalize_for_matching("PATIS FRAMB", synonyms)
+    assert result == "PATISSERIE FRAMB"
+    # Single-word fallback: standalone CHOCO → CHOCOLAT
+    result = normalize_for_matching("CHOCO NOIR", synonyms)
+    assert result == "CHOCOLAT"
+
+
+def test_normalize_dot_pattern_synonym() -> None:
+    """Patterns with dots are normalized to spaces before matching."""
+    synonyms = {"FROM.BLC": "FROMAGE BLANC", "FROM": "FROMAGE"}
+    # BLANC is stripped by _STRIP_WORDS (color qualifier) after expansion
+    result = normalize_for_matching("FROM.BLC NAT", synonyms)
+    assert result == "FROMAGE NAT"
+    # Standalone FROM fallback
+    result = normalize_for_matching("FROM.RAPE", synonyms)
+    assert result == "FROMAGE RAPE"
+
+
+def test_compare_receipt_dicts_with_synonyms() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {"name": "BLED BOL", "price": 1.0, "quantity": 1, "grams": None},
+                    {"name": "BLEDINA BOL", "price": 1.2, "quantity": 1, "grams": None},
+                ]
+            },
+        },
+    ]
+    result = compare_receipt_dicts(receipts, synonyms={"BLED": "BLEDINA"})
+    names = [p["canonical_name"] for p in result["products"]]
+    assert len(names) == 1
+    assert "BLEDINA" in names[0]
+
+
+def test_synonyms_fixture_loads_and_expands() -> None:
+    """Load synonyms.json fixture and verify real-world abbreviation expansion."""
+    synonyms_path = FIXTURES / "synonyms.json"
+    with open(synonyms_path, encoding="utf8") as f:
+        synonyms: dict[str, str] = json.load(f)
+
+    # TABS LAVE VAISS.STANDARD U → TABLETTES LAVE VAISSELLE STANDARD
+    result = normalize_for_matching("TABS LAVE VAISS.STANDARD U", synonyms)
+    assert result == "TABLETTES LAVE VAISSELLE STANDARD"
+
+    # CHOCO.PATIS → CHOCOLAT PATISSIER (multi-word match, NOIR stripped as color)
+    result = normalize_for_matching("CHOCO.PATIS.NOIR 52%", synonyms)
+    assert result == "CHOCOLAT PATISSIER 52%"
+
+    # FROM.BLC → FROMAGE BLANC → BLANC stripped (color), NAT expanded
+    result = normalize_for_matching("FROM.BLC NAT.7,6%MG", synonyms)
+    assert result == "FROMAGE NATURE 7,6%MG"
+
+    # PAP.TOIL → PAPIER TOILETTE (BLC/U stripped)
+    result = normalize_for_matching("PAP.TOIL.BLC 2PL.U", synonyms)
+    assert result == "PAPIER TOILETTE 2PL"

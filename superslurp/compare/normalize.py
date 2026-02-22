@@ -66,7 +66,26 @@ _LEADING_COUNT = re.compile(r"^\d+\s+")
 _UNIT_COUNT_PATTERN = re.compile(r"\bBTEX(\d+)\b|\bX(\d+)(?:\+(\d+)OFF)?\b|^(\d+)\s+")
 
 
-def normalize_for_matching(name: str) -> str:
+def expand_synonyms(name: str, synonyms: dict[str, str]) -> str:
+    """Expand abbreviations in a product name using an ordered synonym dict.
+
+    Keys are patterns, values are replacements.  Iteration order matters:
+    multi-word patterns (e.g. ``"CHOCO PATIS": "CHOCOLAT PATISSIER"``) placed
+    before single-word fallbacks (``"PATIS": "PATISSERIE"``) take priority.
+
+    Dots are normalized to spaces in both the name and the patterns so that
+    ``CHOCO.PATIS`` and ``FROM.BLC`` are split before matching.
+    """
+    name = name.replace(".", " ")
+    for pattern, replacement in synonyms.items():
+        pat = pattern.replace(".", " ")
+        name = re.sub(
+            r"\b" + re.escape(pat) + r"\b", replacement, name, flags=re.IGNORECASE
+        )
+    return re.sub(r"\s+", " ", name).strip()
+
+
+def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) -> str:
     """Normalize a product name for fuzzy matching.
 
     Uppercase, strip accents, collapse whitespace, remove common qualifiers
@@ -76,7 +95,10 @@ def normalize_for_matching(name: str) -> str:
     # Strip accents via NFD decomposition + removing combining chars
     name = unicodedata.normalize("NFD", name)
     name = "".join(c for c in name if unicodedata.category(c) != "Mn")
-    # Normalize dots to spaces so abbreviations match (e.g. CHOCO.PATIS → CHOCO PATIS)
+    # Expand synonyms (also normalizes dots to spaces)
+    if synonyms:
+        name = expand_synonyms(name, synonyms)
+    # Normalize dots to spaces (in case no synonyms)
     name = name.replace(".", " ")
     # Strip count patterns like "3 TETES"
     name = _STRIP_COUNT_PATTERN.sub("", name)

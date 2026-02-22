@@ -192,10 +192,12 @@ def _compute_rolling_average(
 
 
 def compare_receipt_dicts(
-    receipts: list[dict[str, Any]], threshold: float = 0.90
+    receipts: list[dict[str, Any]],
+    threshold: float = 0.90,
+    synonyms: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Aggregate items across parsed receipt dicts into a price comparison."""
-    matcher = FuzzyMatcher(threshold=threshold)
+    matcher = FuzzyMatcher(threshold=threshold, synonyms=synonyms)
     products: dict[str, list[dict[str, Any]]] = {}
     stores: dict[str, dict[str, Any]] = {}
     sessions: dict[tuple[str | None, str | None], dict[str, Any]] = {}
@@ -224,7 +226,11 @@ def compare_receipt_dicts(
     }
 
 
-def compare_receipt_files(paths: list[Path], threshold: float = 0.90) -> dict[str, Any]:
+def compare_receipt_files(
+    paths: list[Path],
+    threshold: float = 0.90,
+    synonyms: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Load JSON receipt files and aggregate items for price comparison."""
     receipts: list[dict[str, Any]] = []
     for path in paths:
@@ -233,4 +239,4 @@ def compare_receipt_files(paths: list[Path], threshold: float = 0.90) -> dict[st
         if not isinstance(data, dict) or "items" not in data:
             continue
         receipts.append(data)
-    return compare_receipt_dicts(receipts, threshold=threshold)
+    return compare_receipt_dicts(receipts, threshold=threshold, synonyms=synonyms)

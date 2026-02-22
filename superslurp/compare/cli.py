@@ -30,6 +30,12 @@ def main_aggregate() -> None:
         default=None,
         help="Output file path. Prints to stdout if not specified.",
     )
+    parser.add_argument(
+        "--synonyms",
+        type=Path,
+        default=None,
+        help="JSON file mapping abbreviations to full names.",
+    )
     args = parser.parse_args()
 
     directory: Path = args.directory
@@ -42,7 +48,13 @@ def main_aggregate() -> None:
         print(f"Error: no JSON files found in {directory}", file=sys.stderr)
         sys.exit(1)
 
-    result = compare_receipt_files(paths, threshold=args.threshold)
+    synonyms: dict[str, str] | None = None
+    if args.synonyms:
+        with open(args.synonyms, encoding="utf8") as f:
+            raw = json.load(f)
+        synonyms = {k.upper(): v.upper() for k, v in raw.items()}
+
+    result = compare_receipt_files(paths, threshold=args.threshold, synonyms=synonyms)
     output_json = json.dumps(result, indent=2, ensure_ascii=False)
 
     if args.output:

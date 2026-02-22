@@ -402,7 +402,7 @@ function showProduct(name) {
         }
       },
       scales: {
-        y: { beginAtZero: false, title: { display: true, text: hasUnits ? "EUR/unit" : "EUR" } },
+        y: { beginAtZero: true, title: { display: true, text: hasUnits ? "EUR/unit" : "EUR" } },
         x: { title: { display: true, text: "Date" } }
       }
     }

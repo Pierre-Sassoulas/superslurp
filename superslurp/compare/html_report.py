@@ -34,8 +34,15 @@ _HTML_TEMPLATE = """\
   #sessionDetail .close-btn { float: right; cursor: pointer; background: none; border: none;
                                font-size: 1.2rem; color: #666; }
   #sessionDetail .close-btn:hover { color: #333; }
-  .product-link { color: #2563eb; text-decoration: none; }
+  .product-link { color: #2563eb; text-decoration: none; cursor: pointer; }
   .product-link:hover { text-decoration: underline; }
+  #productDetail table { width: 100%%; border-collapse: collapse; font-size: 0.9rem; }
+  #productDetail th, #productDetail td { text-align: left; padding: 0.3rem 0.6rem;
+                                          border-bottom: 1px solid #eee; }
+  #productDetail th { background: #f9fafb; position: sticky; top: 0; }
+  #productDetail td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .session-link { color: #2563eb; text-decoration: none; cursor: pointer; }
+  .session-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -58,6 +65,7 @@ _HTML_TEMPLATE = """\
 <div id="gramsSection" class="chart-container hidden">
   <canvas id="gramsChart"></canvas>
 </div>
+<div id="productDetail" class="chart-container hidden"></div>
 
 <script>
 const DATA = __DATA_JSON__;
@@ -256,6 +264,7 @@ function showProduct(name) {
       const session = sessionMap[obs.session_id];
       const store = session.store_id ? storeMap[session.store_id] : null;
       return {
+        sessionId: obs.session_id,
         date: session.date,
         price: obs.price,
         grams: obs.grams,
@@ -263,6 +272,7 @@ function showProduct(name) {
         discount: obs.discount,
         bio: obs.bio || false,
         store: store ? store.location : "?",
+        original_name: obs.original_name || name,
       };
     })
     .filter(p => p.date)
@@ -288,12 +298,27 @@ function showProduct(name) {
     },
     options: {
       responsive: true,
+      onClick: function(evt, elements) {
+        if (elements.length > 0) {
+          const p = points[elements[0].index];
+          const session = sessionMap[p.sessionId];
+          const store = session.store_id ? storeMap[session.store_id] : null;
+          const totEntry = sessionTotalsRaw.find(e => e.session_id === p.sessionId);
+          showSessionDetail({
+            sessionId: p.sessionId,
+            date: session.date,
+            total: totEntry ? totEntry.total : 0,
+            label: store ? store.location : "?"
+          });
+        }
+      },
       plugins: {
         tooltip: {
           callbacks: {
             afterLabel: function(ctx) {
               const p = points[ctx.dataIndex];
               let info = p.store;
+              if (p.original_name !== name) info += " | " + p.original_name;
               if (p.price_per_kg != null) info += " | " + p.price_per_kg + " EUR/kg";
               if (p.discount != null) info += " | discount: " + p.discount;
               if (p.bio) info += " | BIO";
@@ -331,6 +356,20 @@ function showProduct(name) {
       },
       options: {
         responsive: true,
+        onClick: function(evt, elements) {
+          if (elements.length > 0) {
+            const p = points[elements[0].index];
+            const session = sessionMap[p.sessionId];
+            const store = session.store_id ? storeMap[session.store_id] : null;
+            const totEntry = sessionTotalsRaw.find(e => e.session_id === p.sessionId);
+            showSessionDetail({
+              sessionId: p.sessionId,
+              date: session.date,
+              total: totEntry ? totEntry.total : 0,
+              label: store ? store.location : "?"
+            });
+          }
+        },
         scales: {
           y: { beginAtZero: false, title: { display: true, text: "Grams" } },
           x: { title: { display: true, text: "Date" } }
@@ -341,6 +380,45 @@ function showProduct(name) {
     gramsSection.classList.add("hidden");
     if (gramsChartInstance) { gramsChartInstance.destroy(); gramsChartInstance = null; }
   }
+
+  // Observations table
+  const detailDiv = document.getElementById("productDetail");
+  let html = '<h3>Observations</h3>';
+  html += '<table><thead><tr><th>Date</th><th>Original name</th>'
+    + '<th>Price</th><th>Grams</th><th>EUR/kg</th>'
+    + '<th>Discount</th><th>BIO</th></tr></thead><tbody>';
+  points.forEach(p => {
+    html += '<tr>';
+    html += '<td><a href="#" class="session-link" data-session-id="'
+      + p.sessionId + '">' + p.date.slice(0, 10) + '</a></td>';
+    html += '<td>' + p.original_name + '</td>';
+    html += '<td class="num">' + p.price.toFixed(2) + '</td>';
+    html += '<td class="num">' + (p.grams != null ? p.grams : '-') + '</td>';
+    html += '<td class="num">' + (p.price_per_kg != null ? p.price_per_kg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (p.discount != null ? p.discount.toFixed(2) : '-') + '</td>';
+    html += '<td>' + (p.bio ? 'Yes' : '') + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  detailDiv.innerHTML = html;
+  detailDiv.classList.remove("hidden");
+  detailDiv.querySelectorAll(".session-link").forEach(link => {
+    link.onclick = function(e) {
+      e.preventDefault();
+      const sid = this.getAttribute("data-session-id");
+      const session = sessionMap[sid];
+      const store = session.store_id ? storeMap[session.store_id] : null;
+      const totEntry = sessionTotalsRaw.find(e => e.session_id === sid);
+      showSessionDetail({
+        sessionId: sid,
+        date: session.date,
+        total: totEntry ? totEntry.total : 0,
+        label: store ? store.location : "?"
+      });
+      document.getElementById("sessionDetail")
+        .scrollIntoView({ behavior: "smooth" });
+    };
+  });
 }
 
 document.getElementById("productInput").addEventListener("input", function() {

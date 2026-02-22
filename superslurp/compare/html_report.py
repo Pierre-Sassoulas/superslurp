@@ -347,7 +347,9 @@ function showProduct(name) {
         backgroundColor: "rgba(220,38,38,0.1)",
         fill: true,
         tension: 0.2,
-        pointRadius: 4,
+        pointRadius: 5,
+        pointBackgroundColor: points.map(p => p.bio ? "#16a34a" : "#dc2626"),
+        pointBorderColor: points.map(p => p.bio ? "#16a34a" : "#dc2626"),
       }]
     },
     options: {

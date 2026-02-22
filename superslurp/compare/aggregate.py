@@ -79,6 +79,7 @@ def _build_observation(
     if unit_count is not None:
         price_per_unit = round(price / unit_count, 4)
     obs: dict[str, Any] = {
+        "original_name": item["name"],
         "session_id": session_id,
         "price": price,
         "quantity": item.get("quantity", 1),

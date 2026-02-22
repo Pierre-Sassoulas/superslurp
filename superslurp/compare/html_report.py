@@ -349,7 +349,7 @@ function showProduct(name) {
     ? name + " — Price per unit (EUR)"
     : name + " — Price (EUR)";
   const priceData = points.map(p =>
-    hasUnits && p.price_per_unit != null ? p.price_per_unit : p.price
+    hasUnits ? p.price_per_unit : p.price
   );
 
   if (priceChartInstance) priceChartInstance.destroy();

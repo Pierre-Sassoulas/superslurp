@@ -459,7 +459,7 @@ function showProduct(name) {
           }
         },
         scales: {
-          y: { beginAtZero: false, title: { display: true, text: "Grams" } },
+          y: { beginAtZero: true, title: { display: true, text: "Grams" } },
           x: { title: { display: true, text: "Date" } }
         }
       }

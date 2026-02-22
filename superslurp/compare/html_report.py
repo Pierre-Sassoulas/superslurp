@@ -343,15 +343,23 @@ function showProduct(name) {
 
   const labels = points.map(p => p.date.slice(0, 10));
 
-  // Price chart
+  // Price chart — use price per unit when available
+  const hasUnits = points.some(p => p.price_per_unit != null);
+  const priceLabel = hasUnits
+    ? name + " — Price per unit (EUR)"
+    : name + " — Price (EUR)";
+  const priceData = points.map(p =>
+    hasUnits && p.price_per_unit != null ? p.price_per_unit : p.price
+  );
+
   if (priceChartInstance) priceChartInstance.destroy();
   priceChartInstance = new Chart(document.getElementById("priceChart"), {
     type: "line",
     data: {
       labels: labels,
       datasets: [{
-        label: name + " — Price (EUR)",
-        data: points.map(p => p.price),
+        label: priceLabel,
+        data: priceData,
         borderColor: "#dc2626",
         backgroundColor: "rgba(220,38,38,0.1)",
         fill: true,
@@ -384,6 +392,7 @@ function showProduct(name) {
               const p = points[ctx.dataIndex];
               let info = p.store;
               if (p.original_name !== name) info += " | " + p.original_name;
+              if (hasUnits) info += " | total: " + p.price.toFixed(2) + " EUR";
               if (p.price_per_kg != null) info += " | " + p.price_per_kg + " EUR/kg";
               if (p.discount != null) info += " | discount: " + p.discount;
               if (p.bio) info += " | BIO";
@@ -393,7 +402,7 @@ function showProduct(name) {
         }
       },
       scales: {
-        y: { beginAtZero: false, title: { display: true, text: "EUR" } },
+        y: { beginAtZero: false, title: { display: true, text: hasUnits ? "EUR/unit" : "EUR" } },
         x: { title: { display: true, text: "Date" } }
       }
     }

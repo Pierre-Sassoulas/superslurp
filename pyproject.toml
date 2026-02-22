@@ -36,6 +36,7 @@ urls."homepage" = "https://github.com/Pierre-Sassoulas/superslurp"
 urls."Source Code" = "https://github.com/Pierre-Sassoulas/superslurp"
 scripts.superu-aggregate-parsed-receipt = "superslurp.compare.cli:main_aggregate"
 scripts.superu-receipt-parser = "superslurp.__main__:main"
+scripts.superu-report = "superslurp.__main__:main_report"
 scripts.superu-report-from-aggregate = "superslurp.compare.cli:main_report"
 
 [tool.setuptools]

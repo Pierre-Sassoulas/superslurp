@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from superslurp.check import check_consistency
+from superslurp.compare.aggregate import compare_receipt_dicts
+from superslurp.compare.html_report import generate_html
 from superslurp.extract import convert_to_text
 from superslurp.parse import parse_text
 from superslurp.serialize.json_dump import make_json_serializable
@@ -44,6 +46,21 @@ def parse_superu_receipt(
     return make_json_serializable(receipt, include_raw=debug, synonyms=synonyms)
 
 
+def generate_report(
+    filenames: list[str | Path],
+    *,
+    synonyms: dict[str, str] | None = None,
+    threshold: float = 0.90,
+) -> str:
+    """Parse multiple SuperU receipt PDFs and generate an HTML report.
+
+    Returns a self-contained HTML string with an interactive price dashboard.
+    """
+    receipts = [parse_superu_receipt(f, synonyms=synonyms) for f in filenames]
+    aggregate = compare_receipt_dicts(receipts, threshold=threshold, synonyms=synonyms)
+    return generate_html(aggregate)
+
+
 def main(args: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Parse a receipt.")
     parser.add_argument("filename", type=str, help="The name of the file to process")
@@ -58,6 +75,43 @@ def main(args: list[str] | None = None) -> int:
     synonyms = _load_synonyms(parsed_args.synonyms) if parsed_args.synonyms else None
     parsed_content = parse_superu_receipt(parsed_args.filename, synonyms=synonyms)
     print(f"Result:\n{json.dumps(parsed_content, indent=4, ensure_ascii=False)}")
+    return 0
+
+
+def main_report(args: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Parse receipt PDFs and generate an HTML report."
+    )
+    parser.add_argument(
+        "filenames", nargs="+", type=Path, help="Receipt PDF files to process"
+    )
+    parser.add_argument(  # pylint: disable=duplicate-code
+        "--synonyms",
+        type=Path,
+        default=None,
+        help="JSON file mapping abbreviations to full names.",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.90,
+        help="Fuzzy matching threshold (default: 0.90).",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output file path. Prints to stdout if not specified.",
+    )
+    parsed_args = parser.parse_args(args)
+    synonyms = _load_synonyms(parsed_args.synonyms) if parsed_args.synonyms else None
+    html = generate_report(
+        parsed_args.filenames, synonyms=synonyms, threshold=parsed_args.threshold
+    )
+    if parsed_args.output:
+        parsed_args.output.write_text(html, encoding="utf8")
+    else:
+        print(html)
     return 0
 
 

@@ -110,22 +110,37 @@ superu-aggregate-parsed-receipt receipts/ --synonyms synonyms.json --output aggr
 
 ## 3. Generate an HTML report
 
-Generate a self-contained HTML dashboard from the aggregate JSON. Includes a session
-totals chart with rolling average, a per-product price evolution chart, and sortable
-detail tables.
+### From PDFs directly
+
+Parse receipt PDFs and generate a self-contained HTML dashboard in one step:
 
 ```python
-import json
-from pathlib import Path
+from superslurp import generate_report
 
-from superslurp.compare.html_report import generate_html
-
-aggregate_result = json.loads(Path("aggregate.json").read_text(encoding="utf8"))
-html = generate_html(aggregate_result)
+html = generate_report(
+    ["receipt1.pdf", "receipt2.pdf", "receipt3.pdf"],
+    synonyms=synonyms,    # optional
+    threshold=0.90,       # fuzzy matching threshold (default: 0.90)
+)
 Path("report.html").write_text(html)
 ```
 
 CLI:
+
+```bash
+superu-report receipts/*.pdf --synonyms synonyms.json --output report.html
+```
+
+### From an existing aggregate JSON
+
+If you already have an aggregate JSON (from step 2):
+
+```python
+from superslurp.compare.html_report import generate_html
+
+html = generate_html(aggregate_result)
+Path("report.html").write_text(html)
+```
 
 ```bash
 superu-report-from-aggregate aggregate.json --output report.html

@@ -423,12 +423,14 @@ def test_price_per_unit_in_observation() -> None:
                         "price": 3.0,
                         "quantity": 1,
                         "grams": None,
+                        "units": 12,
                     },
                     {
                         "name": "SUCRE POUDRE",
                         "price": 1.50,
                         "quantity": 1,
                         "grams": 1000.0,
+                        "units": None,
                     },
                 ]
             },

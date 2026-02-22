@@ -129,7 +129,10 @@ def _parse_category(line: str) -> Category:
     try:
         return Category(name)
     except ValueError as e:
-        raise ValueError(f"Unknown V2 category: {name!r}") from e
+        raise ValueError(
+            f"Unknown V2 category: {name!r}. "
+            f"Add it to the Category enum in superslurp/superslurp_typing.py"
+        ) from e
 
 
 def _parse_price(price_str: str) -> float:

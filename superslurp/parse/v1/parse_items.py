@@ -4,12 +4,17 @@ import logging
 import re
 from collections import defaultdict
 
+from superslurp.compare.normalize import extract_unit_count
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
 from superslurp.superslurp_typing import Category, Item, Items
 
 
 class WrongNumberOfItemException(Exception): ...
+
+
+# Patterns to strip from name once units have been extracted
+_UNIT_PATTERN = re.compile(r"\s*\bBTEX\d+\b|\s*\bX\d+(?:\+\d+OFF)?\b|^\d+\s+")
 
 
 _NAME_CHAR = r"(?:(?!\(T\))[\w .\/%,=\-\"'€°+Éé()\*])"
@@ -77,6 +82,18 @@ def get_new_category(line: str) -> Category:
         raise ValueError(f"Missing value in enum '{Category!r}': {e}") from e
 
 
+def _parse_name_grams_units(
+    raw_name: str,
+) -> tuple[str, float | None, int | None]:
+    """Extract clean name, grams and units from a raw product name."""
+    name, grams, units = _get_gram(raw_name)
+    if units is None:
+        units = extract_unit_count(raw_name)
+        if units is not None:
+            name = _UNIT_PATTERN.sub("", name).strip()
+    return name, grams, units
+
+
 def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
     if (matched_name := item_info.group("name")) is None:
         raise ValueError(f"Nothing matched the name in {item_info}")
@@ -84,7 +101,7 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
     assert raw_name, f"Name is empty: {raw_name}"
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
-    name, grams = _get_gram(raw_name)
+    name, grams, units = _parse_name_grams_units(raw_name)
     quantity_str = item_info.group("quantity")
     if grams is None and quantity_str and "kg" in quantity_str:
         grams = _get_grams_from_quantity(quantity_str)
@@ -99,6 +116,7 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
         "name": name,
         "price": _get_price(price),
         "quantity": quantity,
+        "units": units,
         "grams": grams,
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
@@ -119,13 +137,14 @@ def _parse_quantity(quantity: str | None) -> int:
     return int(quantity)
 
 
-def _get_gram(name: str) -> tuple[str, float | None]:
+def _get_gram(name: str) -> tuple[str, float | None, int | None]:
     grams = None
+    units: int | None = None
     search = re.search(
         r"(?P<multiplier>\d+X)?(?P<grams>\d?[\d+,]?\d+K?G(?: ENVIRON)?)", name
     )
     if search is None:
-        return name, None
+        return name, None, None
     if (grams_as_str := search.group("grams")) is not None:
         grams_as_str = grams_as_str.replace(" ENVIRON", "")
         multiplier = search.group("multiplier")
@@ -137,9 +156,10 @@ def _get_gram(name: str) -> tuple[str, float | None]:
         grams_as_str = grams_as_str.replace(weight_unit, "")
         grams = float(grams_as_str.replace(",", ".")) * weight_unit_multiplier
         if multiplier is not None:
-            grams *= int(multiplier[:-1])
+            units = int(multiplier[:-1])
+            grams *= units
     name = name.replace(search.group(0), "")
-    return name.strip(), grams
+    return name.strip(), grams, units
 
 
 def _get_grams_from_quantity(quantity_str: str) -> float | None:

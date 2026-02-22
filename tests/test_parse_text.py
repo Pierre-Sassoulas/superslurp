@@ -78,7 +78,7 @@ def get_parameters() -> list[tuple[str, tuple[str, int | None]]]:
 
 @pytest.mark.parametrize("name, expected", get_parameters())
 def test_quantity(name: str, expected: tuple[str, int | None]) -> None:
-    name, grams = _get_gram(name)
+    name, grams, _units = _get_gram(name)
     expected_name, expected_gram = expected
     assert name == expected_name, (
         f"Wrong name for {name}, expected {expected_name} got {name}"

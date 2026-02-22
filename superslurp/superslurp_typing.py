@@ -17,6 +17,7 @@ class Item(TypedDict):
     name: str
     price: float
     quantity: int
+    units: int | None
     grams: float | None
     tr: bool
     way_of_paying: str | None

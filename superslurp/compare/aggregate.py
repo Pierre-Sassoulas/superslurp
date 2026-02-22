@@ -26,28 +26,32 @@ def _extract_location(store: dict[str, Any]) -> str | None:
 
 def _get_store_id(
     store_data: dict[str, Any],
-    stores: dict[tuple[str | None, str | None], dict[str, Any]],
-) -> int | None:
-    """Return the store id for this receipt's store, registering it if new."""
-    store_name = store_data.get("store_name")
-    location = _extract_location(store_data)
-    if store_name is None and location is None:
+    stores: dict[str, dict[str, Any]],
+) -> str | None:
+    """Return the store id for this receipt's store, registering it if new.
+
+    The store id is the SIRET + NAF concatenated with an underscore.
+    """
+    siret = store_data.get("siret")
+    naf = store_data.get("naf")
+    if siret is None or naf is None:
         return None
-    key = (store_name, location)
-    if key not in stores:
-        store_id = len(stores) + 1
-        stores[key] = {
+    store_id = f"{siret}_{naf}"
+    if store_id not in stores:
+        stores[store_id] = {
             "id": store_id,
-            "store_name": store_name,
-            "location": location,
+            "store_name": store_data.get("store_name"),
+            "location": _extract_location(store_data),
+            "siret": siret,
+            "naf": naf,
         }
-    return int(stores[key]["id"])
+    return store_id
 
 
 def _get_session_id(
     date: str | None,
-    store_id: int | None,
-    sessions: dict[tuple[str | None, int | None], dict[str, Any]],
+    store_id: str | None,
+    sessions: dict[tuple[str | None, str | None], dict[str, Any]],
 ) -> int:
     """Return the session id for this receipt, registering it if new."""
     key = (date, store_id)
@@ -93,8 +97,8 @@ def _process_receipt(
     receipt: dict[str, Any],
     matcher: FuzzyMatcher,
     products: dict[str, list[dict[str, Any]]],
-    stores: dict[tuple[str | None, str | None], dict[str, Any]],
-    sessions: dict[tuple[str | None, int | None], dict[str, Any]],
+    stores: dict[str, dict[str, Any]],
+    sessions: dict[tuple[str | None, str | None], dict[str, Any]],
 ) -> None:
     date = receipt.get("date")
     store_data: dict[str, Any] = receipt.get("store", {})
@@ -192,8 +196,8 @@ def compare_receipt_dicts(
     """Aggregate items across parsed receipt dicts into a price comparison."""
     matcher = FuzzyMatcher(threshold=threshold)
     products: dict[str, list[dict[str, Any]]] = {}
-    stores: dict[tuple[str | None, str | None], dict[str, Any]] = {}
-    sessions: dict[tuple[str | None, int | None], dict[str, Any]] = {}
+    stores: dict[str, dict[str, Any]] = {}
+    sessions: dict[tuple[str | None, str | None], dict[str, Any]] = {}
 
     for receipt in receipts:
         _process_receipt(receipt, matcher, products, stores, sessions)

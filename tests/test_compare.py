@@ -105,7 +105,12 @@ def test_compare_receipt_dicts_basic() -> None:
     receipts = [
         {
             "date": "2025-01-15 10:00:00",
-            "store": {"store_name": "SUPER U", "address": "1 RUE\nVILLE\n38000"},
+            "store": {
+                "store_name": "SUPER U",
+                "address": "1 RUE\nVILLE\n38000",
+                "siret": "52380816000023",
+                "naf": "4729Z",
+            },
             "items": {
                 "EPICERIE": [
                     {
@@ -120,7 +125,12 @@ def test_compare_receipt_dicts_basic() -> None:
         },
         {
             "date": "2025-02-20 11:00:00",
-            "store": {"store_name": "SUPER U", "address": "1 RUE\nVILLE\n38000"},
+            "store": {
+                "store_name": "SUPER U",
+                "address": "1 RUE\nVILLE\n38000",
+                "siret": "52380816000023",
+                "naf": "4729Z",
+            },
             "items": {
                 "EPICERIE": [
                     {
@@ -148,12 +158,14 @@ def test_compare_receipt_dicts_basic() -> None:
     assert len(result["sessions"]) == 2
     assert result["sessions"][0]["date"] == "2025-01-15 10:00:00"
     assert result["sessions"][1]["date"] == "2025-02-20 11:00:00"
-    assert result["sessions"][0]["store_id"] == 1
-    # Store reference
+    assert result["sessions"][0]["store_id"] == "52380816000023_4729Z"
+    # Store reference keyed by SIRET+NAF
     assert len(result["stores"]) == 1
-    assert result["stores"][0]["id"] == 1
+    assert result["stores"][0]["id"] == "52380816000023_4729Z"
     assert result["stores"][0]["store_name"] == "SUPER U"
     assert result["stores"][0]["location"] == "VILLE"
+    assert result["stores"][0]["siret"] == "52380816000023"
+    assert result["stores"][0]["naf"] == "4729Z"
 
 
 def test_compare_receipt_dicts_bio_flag() -> None:
@@ -265,6 +277,8 @@ def test_compare_receipt_files_fixtures() -> None:
         assert "id" in store
         assert "store_name" in store
         assert "location" in store
+        assert "siret" in store
+        assert "naf" in store
 
 
 # --- session totals ---

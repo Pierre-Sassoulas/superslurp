@@ -124,6 +124,15 @@ def test_parse_items(
             )
 
 
+def _assert_store_has_siret_naf(result: dict[str, Any], path: Path) -> None:
+    store = result.get("store", {})
+    siret = store.get("siret")
+    naf = store.get("naf")
+    assert siret, f"siret missing or empty for {path.name}"
+    assert siret.isdigit(), f"siret not numeric for {path.name}: {siret!r}"
+    assert naf, f"naf missing or empty for {path.name}"
+
+
 @pytest.mark.parametrize("path", V1_FIXTURES, ids=(p.name for p in V1_FIXTURES))
 def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
@@ -140,6 +149,7 @@ def test_multiple_examples(path: Path, caplog: LogCaptureFixture) -> None:
             json.dump(result, file, indent=4)
         pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
     _assert_date_matches_filename(result, path)
+    _assert_store_has_siret_naf(result, path)
 
 
 @pytest.mark.parametrize("path", V2_FIXTURES, ids=(p.name for p in V2_FIXTURES))
@@ -158,3 +168,4 @@ def test_multiple_examples_v2(path: Path, caplog: LogCaptureFixture) -> None:
             json.dump(result, file, indent=4)
         pytest.fail(f"Expected {expected_result} but got {result}, had to upgrade")
     _assert_date_matches_filename(result, path)
+    _assert_store_has_siret_naf(result, path)

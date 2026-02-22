@@ -29,7 +29,10 @@ _HTML_TEMPLATE = """\
   #sessionDetail table { width: 100%%; border-collapse: collapse; font-size: 0.9rem; }
   #sessionDetail th, #sessionDetail td { text-align: left; padding: 0.3rem 0.6rem;
                                           border-bottom: 1px solid #eee; }
-  #sessionDetail th { background: #f9fafb; position: sticky; top: 0; }
+  #sessionDetail th { background: #f9fafb; position: sticky; top: 0; cursor: pointer; user-select: none; }
+  #sessionDetail th:hover { background: #eef2ff; }
+  #sessionDetail th .sort-arrow { font-size: 0.7em; margin-left: 0.3em; opacity: 0.4; }
+  #sessionDetail th.sort-active .sort-arrow { opacity: 1; }
   #sessionDetail td.num { text-align: right; font-variant-numeric: tabular-nums; }
   #sessionDetail .close-btn { float: right; cursor: pointer; background: none; border: none;
                                font-size: 1.2rem; color: #666; }
@@ -101,6 +104,51 @@ function buildSessionTotals() {
   });
 }
 
+function sortTable(table, colIdx, type) {
+  const thead = table.querySelector("thead");
+  const th = thead.querySelectorAll("th")[colIdx];
+  const prev = th.getAttribute("data-sort");
+  const dir = prev === "asc" ? "desc" : "asc";
+  thead.querySelectorAll("th").forEach(h => {
+    h.classList.remove("sort-active");
+    h.removeAttribute("data-sort");
+    h.querySelector(".sort-arrow").textContent = "\\u2195";
+  });
+  th.classList.add("sort-active");
+  th.setAttribute("data-sort", dir);
+  th.querySelector(".sort-arrow").textContent = dir === "asc" ? "\\u25B2" : "\\u25BC";
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  rows.sort((a, b) => {
+    const aText = a.children[colIdx].textContent;
+    const bText = b.children[colIdx].textContent;
+    if (type === "num") {
+      const aVal = aText === "-" ? -Infinity : parseFloat(aText);
+      const bVal = bText === "-" ? -Infinity : parseFloat(bText);
+      return dir === "asc" ? aVal - bVal : bVal - aVal;
+    }
+    return dir === "asc"
+      ? aText.localeCompare(bText)
+      : bText.localeCompare(aText);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+function makeSortableHeader(label, type) {
+  return '<th data-type="' + type + '">'
+    + label + '<span class="sort-arrow">\\u2195</span></th>';
+}
+
+function bindSortHandlers(container) {
+  const table = container.querySelector("table");
+  if (!table) return;
+  table.querySelectorAll("thead th").forEach((th, idx) => {
+    th.onclick = function() {
+      sortTable(table, idx, th.getAttribute("data-type"));
+    };
+  });
+}
+
 function showSessionDetail(entry) {
   const items = (sessionItems[entry.sessionId] || [])
     .slice()
@@ -110,9 +158,14 @@ function showSessionDetail(entry) {
     + '&times;</button>';
   html += '<h3>' + entry.date.slice(0, 10) + ' — '
     + entry.label + ' — ' + entry.total + ' EUR</h3>';
-  html += '<table><thead><tr><th>Product</th><th>Qty</th>'
-    + '<th>Price</th><th>Grams</th><th>EUR/kg</th>'
-    + '<th>Discount</th></tr></thead><tbody>';
+  html += '<table><thead><tr>'
+    + makeSortableHeader('Product', 'str')
+    + makeSortableHeader('Qty', 'num')
+    + makeSortableHeader('Price', 'num')
+    + makeSortableHeader('Grams', 'num')
+    + makeSortableHeader('EUR/kg', 'num')
+    + makeSortableHeader('Discount', 'num')
+    + '</tr></thead><tbody>';
   items.forEach(it => {
     const o = it.obs;
     html += '<tr>';
@@ -129,6 +182,7 @@ function showSessionDetail(entry) {
   html += '</tbody></table>';
   panel.innerHTML = html;
   panel.classList.remove("hidden");
+  bindSortHandlers(panel);
   document.getElementById("closeSession").onclick = function() {
     panel.classList.add("hidden");
   };

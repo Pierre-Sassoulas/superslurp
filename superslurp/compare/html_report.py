@@ -164,6 +164,8 @@ function showSessionDetail(entry) {
     + makeSortableHeader('Price', 'num')
     + makeSortableHeader('Grams', 'num')
     + makeSortableHeader('EUR/kg', 'num')
+    + makeSortableHeader('Units', 'num')
+    + makeSortableHeader('EUR/unit', 'num')
     + makeSortableHeader('Discount', 'num')
     + '</tr></thead><tbody>';
   items.forEach(it => {
@@ -176,6 +178,8 @@ function showSessionDetail(entry) {
     html += '<td class="num">' + o.price.toFixed(2) + '</td>';
     html += '<td class="num">' + (o.grams != null ? o.grams : '-') + '</td>';
     html += '<td class="num">' + (o.price_per_kg != null ? o.price_per_kg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (o.unit_count != null ? o.unit_count : '-') + '</td>';
+    html += '<td class="num">' + (o.price_per_unit != null ? o.price_per_unit.toFixed(4) : '-') + '</td>';
     html += '<td class="num">' + (o.discount != null ? o.discount.toFixed(2) : '-') + '</td>';
     html += '</tr>';
   });
@@ -323,6 +327,8 @@ function showProduct(name) {
         price: obs.price,
         grams: obs.grams,
         price_per_kg: obs.price_per_kg,
+        unit_count: obs.unit_count,
+        price_per_unit: obs.price_per_unit,
         discount: obs.discount,
         bio: obs.bio || false,
         store: store ? store.location : "?",
@@ -442,6 +448,7 @@ function showProduct(name) {
   let html = '<h3>Observations</h3>';
   html += '<table><thead><tr><th>Date</th><th>Original name</th>'
     + '<th>Price</th><th>Grams</th><th>EUR/kg</th>'
+    + '<th>Units</th><th>EUR/unit</th>'
     + '<th>Discount</th><th>BIO</th></tr></thead><tbody>';
   points.forEach(p => {
     html += '<tr>';
@@ -451,6 +458,8 @@ function showProduct(name) {
     html += '<td class="num">' + p.price.toFixed(2) + '</td>';
     html += '<td class="num">' + (p.grams != null ? p.grams : '-') + '</td>';
     html += '<td class="num">' + (p.price_per_kg != null ? p.price_per_kg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (p.unit_count != null ? p.unit_count : '-') + '</td>';
+    html += '<td class="num">' + (p.price_per_unit != null ? p.price_per_unit.toFixed(4) : '-') + '</td>';
     html += '<td class="num">' + (p.discount != null ? p.discount.toFixed(2) : '-') + '</td>';
     html += '<td>' + (p.bio ? 'Yes' : '') + '</td>';
     html += '</tr>';

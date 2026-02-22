@@ -17,14 +17,48 @@ result = parse_superu_receipt("Ticket de caisse_01032022-165652.pdf")
 ```json
 {
   "items": {
-    "EPICERIE": [
+    "FRUITS": [
       {
-        "name": "POELLE JARDINIERE DAUCY",
-        "price": 2.59,
+        "name": "BANANE CAVENDISH SCB",
+        "price": 3.32,
         "quantity": 1,
         "units": null,
-        "grams": 580.0,
-        "tr": false,
+        "grams": 1964.0,
+        "tr": true,
+        "way_of_paying": "11",
+        "discount": null
+      },
+      {
+        "name": "KIWI HAYWARD",
+        "price": 0.5,
+        "quantity": 10,
+        "units": null,
+        "grams": null,
+        "tr": true,
+        "way_of_paying": "11",
+        "discount": null
+      }
+    ],
+    "PATISSERIE": [
+      {
+        "name": "BUCHETTE ABRI VAN",
+        "price": 4.4,
+        "quantity": 1,
+        "units": 2,
+        "grams": null,
+        "tr": true,
+        "way_of_paying": "11",
+        "discount": 1.32
+      }
+    ],
+    "POISSON LS UVCI": [
+      {
+        "name": "FILET LIMAND NORD MEUNIER U",
+        "price": 3.6,
+        "quantity": 2,
+        "units": null,
+        "grams": 200.0,
+        "tr": true,
         "way_of_paying": "11",
         "discount": null
       }
@@ -33,30 +67,10 @@ result = parse_superu_receipt("Ticket de caisse_01032022-165652.pdf")
 }
 ```
 
-Pass `debug=True` to include the original receipt line on each item:
+Pass `debug=True` to include the original receipt line on each item (`"raw"` field):
 
 ```python
-result = parse_superu_receipt("Ticket de caisse_01032022-165652.pdf", debug=True)
-```
-
-```json
-{
-  "items": {
-    "EPICERIE": [
-      {
-        "raw": "POELLE JARDINIERE DAUCY 580G                2,59 €  11",
-        "name": "POELLE JARDINIERE DAUCY",
-        "price": 2.59,
-        "quantity": 1,
-        "units": null,
-        "grams": 580.0,
-        "tr": false,
-        "way_of_paying": "11",
-        "discount": null
-      }
-    ]
-  }
-}
+result = parse_superu_receipt("receipt.pdf", debug=True)
 ```
 
 Pass a `synonyms` dict to expand receipt abbreviations in item names:

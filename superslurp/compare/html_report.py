@@ -433,8 +433,9 @@ function showProduct(name) {
       data: {
         labels: labels,
         datasets: [{
-          label: name + " — Grams",
-          data: points.map(p => p.grams),
+          label: name + (hasUnits ? " — Grams per unit" : " — Grams"),
+          data: points.map(p => p.grams != null && hasUnits && p.unit_count
+            ? p.grams / p.unit_count : p.grams),
           borderColor: "#16a34a",
           backgroundColor: "rgba(22,163,74,0.1)",
           fill: true,
@@ -459,7 +460,7 @@ function showProduct(name) {
           }
         },
         scales: {
-          y: { beginAtZero: true, title: { display: true, text: "Grams" } },
+          y: { beginAtZero: true, title: { display: true, text: hasUnits ? "Grams/unit" : "Grams" } },
           x: { title: { display: true, text: "Date" } }
         }
       }

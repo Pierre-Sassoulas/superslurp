@@ -49,6 +49,17 @@ _HTML_TEMPLATE = """\
   #productDetail td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .session-link { color: #2563eb; text-decoration: none; cursor: pointer; }
   .session-link:hover { text-decoration: underline; }
+  #shrinkflation { background: #fff; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+                   box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  #shrinkflation table { width: 100%%; border-collapse: collapse; font-size: 0.9rem; }
+  #shrinkflation th, #shrinkflation td { text-align: left; padding: 0.3rem 0.6rem;
+                                          border-bottom: 1px solid #eee; }
+  #shrinkflation th { background: #f9fafb; position: sticky; top: 0; cursor: pointer; user-select: none; }
+  #shrinkflation th:hover { background: #eef2ff; }
+  #shrinkflation th .sort-arrow { font-size: 0.7em; margin-left: 0.3em; opacity: 0.4; }
+  #shrinkflation th.sort-active .sort-arrow { opacity: 1; }
+  #shrinkflation td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .shrink-pct { color: #dc2626; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -59,6 +70,9 @@ _HTML_TEMPLATE = """\
   <canvas id="sessionChart"></canvas>
 </div>
 <div id="sessionDetail" class="hidden"></div>
+
+<h2>Shrinkflation detected</h2>
+<div id="shrinkflation" class="hidden"></div>
 
 <h2>Product price evolution</h2>
 <div class="product-select">
@@ -509,6 +523,83 @@ function showProduct(name) {
 document.getElementById("productInput").addEventListener("input", function() {
   showProduct(this.value);
 });
+
+// --- Shrinkflation detection ---
+function detectShrinkflation() {
+  const results = [];
+  DATA.products.forEach(p => {
+    const withGrams = p.observations
+      .filter(o => o.grams != null)
+      .map(o => ({ ...o, date: sessionMap[o.session_id].date }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (withGrams.length < 2) return;
+    for (let i = withGrams.length - 1; i >= 1; i--) {
+      const prev = withGrams[i - 1];
+      const curr = withGrams[i];
+      if (curr.grams < prev.grams && curr.price >= prev.price) {
+        results.push({
+          name: p.canonical_name,
+          dateBefore: prev.date.slice(0, 10),
+          dateAfter: curr.date.slice(0, 10),
+          gramsBefore: prev.grams,
+          gramsAfter: curr.grams,
+          priceBefore: prev.price,
+          priceAfter: curr.price,
+        });
+        break;
+      }
+    }
+  });
+  return results;
+}
+
+function renderShrinkflation() {
+  const items = detectShrinkflation();
+  const panel = document.getElementById("shrinkflation");
+  if (items.length === 0) {
+    panel.classList.add("hidden");
+    return;
+  }
+  let html = '<table><thead><tr>'
+    + makeSortableHeader('Product', 'str')
+    + makeSortableHeader('Date before', 'str')
+    + makeSortableHeader('Date after', 'str')
+    + makeSortableHeader('Grams before', 'num')
+    + makeSortableHeader('Grams after', 'num')
+    + makeSortableHeader('Change', 'num')
+    + makeSortableHeader('Price before', 'num')
+    + makeSortableHeader('Price after', 'num')
+    + '</tr></thead><tbody>';
+  items.forEach(it => {
+    const pct = ((it.gramsAfter - it.gramsBefore) / it.gramsBefore * 100).toFixed(1);
+    html += '<tr>';
+    html += '<td><a href="#" class="product-link" data-name="'
+      + it.name + '">' + it.name + '</a></td>';
+    html += '<td>' + it.dateBefore + '</td>';
+    html += '<td>' + it.dateAfter + '</td>';
+    html += '<td class="num">' + it.gramsBefore + '</td>';
+    html += '<td class="num">' + it.gramsAfter + '</td>';
+    html += '<td class="num shrink-pct">' + pct + '%%</td>';
+    html += '<td class="num">' + it.priceBefore.toFixed(2) + '</td>';
+    html += '<td class="num">' + it.priceAfter.toFixed(2) + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  panel.innerHTML = html;
+  panel.classList.remove("hidden");
+  bindSortHandlers(panel);
+  panel.querySelectorAll(".product-link").forEach(link => {
+    link.onclick = function(e) {
+      e.preventDefault();
+      const name = this.getAttribute("data-name");
+      document.getElementById("productInput").value = name;
+      showProduct(name);
+      document.getElementById("priceChart")
+        .scrollIntoView({ behavior: "smooth" });
+    };
+  });
+}
+renderShrinkflation();
 </script>
 </body>
 </html>

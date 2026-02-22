@@ -14,7 +14,9 @@ class WrongNumberOfItemException(Exception): ...
 
 
 # Patterns to strip from name once units have been extracted
-_UNIT_PATTERN = re.compile(r"\s*\bBTEX\d+\b|\s*\bX\d+(?:\+\d+OFF)?\b|^\d+\s+")
+_UNIT_PATTERN = re.compile(
+    r"\s*\bBTEX\d+\b|\s*\bX\d+(?:\+\d+OFF)?\b|\s*\b\d+TR\b|^\d+\s+"
+)
 
 
 _NAME_CHAR = r"(?:(?!\(T\))[\w .\/%,=\-\"'€°+Éé()\*])"

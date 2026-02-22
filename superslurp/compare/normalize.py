@@ -58,12 +58,14 @@ _STRIP_WORDS = frozenset(
     }
 )
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
-# Matches X12, BTEX12, X10+5OFF, and leading counts like "18 OEUFS"
-_STRIP_UNIT_COUNT = re.compile(r"\bBTEX\d+\b|\bX\d+(?:\+\d+OFF)?\b")
+# Matches X12, BTEX12, X10+5OFF, 6TR, and leading counts like "18 OEUFS"
+_STRIP_UNIT_COUNT = re.compile(r"\bBTEX\d+\b|\bX\d+(?:\+\d+OFF)?\b|\b\d+TR\b")
 _LEADING_COUNT = re.compile(r"^\d+\s+")
 
-# Extract unit count: X12 → 12, BTEX6 → 6, X10+5OFF → 15, 18 OEUFS → 18
-_UNIT_COUNT_PATTERN = re.compile(r"\bBTEX(\d+)\b|\bX(\d+)(?:\+(\d+)OFF)?\b|^(\d+)\s+")
+# Extract unit count: X12 → 12, BTEX6 → 6, X10+5OFF → 15, 6TR → 6, 18 OEUFS → 18
+_UNIT_COUNT_PATTERN = re.compile(
+    r"\bBTEX(\d+)\b|\bX(\d+)(?:\+(\d+)OFF)?\b|\b(\d+)TR\b|^(\d+)\s+"
+)
 
 
 def expand_synonyms(name: str, synonyms: dict[str, str]) -> str:
@@ -119,7 +121,7 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
 def extract_unit_count(name: str) -> int | None:
     """Extract the number of units from a product name.
 
-    Examples: X12 → 12, BTEX6 → 6, X10+5OFF → 15, "18 OEUFS" → 18.
+    Examples: X12 → 12, BTEX6 → 6, X10+5OFF → 15, 6TR → 6, "18 OEUFS" → 18.
     Returns None if no count found.
     """
     name = name.upper().replace(".", " ")
@@ -133,8 +135,10 @@ def extract_unit_count(name: str) -> int | None:
         if m.group(3):
             count += int(m.group(3))
         return count
-    if m.group(4):  # ^(\d+)\s+
+    if m.group(4):  # (\d+)TR
         return int(m.group(4))
+    if m.group(5):  # ^(\d+)\s+
+        return int(m.group(5))
     return None
 
 

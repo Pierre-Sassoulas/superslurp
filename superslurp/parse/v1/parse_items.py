@@ -104,15 +104,17 @@ def _parse_name_grams_units(
     raw_name: str,
 ) -> tuple[str, float | None, int | None]:
     """Extract clean name, grams and units from a raw product name."""
-    name, grams, units, _fat_pct, _bio, _milk = _parse_name_attributes(raw_name)
+    name, grams, units, _fat_pct, _bio, _milk, _volume_ml = _parse_name_attributes(
+        raw_name
+    )
     return name, grams, units
 
 
 def _parse_name_attributes(
     raw_name: str,
     synonyms: dict[str, str] | None = None,
-) -> tuple[str, float | None, int | None, float | None, bool, str | None]:
-    """Extract clean name, grams, units, fat %, bio and milk treatment.
+) -> tuple[str, float | None, int | None, float | None, bool, str | None, float | None]:
+    """Extract clean name, grams, units, fat %, bio, milk treatment and volume_ml.
 
     When *synonyms* is provided, abbreviations are expanded **before**
     any attribute extraction so that patterns like ``%MG LP`` →
@@ -127,6 +129,12 @@ def _parse_name_attributes(
         per_unit = grams / units
         units += offert
         grams = per_unit * units
+    # Volume extraction — only when grams not already found
+    volume_ml: float | None = None
+    if grams is None:
+        name, volume_ml, units_from_vol = _get_volume(name)
+        if units_from_vol is not None and units is None:
+            units = units_from_vol
     if units is None:
         units = extract_unit_count(raw_name)
         if units is not None:
@@ -136,7 +144,7 @@ def _parse_name_attributes(
         name = _FAT_PCT_PATTERN.sub("", name).strip()
     bio = is_bio(raw_name)
     milk_treatment = get_milk_treatment(raw_name)
-    return name, grams, units, fat_pct, bio, milk_treatment
+    return name, grams, units, fat_pct, bio, milk_treatment, volume_ml
 
 
 def get_item_from_item_infos(  # pylint: disable=too-many-locals
@@ -148,8 +156,8 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
     assert raw_name, f"Name is empty: {raw_name}"
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
-    name, grams, units, fat_pct, bio, milk_treatment = _parse_name_attributes(
-        raw_name, synonyms=synonyms
+    name, grams, units, fat_pct, bio, milk_treatment, volume_ml = (
+        _parse_name_attributes(raw_name, synonyms=synonyms)
     )
     quantity_str = item_info.group("quantity")
     if grams is None and quantity_str and "kg" in quantity_str:
@@ -168,6 +176,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         "bought": quantity,
         "units": units,
         "grams": grams,
+        "volume_ml": volume_ml,
         "fat_pct": fat_pct,
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
@@ -213,6 +222,33 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
             grams *= units
     name = name.replace(search.group(0), "")
     return name.strip(), grams, units
+
+
+_VOLUME_PATTERN = re.compile(
+    r"(?P<multiplier>\d+X)?(?P<vol>\d+[,]?\d*)\s*(?P<unit>L|CL|ML)\b"
+)
+
+
+def _get_volume(name: str) -> tuple[str, float | None, int | None]:
+    """Extract volume in mL from a product name (e.g. 1L, 75CL, 250ML, 6X1L)."""
+    m = _VOLUME_PATTERN.search(name)
+    if m is None:
+        return name, None, None
+    vol_str = m.group("vol").replace(",", ".")
+    vol = float(vol_str)
+    unit = m.group("unit")
+    if unit == "L":
+        vol *= 1000
+    elif unit == "CL":
+        vol *= 10
+    # ML: vol stays as-is
+    units: int | None = None
+    multiplier = m.group("multiplier")
+    if multiplier is not None:
+        units = int(multiplier[:-1])
+        vol *= units
+    name = name.replace(m.group(0), "").strip()
+    return name, vol, units
 
 
 _FAT_PCT_PATTERN = re.compile(r"\s*\d+[.,]?\d*%\s*MG\b")

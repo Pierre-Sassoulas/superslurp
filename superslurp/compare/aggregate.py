@@ -73,6 +73,10 @@ def _build_observation(
     price_per_kg: float | None = None
     if grams is not None:
         price_per_kg = round((price / grams) * 1000, 2)
+    volume_ml: float | None = item.get("volume_ml")
+    price_per_liter: float | None = None
+    if volume_ml is not None and volume_ml > 0:
+        price_per_liter = round((price / volume_ml) * 1000, 2)
     unit_count: int | None = item.get("units")
     price_per_unit: float | None = None
     if unit_count is not None:
@@ -85,6 +89,8 @@ def _build_observation(
         "grams": grams,
         "discount": item.get("discount"),
         "price_per_kg": price_per_kg,
+        "volume_ml": volume_ml,
+        "price_per_liter": price_per_liter,
         "unit_count": unit_count,
         "price_per_unit": price_per_unit,
         "fat_pct": item.get("fat_pct"),

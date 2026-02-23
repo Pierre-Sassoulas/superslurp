@@ -118,6 +118,9 @@ _HTML_TEMPLATE = """\
     <div id="fatSection" class="chart-container hidden">
       <canvas id="fatChart"></canvas>
     </div>
+    <div id="volumeSection" class="chart-container hidden">
+      <canvas id="volumeChart"></canvas>
+    </div>
   </div>
   <div id="productDetail" class="chart-container hidden"></div>
 </div>
@@ -238,6 +241,8 @@ function showSessionDetail(entry) {
     + makeSortableHeader('Price', 'num')
     + makeSortableHeader('Grams', 'num')
     + makeSortableHeader('EUR/kg', 'num')
+    + makeSortableHeader('Vol (mL)', 'num')
+    + makeSortableHeader('EUR/L', 'num')
     + makeSortableHeader('Units', 'num')
     + makeSortableHeader('EUR/unit', 'num')
     + makeSortableHeader('Discount', 'num')
@@ -253,6 +258,8 @@ function showSessionDetail(entry) {
     html += '<td class="num">' + o.price.toFixed(2) + '</td>';
     html += '<td class="num">' + (o.grams != null ? o.grams : '-') + '</td>';
     html += '<td class="num">' + (o.price_per_kg != null ? o.price_per_kg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (o.volume_ml != null ? o.volume_ml : '-') + '</td>';
+    html += '<td class="num">' + (o.price_per_liter != null ? o.price_per_liter.toFixed(2) : '-') + '</td>';
     html += '<td class="num">' + (o.unit_count != null ? o.unit_count : '-') + '</td>';
     html += '<td class="num">' + (o.price_per_unit != null ? o.price_per_unit.toFixed(4) : '-') + '</td>';
     html += '<td class="num">' + (o.discount != null ? o.discount.toFixed(2) : '-') + '</td>';
@@ -389,6 +396,7 @@ productNames.forEach(name => {
 let priceChartInstance = null;
 let gramsChartInstance = null;
 let fatChartInstance = null;
+let volumeChartInstance = null;
 
 function showProduct(name) {
   const product = DATA.products.find(p => p.canonical_name === name);
@@ -404,6 +412,8 @@ function showProduct(name) {
         price: obs.price,
         grams: obs.grams,
         price_per_kg: obs.price_per_kg,
+        volume_ml: obs.volume_ml,
+        price_per_liter: obs.price_per_liter,
         unit_count: obs.unit_count,
         price_per_unit: obs.price_per_unit,
         discount: obs.discount,
@@ -470,6 +480,7 @@ function showProduct(name) {
               if (p.original_name !== name) info += " | " + p.original_name;
               if (hasUnits) info += " | total: " + p.price.toFixed(2) + " EUR";
               if (p.price_per_kg != null) info += " | " + p.price_per_kg + " EUR/kg";
+              if (p.price_per_liter != null) info += " | " + p.price_per_liter + " EUR/L";
               if (p.discount != null) info += " | discount: " + p.discount;
               if (p.bio) info += " | BIO";
               if (p.milk_treatment) info += " | " + p.milk_treatment;
@@ -580,6 +591,54 @@ function showProduct(name) {
     if (fatChartInstance) { fatChartInstance.destroy(); fatChartInstance = null; }
   }
 
+  // Volume chart
+  const volumeSection = document.getElementById("volumeSection");
+  const hasVolume = points.some(p => p.volume_ml != null);
+  if (hasVolume) {
+    volumeSection.classList.remove("hidden");
+    if (volumeChartInstance) volumeChartInstance.destroy();
+    volumeChartInstance = new Chart(document.getElementById("volumeChart"), {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: name + (hasUnits ? " — Volume per unit (mL)" : " — Volume (mL)"),
+          data: points.map(p => p.volume_ml != null && hasUnits && p.unit_count
+            ? p.volume_ml / p.unit_count : p.volume_ml),
+          borderColor: "#7c3aed",
+          backgroundColor: "rgba(124,58,237,0.1)",
+          fill: true,
+          tension: 0.2,
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        onClick: function(evt, elements) {
+          if (elements.length > 0) {
+            const p = points[elements[0].index];
+            const session = sessionMap[p.sessionId];
+            const store = session.store_id ? storeMap[session.store_id] : null;
+            const totEntry = sessionTotalsRaw.find(e => e.session_id === p.sessionId);
+            showSessionDetail({
+              sessionId: p.sessionId,
+              date: session.date,
+              total: totEntry ? totEntry.total : 0,
+              label: store ? store.location : "?"
+            });
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: hasUnits ? "mL/unit" : "mL" } },
+          x: { title: { display: true, text: "Date" } }
+        }
+      }
+    });
+  } else {
+    volumeSection.classList.add("hidden");
+    if (volumeChartInstance) { volumeChartInstance.destroy(); volumeChartInstance = null; }
+  }
+
   // Observations table
   const detailDiv = document.getElementById("productDetail");
   let html = '<h3>Observations</h3>';
@@ -589,6 +648,8 @@ function showProduct(name) {
     + makeSortableHeader('Price', 'num')
     + makeSortableHeader('Grams', 'num')
     + makeSortableHeader('EUR/kg', 'num')
+    + makeSortableHeader('Vol (mL)', 'num')
+    + makeSortableHeader('EUR/L', 'num')
     + makeSortableHeader('Units', 'num')
     + makeSortableHeader('EUR/unit', 'num')
     + makeSortableHeader('%%MG', 'num')
@@ -604,6 +665,8 @@ function showProduct(name) {
     html += '<td class="num">' + p.price.toFixed(2) + '</td>';
     html += '<td class="num">' + (p.grams != null ? p.grams : '-') + '</td>';
     html += '<td class="num">' + (p.price_per_kg != null ? p.price_per_kg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (p.volume_ml != null ? p.volume_ml : '-') + '</td>';
+    html += '<td class="num">' + (p.price_per_liter != null ? p.price_per_liter.toFixed(2) : '-') + '</td>';
     html += '<td class="num">' + (p.unit_count != null ? p.unit_count : '-') + '</td>';
     html += '<td class="num">' + (p.price_per_unit != null ? p.price_per_unit.toFixed(4) : '-') + '</td>';
     html += '<td class="num">' + (p.fat_pct != null ? p.fat_pct : '-') + '</td>';
@@ -653,11 +716,14 @@ function renderAllItems() {
     let totalUnits = 0;
     let totalGrams = 0;
     let hasGrams = false;
+    let totalVolume = 0;
+    let hasVolume = false;
     let hasUnits = false;
     obs.forEach(o => {
       totalSpent += o.price * o.quantity;
       totalQty += o.quantity;
       if (o.grams != null) { totalGrams += o.grams * o.quantity; hasGrams = true; }
+      if (o.volume_ml != null) { totalVolume += o.volume_ml * o.quantity; hasVolume = true; }
       if (o.unit_count != null) { totalUnits += o.unit_count * o.quantity; hasUnits = true; }
     });
     return {
@@ -667,6 +733,8 @@ function renderAllItems() {
       totalQty: totalQty,
       totalGrams: hasGrams ? totalGrams : null,
       meanEurKg: hasGrams && totalGrams > 0 ? (totalSpent / totalGrams) * 1000 : null,
+      totalVolume: hasVolume ? totalVolume : null,
+      meanEurL: hasVolume && totalVolume > 0 ? (totalSpent / totalVolume) * 1000 : null,
       totalUnits: hasUnits ? totalUnits : null,
       meanEurUnit: hasUnits && totalUnits > 0 ? totalSpent / totalUnits : null,
       obs: obs,
@@ -682,6 +750,8 @@ function renderAllItems() {
     + makeSortableHeader('Qty bought', 'num')
     + makeSortableHeader('Total grams', 'num')
     + makeSortableHeader('Mean EUR/kg', 'num')
+    + makeSortableHeader('Total vol (mL)', 'num')
+    + makeSortableHeader('Mean EUR/L', 'num')
     + makeSortableHeader('Total units', 'num')
     + makeSortableHeader('Mean EUR/unit', 'num')
     + '</tr></thead><tbody>';
@@ -694,6 +764,8 @@ function renderAllItems() {
     html += '<td class="num">' + p.totalQty + '</td>';
     html += '<td class="num">' + (p.totalGrams != null ? p.totalGrams : '-') + '</td>';
     html += '<td class="num">' + (p.meanEurKg != null ? p.meanEurKg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (p.totalVolume != null ? p.totalVolume : '-') + '</td>';
+    html += '<td class="num">' + (p.meanEurL != null ? p.meanEurL.toFixed(2) : '-') + '</td>';
     html += '<td class="num">' + (p.totalUnits != null ? p.totalUnits : '-') + '</td>';
     html += '<td class="num">' + (p.meanEurUnit != null ? p.meanEurUnit.toFixed(4) : '-') + '</td>';
     html += '</tr>';
@@ -742,6 +814,8 @@ function renderAllItems() {
           + '<td class="num">' + o.price.toFixed(2) + '</td>'
           + '<td class="num">' + (o.grams != null ? o.grams : '-') + '</td>'
           + '<td class="num">' + (o.price_per_kg != null ? o.price_per_kg.toFixed(2) : '-') + '</td>'
+          + '<td class="num">' + (o.volume_ml != null ? o.volume_ml : '-') + '</td>'
+          + '<td class="num">' + (o.price_per_liter != null ? o.price_per_liter.toFixed(2) : '-') + '</td>'
           + '<td class="num">' + (o.unit_count != null ? o.unit_count : '-') + '</td>'
           + '<td class="num">' + (o.price_per_unit != null ? o.price_per_unit.toFixed(4) : '-') + '</td>';
         tbody.insertBefore(tr, ref);
@@ -772,7 +846,7 @@ function detectDegradation() {
   const results = [];
   DATA.products.forEach(p => {
     const sorted = p.observations
-      .filter(o => o.grams != null || o.fat_pct != null)
+      .filter(o => o.grams != null || o.fat_pct != null || o.volume_ml != null)
       .map(o => ({ ...o, date: sessionMap[o.session_id].date }))
       .sort((a, b) => a.date.localeCompare(b.date));
     if (sorted.length < 2) return;
@@ -781,16 +855,18 @@ function detectDegradation() {
       const curr = sorted[i];
       if (curr.price < prev.price) continue;
       const gramsDown = curr.grams != null && prev.grams != null && curr.grams < prev.grams;
+      const volumeDown = curr.volume_ml != null && prev.volume_ml != null && curr.volume_ml < prev.volume_ml;
       const fatDown = curr.fat_pct != null && prev.fat_pct != null && curr.fat_pct < prev.fat_pct;
-      if (gramsDown || fatDown) {
+      if (gramsDown || volumeDown || fatDown) {
         results.push({
           name: p.canonical_name,
           dateBefore: prev.date.slice(0, 10),
           dateAfter: curr.date.slice(0, 10),
           gramsBefore: prev.grams, gramsAfter: curr.grams,
+          volumeBefore: prev.volume_ml, volumeAfter: curr.volume_ml,
           fatBefore: prev.fat_pct, fatAfter: curr.fat_pct,
           priceBefore: prev.price, priceAfter: curr.price,
-          gramsDown: gramsDown, fatDown: fatDown,
+          gramsDown: gramsDown, volumeDown: volumeDown, fatDown: fatDown,
         });
         break;
       }
@@ -820,6 +896,7 @@ function renderDegradation() {
   items.forEach(it => {
     const types = [];
     if (it.gramsDown) types.push('grams');
+    if (it.volumeDown) types.push('volume');
     if (it.fatDown) types.push('%%MG');
     const typeStr = types.join(', ');
     // Show grams row
@@ -833,6 +910,22 @@ function renderDegradation() {
       html += '<td>' + it.dateAfter + '</td>';
       html += '<td class="num">' + it.gramsBefore + 'g</td>';
       html += '<td class="num">' + it.gramsAfter + 'g</td>';
+      html += '<td class="num shrink-pct">' + pct + '%%</td>';
+      html += '<td class="num">' + it.priceBefore.toFixed(2) + '</td>';
+      html += '<td class="num">' + it.priceAfter.toFixed(2) + '</td>';
+      html += '</tr>';
+    }
+    // Show volume row
+    if (it.volumeDown) {
+      const pct = ((it.volumeAfter - it.volumeBefore) / it.volumeBefore * 100).toFixed(1);
+      html += '<tr>';
+      html += '<td><a href="#" class="product-link" data-name="'
+        + it.name + '">' + it.name + '</a></td>';
+      html += '<td>Volume</td>';
+      html += '<td>' + it.dateBefore + '</td>';
+      html += '<td>' + it.dateAfter + '</td>';
+      html += '<td class="num">' + it.volumeBefore + 'mL</td>';
+      html += '<td class="num">' + it.volumeAfter + 'mL</td>';
       html += '<td class="num shrink-pct">' + pct + '%%</td>';
       html += '<td class="num">' + it.priceBefore.toFixed(2) + '</td>';
       html += '<td class="num">' + it.priceAfter.toFixed(2) + '</td>';

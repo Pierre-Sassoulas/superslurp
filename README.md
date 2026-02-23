@@ -20,9 +20,10 @@ The receipt line `QUENELLE NATURE U X6 240G  /  3 x 0,85 €  2,55 €  11` is p
 {
   "name": "QUENELLE NATURE U",
   "price": 0.85,
-  "quantity": 3,
+  "bought": 3,
   "units": 6,
   "grams": 240.0,
+  "volume_ml": null,
   "tr": false,
   "way_of_paying": "11",
   "discount": null,
@@ -95,6 +96,8 @@ products with their observations:
           "grams": null,
           "discount": null,
           "price_per_kg": null,
+          "volume_ml": null,
+          "price_per_liter": null,
           "unit_count": 12,
           "price_per_unit": 0.2625,
           "bio": true

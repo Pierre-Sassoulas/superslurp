@@ -18,6 +18,7 @@ from superslurp.compare.normalize import (
     is_bio,
     normalize_for_matching,
 )
+from superslurp.parse.v1.parse_items import _get_volume
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -602,3 +603,77 @@ def test_synonyms_fixture_loads_and_expands() -> None:
     # PAP.TOIL → PAPIER TOILETTE (BLC/U stripped)
     result = normalize_for_matching("PAP.TOIL.BLC 2PL.U", synonyms)
     assert result == "PAPIER TOILETTE 2PL"
+
+
+# --- volume ---
+
+
+def test_get_volume_liters() -> None:
+    name, vol, units = _get_volume("PUR JUS MULTIFRUITS U BIO 1L")
+    assert vol == 1000.0
+    assert units is None
+    assert "1L" not in name
+
+
+def test_get_volume_centiliters() -> None:
+    name, vol, units = _get_volume("VIN ROGUE BORDEAUX 75CL")
+    assert vol == 750.0
+    assert units is None
+    assert "75CL" not in name
+
+
+def test_get_volume_milliliters() -> None:
+    _name, vol, units = _get_volume("CREME LIQUIDE 250ML")
+    assert vol == 250.0
+    assert units is None
+
+
+def test_get_volume_multiplier() -> None:
+    name, vol, units = _get_volume("LAIT DEMI-ECREME 6X1L")
+    assert vol == 6000.0
+    assert units == 6
+    assert "6X1L" not in name
+
+
+def test_get_volume_none() -> None:
+    _name, vol, units = _get_volume("SUCRE POUDRE 1KG")
+    assert vol is None
+    assert units is None
+
+
+def test_normalize_strips_volume() -> None:
+    assert "1L" not in normalize_for_matching("PUR JUS MULTIFRUITS U BIO 1L")
+    assert "75CL" not in normalize_for_matching("VIN ROGUE 75CL")
+
+
+def test_price_per_liter_in_observation() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {
+                        "name": "PUR JUS 1L",
+                        "price": 2.70,
+                        "bought": 1,
+                        "grams": None,
+                        "volume_ml": 1000.0,
+                    },
+                    {
+                        "name": "SUCRE POUDRE",
+                        "price": 1.50,
+                        "bought": 1,
+                        "grams": 1000.0,
+                        "volume_ml": None,
+                    },
+                ]
+            },
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    juice = next(p for p in result["products"] if "JUS" in p["canonical_name"])
+    assert juice["observations"][0]["volume_ml"] == 1000.0
+    assert juice["observations"][0]["price_per_liter"] == 2.70
+    sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
+    assert sugar["observations"][0]["volume_ml"] is None
+    assert sugar["observations"][0]["price_per_liter"] is None

@@ -59,7 +59,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
 
             quantity, unit_price, grams_from_weight = _parse_detail_lines(lines, i + 1)
 
-            name, grams_from_name, units, fat_pct, bio, milk_treatment = (
+            name, grams_from_name, units, fat_pct, bio, milk_treatment, volume_ml = (
                 _parse_name_attributes(raw_name, synonyms=synonyms)
             )
             grams = (
@@ -79,6 +79,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "bought": quantity,
                 "units": units,
                 "grams": grams,
+                "volume_ml": volume_ml,
                 "fat_pct": fat_pct,
                 "tr": tr,
                 "way_of_paying": way_of_paying,

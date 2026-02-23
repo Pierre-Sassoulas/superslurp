@@ -194,16 +194,14 @@ def test_compare_receipt_dicts_bio_flag() -> None:
                         "price": 4.70,
                         "bought": 1,
                         "grams": 250.0,
-                        "bio": True,
-                        "milk_treatment": None,
+                        "properties": {"bio": True},
                     },
                     {
                         "name": "AIL BLANC",
                         "price": 3.13,
                         "bought": 1,
                         "grams": None,
-                        "bio": False,
-                        "milk_treatment": None,
+                        "properties": {},
                     },
                 ]
             },

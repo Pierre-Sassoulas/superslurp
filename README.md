@@ -27,8 +27,7 @@ The receipt line `QUENELLE NATURE U X6 240G  /  3 x 0,85 €  2,55 €  11` is p
   "tr": false,
   "way_of_paying": "11",
   "discount": null,
-  "bio": false,
-  "milk_treatment": null
+  "properties": {}
 }
 ```
 

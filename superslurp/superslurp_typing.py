@@ -12,6 +12,12 @@ class Store(TypedDict):
     naf: str | None
 
 
+class Properties(TypedDict, total=False):
+    bio: bool
+    milk_treatment: str
+    brand: str
+
+
 class Item(TypedDict):
     raw: str
     raw_name: str
@@ -25,8 +31,7 @@ class Item(TypedDict):
     tr: bool
     way_of_paying: str | None
     discount: float | None
-    bio: bool
-    milk_treatment: str | None
+    properties: Properties
 
 
 class Category(enum.Enum):

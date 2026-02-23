@@ -12,7 +12,7 @@ from superslurp.compare.normalize import (
 )
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
-from superslurp.superslurp_typing import Category, Item, Items
+from superslurp.superslurp_typing import Category, Item, Items, Properties
 
 
 class WrongNumberOfItemException(Exception): ...
@@ -148,6 +148,16 @@ def _parse_name_attributes(
     return name, grams, units, fat_pct, bio, milk_treatment, volume_ml
 
 
+def build_properties(bio: bool, milk_treatment: str | None) -> Properties:
+    """Build a Properties dict, only including truthy values."""
+    props: Properties = {}
+    if bio:
+        props["bio"] = True
+    if milk_treatment is not None:
+        props["milk_treatment"] = milk_treatment
+    return props
+
+
 def get_item_from_item_infos(  # pylint: disable=too-many-locals
     item_info: re.Match[str], synonyms: dict[str, str] | None = None
 ) -> Item:
@@ -182,8 +192,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
         "discount": None,
-        "bio": bio,
-        "milk_treatment": milk_treatment,
+        "properties": build_properties(bio, milk_treatment),
     }
     return item
 

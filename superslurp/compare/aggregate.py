@@ -95,9 +95,10 @@ def _build_observation(
         "price_per_unit": price_per_unit,
         "fat_pct": item.get("fat_pct"),
     }
-    if item.get("bio"):
+    props = item.get("properties", {})
+    if props.get("bio"):
         obs["bio"] = True
-    milk = item.get("milk_treatment")
+    milk = props.get("milk_treatment")
     if milk:
         obs["milk_treatment"] = milk
     return obs

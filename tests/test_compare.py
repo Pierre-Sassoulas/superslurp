@@ -14,7 +14,9 @@ from superslurp.compare.aggregate import (
 from superslurp.compare.matcher import FuzzyMatcher
 from superslurp.compare.normalize import (
     extract_unit_count,
+    get_brand,
     get_milk_treatment,
+    get_quality_label,
     is_bio,
     normalize_for_matching,
 )
@@ -675,3 +677,85 @@ def test_price_per_liter_in_observation() -> None:
     sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
     assert sugar["observations"][0]["volume_ml"] is None
     assert sugar["observations"][0]["price_per_liter"] is None
+
+
+# --- brand ---
+
+
+def test_get_brand() -> None:
+    assert get_brand("BRIOCHE TRESSEE PASQUIER") == "PASQUIER"
+    assert get_brand("SPAGHETTI PANZANI 500G") == "PANZANI"
+    assert get_brand("LAIT DEMI-ECREME LACTEL 1L") == "LACTEL"
+    assert get_brand("BRIE PASTEURISE ROITELET") == "ROITELET"
+    assert get_brand("OEUFS PA CAL.MIXTE U X12") == "U"
+    assert get_brand("SUCRE POUDRE 1KG") is None
+    assert get_brand("AUBERGINE") is None
+
+
+def test_get_brand_u_standalone() -> None:
+    """U should only match as a standalone word, not inside other words."""
+    assert get_brand("SUCRE POUDRE") is None
+    assert get_brand("AIL BLC U BIO FILET") == "U"
+
+
+# --- quality label ---
+
+
+def test_get_quality_label() -> None:
+    assert get_quality_label("BEAUFORT AOP LAIT CRU") == "AOP"
+    assert get_quality_label("COMTE AOP") == "AOP"
+    assert get_quality_label("SAUCISSE SECHE IGP") == "IGP"
+    assert get_quality_label("POULET LABEL ROUGE") == "Label Rouge"
+    assert get_quality_label("OEUF.PA.MOYEN LR LOUE X10+5OFF") == "Label Rouge"
+    assert get_quality_label("SUCRE POUDRE") is None
+
+
+def test_get_quality_label_label_rouge_before_lr() -> None:
+    """LABEL ROUGE should be detected even when LR also appears."""
+    assert get_quality_label("POULET LABEL ROUGE LR") == "Label Rouge"
+
+
+# --- brand/label in observations ---
+
+
+def test_compare_receipt_dicts_brand_label() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {
+                        "name": "BRIOCHE TRESSEE PASQUIER",
+                        "price": 3.50,
+                        "bought": 1,
+                        "grams": None,
+                        "properties": {"brand": "PASQUIER"},
+                    },
+                    {
+                        "name": "COMTE AOP",
+                        "price": 5.20,
+                        "bought": 1,
+                        "grams": 200.0,
+                        "properties": {"label": "AOP"},
+                    },
+                    {
+                        "name": "SUCRE POUDRE",
+                        "price": 1.50,
+                        "bought": 1,
+                        "grams": 1000.0,
+                        "properties": {},
+                    },
+                ]
+            },
+        }
+    ]
+    result = compare_receipt_dicts(receipts)
+    brioche = next(p for p in result["products"] if "BRIOCHE" in p["canonical_name"])
+    assert brioche["observations"][0].get("brand") == "PASQUIER"
+    assert "label" not in brioche["observations"][0]
+    comte = next(p for p in result["products"] if "COMTE" in p["canonical_name"])
+    assert comte["observations"][0].get("label") == "AOP"
+    assert "brand" not in comte["observations"][0]
+    sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
+    assert "brand" not in sugar["observations"][0]
+    assert "label" not in sugar["observations"][0]

@@ -7,8 +7,12 @@ from collections import defaultdict
 from superslurp.compare.normalize import (
     expand_synonyms,
     extract_unit_count,
+    get_brand,
     get_milk_treatment,
+    get_quality_label,
     is_bio,
+    strip_brand,
+    strip_quality_label,
 )
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
@@ -105,8 +109,8 @@ def _parse_name_grams_units(
     raw_name: str,
 ) -> tuple[str, float | None, int | None]:
     """Extract clean name, grams and units from a raw product name."""
-    name, grams, units, _fat_pct, _bio, _milk, _volume_ml = _parse_name_attributes(
-        raw_name
+    name, grams, units, _fat_pct, _bio, _milk, _volume_ml, _brand, _label = (
+        _parse_name_attributes(raw_name)
     )
     return name, grams, units
 
@@ -114,8 +118,18 @@ def _parse_name_grams_units(
 def _parse_name_attributes(
     raw_name: str,
     synonyms: dict[str, str] | None = None,
-) -> tuple[str, float | None, int | None, float | None, bool, str | None, float | None]:
-    """Extract clean name, grams, units, fat %, bio, milk treatment and volume_ml.
+) -> tuple[
+    str,
+    float | None,
+    int | None,
+    float | None,
+    bool,
+    str | None,
+    float | None,
+    str | None,
+    str | None,
+]:
+    """Extract clean name, grams, units, fat %, bio, milk treatment, volume_ml, brand and label.
 
     When *synonyms* is provided, abbreviations are expanded **before**
     any attribute extraction so that patterns like ``%MG LP`` →
@@ -143,18 +157,44 @@ def _parse_name_attributes(
     fat_pct = _get_fat_pct(name)
     if fat_pct is not None:
         name = _FAT_PCT_PATTERN.sub("", name).strip()
+    name, bio, milk_treatment, brand, label = _extract_properties(name, raw_name)
+    return name, grams, units, fat_pct, bio, milk_treatment, volume_ml, brand, label
+
+
+def _extract_properties(
+    name: str, raw_name: str
+) -> tuple[str, bool, str | None, str | None, str | None]:
+    """Detect bio/milk/brand/label flags and strip them from *name*."""
     bio = is_bio(raw_name)
+    if bio:
+        name = re.sub(r"\bBIO\b", "", name).strip()
     milk_treatment = get_milk_treatment(raw_name)
-    return name, grams, units, fat_pct, bio, milk_treatment, volume_ml
+    brand = get_brand(raw_name)
+    if brand is not None:
+        name = strip_brand(name, brand)
+    label = get_quality_label(raw_name)
+    if label is not None:
+        name = strip_quality_label(name)
+    name = re.sub(r"\s+", " ", name).strip()
+    return name, bio, milk_treatment, brand, label
 
 
-def build_properties(bio: bool, milk_treatment: str | None) -> Properties:
+def build_properties(
+    bio: bool,
+    milk_treatment: str | None,
+    brand: str | None = None,
+    label: str | None = None,
+) -> Properties:
     """Build a Properties dict, only including truthy values."""
     props: Properties = {}
     if bio:
         props["bio"] = True
     if milk_treatment is not None:
         props["milk_treatment"] = milk_treatment
+    if brand is not None:
+        props["brand"] = brand
+    if label is not None:
+        props["label"] = label
     return props
 
 
@@ -167,7 +207,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
     assert raw_name, f"Name is empty: {raw_name}"
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
-    name, grams, units, fat_pct, bio, milk_treatment, volume_ml = (
+    name, grams, units, fat_pct, bio, milk_treatment, volume_ml, brand, label = (
         _parse_name_attributes(raw_name, synonyms=synonyms)
     )
     quantity_str = item_info.group("quantity")
@@ -192,7 +232,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
         "discount": None,
-        "properties": build_properties(bio, milk_treatment),
+        "properties": build_properties(bio, milk_treatment, brand, label),
     }
     return item
 

@@ -101,6 +101,12 @@ def _build_observation(
     milk = props.get("milk_treatment")
     if milk:
         obs["milk_treatment"] = milk
+    brand = props.get("brand")
+    if brand:
+        obs["brand"] = brand
+    label = props.get("label")
+    if label:
+        obs["label"] = label
     return obs
 
 

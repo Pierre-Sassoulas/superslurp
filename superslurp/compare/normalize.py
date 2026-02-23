@@ -36,6 +36,9 @@ _STRIP_WORDS = frozenset(
         # Milk treatment (standalone words; LAIT PASTEURISE/LAIT CRU handled as phrases below)
         "PASTEURISE",
         "CRU",
+        # Quality labels (extracted separately as observation flag)
+        "AOP",
+        "IGP",
         # Farming / quality qualifiers
         "PA",
         "LR",
@@ -193,3 +196,72 @@ def get_milk_treatment(name: str) -> str | None:
     if re.search(r"\bPASTEURISE\b", name):
         return "pasteurise"
     return None
+
+
+_KNOWN_BRANDS = frozenset(
+    {
+        "U",
+        "PASQUIER",
+        "PANZANI",
+        "SODEBO",
+        "DAUCY",
+        "BRETS",
+        "LACTEL",
+        "DANETTE",
+        "BLEDINA",
+        "HIPP",
+        "MAGGI",
+        "VAHINE",
+        "FRANCINE",
+        "TRAMIER",
+        "OISHIYA",
+        "ROITELET",
+        "RICHESMONTS",
+    }
+)
+
+
+def get_brand(name: str) -> str | None:
+    """Detect a known brand in a product name.
+
+    Returns the brand string or ``None``.
+    """
+    upper = name.upper()
+    for brand in _KNOWN_BRANDS:
+        if re.search(r"\b" + re.escape(brand) + r"\b", upper):
+            return brand
+    return None
+
+
+def strip_brand(name: str, brand: str) -> str:
+    """Remove a brand word from *name* (case-insensitive, whole word)."""
+    return re.sub(
+        r"\b" + re.escape(brand) + r"\b", "", name, flags=re.IGNORECASE
+    ).strip()
+
+
+_QUALITY_LABEL_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bLABEL ROUGE\b"), "Label Rouge"),
+    (re.compile(r"\bAOP\b"), "AOP"),
+    (re.compile(r"\bIGP\b"), "IGP"),
+    (re.compile(r"\bLR\b"), "Label Rouge"),
+]
+
+
+def get_quality_label(name: str) -> str | None:
+    """Detect a quality label (AOP, IGP, Label Rouge) in a product name.
+
+    Returns the label string or ``None``.
+    """
+    upper = name.upper()
+    for pattern, label in _QUALITY_LABEL_PATTERNS:
+        if pattern.search(upper):
+            return label
+    return None
+
+
+def strip_quality_label(name: str) -> str:
+    """Remove quality label tokens (LABEL ROUGE, AOP, IGP, LR) from *name*."""
+    for pattern, _ in _QUALITY_LABEL_PATTERNS:
+        name = pattern.sub("", name)
+    return re.sub(r"\s+", " ", name).strip()

@@ -25,7 +25,7 @@ class Item(TypedDict):
     name: str
     price: float
     bought: int
-    units: int | None
+    units: float | None
     grams: float | None
     volume_ml: float | None
     fat_pct: float | None

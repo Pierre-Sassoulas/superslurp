@@ -421,6 +421,15 @@ def test_extract_unit_count_leading() -> None:
     assert extract_unit_count("18 OEUFS FRAIS") == 18
 
 
+def test_extract_unit_count_leading_plus() -> None:
+    assert extract_unit_count("3+1RAC TRUF ETE") == 4
+    assert extract_unit_count("3+1RACL MOUTARDE") == 4
+
+
+def test_extract_unit_count_leading_fraction() -> None:
+    assert extract_unit_count("1/2 REBLOCH USAV") == 0.5
+
+
 def test_extract_unit_count_none() -> None:
     assert extract_unit_count("OEUFS DATE COURTE") is None
     assert extract_unit_count("SUCRE POUDRE") is None

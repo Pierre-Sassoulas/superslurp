@@ -107,7 +107,7 @@ def get_new_category(line: str) -> Category:
 
 def _parse_name_grams_units(
     raw_name: str,
-) -> tuple[str, float | None, int | None]:
+) -> tuple[str, float | None, float | None]:
     """Extract clean name, grams and units from a raw product name."""
     name, grams, units, _fat_pct, _bio, _milk, _volume_ml, _brand, _label = (
         _parse_name_attributes(raw_name)
@@ -121,7 +121,7 @@ def _parse_name_attributes(
 ) -> tuple[
     str,
     float | None,
-    int | None,
+    float | None,
     float | None,
     bool,
     str | None,
@@ -137,7 +137,8 @@ def _parse_name_attributes(
     """
     if synonyms:
         raw_name = expand_synonyms(raw_name, synonyms)
-    name, grams, units = _get_gram(raw_name)
+    name, grams, units_int = _get_gram(raw_name)
+    units: float | None = units_int
     offert = _get_offert(name)
     name = _OFFERT_PATTERN.sub("", name).strip()
     if offert and units is not None and grams is not None:
@@ -154,6 +155,7 @@ def _parse_name_attributes(
         units = extract_unit_count(raw_name)
         if units is not None:
             name = _UNIT_PATTERN.sub("", name).strip()
+            name = re.sub(r"^\d+[+/]\d+\s*", "", name).strip()
     fat_pct = _get_fat_pct(name)
     if fat_pct is not None:
         name = _FAT_PCT_PATTERN.sub("", name).strip()

@@ -71,12 +71,14 @@ _PROTECTED_COMPOUNDS: dict[str, set[str]] = {
 }
 _STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
-# Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, and leading counts like "18 OEUFS"
+# Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, leading "18 OEUFS", leading "3+1RAC"
 _STRIP_UNIT_COUNT = re.compile(
     r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
 )
 _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:L|CL|ML)\b")
 _LEADING_COUNT = re.compile(r"^\d+\s+")
+# Leading "3+1" (sum → 4) or "1/2" (fraction → 0.5), glued or spaced before product word
+_LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
 
 # Extract unit count: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 4=12RLX → 4, 18 OEUFS → 18
 _UNIT_COUNT_PATTERN = re.compile(
@@ -126,8 +128,9 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     name = _STRIP_COUNT_PATTERN.sub("", name)
     # Strip volume patterns like 1L, 75CL, 250ML, 6X1L
     name = _STRIP_VOLUME.sub("", name)
-    # Strip unit count patterns like X12, BTEX6, X10+5OFF, leading "18 "
+    # Strip unit count patterns like X12, BTEX6, X10+5OFF, leading "18 ", "3+1", "1/2"
     name = _STRIP_UNIT_COUNT.sub("", name)
+    name = _LEADING_ARITH.sub("", name)
     name = _LEADING_COUNT.sub("", name)
     # Strip known qualifier words, but keep protected compounds
     words = name.split()
@@ -153,14 +156,19 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     return name
 
 
-def extract_unit_count(name: str) -> int | None:  # pylint: disable=too-many-return-statements
+def extract_unit_count(name: str) -> float | None:  # pylint: disable=too-many-return-statements
     """Extract the number of units from a product name.
 
     Examples: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 12RLX → 12,
-    "18 OEUFS" → 18.
+    "18 OEUFS" → 18, "3+1RAC" → 4, "1/2 REBLOCH" → 0.5.
     Returns None if no count found.
     """
     name = name.upper().replace(".", " ")
+    # Leading N+M or N/M (e.g. "3+1RAC" → 4, "1/2 REBLOCH" → 0.5)
+    lm = _LEADING_ARITH.match(name)
+    if lm:
+        a, op, b = int(lm.group(1)), lm.group(2), int(lm.group(3))
+        return a + b if op == "+" else a / b
     m = _UNIT_COUNT_PATTERN.search(name)
     if m is None:
         return None

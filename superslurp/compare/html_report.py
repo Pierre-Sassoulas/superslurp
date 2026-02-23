@@ -70,6 +70,13 @@ _HTML_TEMPLATE = """\
   #allItems th .sort-arrow { font-size: 0.7em; margin-left: 0.3em; opacity: 0.4; }
   #allItems th.sort-active .sort-arrow { opacity: 1; }
   #allItems td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tabs { display: flex; gap: 0; margin-top: 1.5rem; border-bottom: 2px solid #e5e7eb; }
+  .tab-btn { padding: 0.5rem 1.2rem; background: none; border: none; border-bottom: 2px solid transparent;
+             margin-bottom: -2px; cursor: pointer; font-size: 1rem; color: #666; }
+  .tab-btn:hover { color: #333; }
+  .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+  .tab-panel { display: none; padding-top: 0.5rem; }
+  .tab-panel.active { display: block; }
 </style>
 </head>
 <body>
@@ -81,24 +88,36 @@ _HTML_TEMPLATE = """\
 </div>
 <div id="sessionDetail" class="hidden"></div>
 
-<h2>Shrinkflation detected</h2>
-<div id="shrinkflation" class="hidden"></div>
+<div class="tabs">
+  <button class="tab-btn active" data-tab="tab-products">Product price evolution</button>
+  <button class="tab-btn" data-tab="tab-shrinkflation">Shrinkflation</button>
+  <button class="tab-btn" data-tab="tab-allitems">All items</button>
+</div>
 
-<h2>Product price evolution</h2>
-<div class="product-select">
-  <input id="productInput" list="productList" placeholder="Search for a product...">
-  <datalist id="productList"></datalist>
+<div id="tab-products" class="tab-panel active">
+  <h2>Product price evolution</h2>
+  <div class="product-select">
+    <input id="productInput" list="productList" placeholder="Search for a product...">
+    <datalist id="productList"></datalist>
+  </div>
+  <div class="chart-container">
+    <canvas id="priceChart"></canvas>
+  </div>
+  <div id="gramsSection" class="chart-container hidden">
+    <canvas id="gramsChart"></canvas>
+  </div>
+  <div id="productDetail" class="chart-container hidden"></div>
 </div>
-<div class="chart-container">
-  <canvas id="priceChart"></canvas>
-</div>
-<div id="gramsSection" class="chart-container hidden">
-  <canvas id="gramsChart"></canvas>
-</div>
-<div id="productDetail" class="chart-container hidden"></div>
 
-<h2>All items</h2>
-<div id="allItems"></div>
+<div id="tab-shrinkflation" class="tab-panel">
+  <h2>Shrinkflation detected</h2>
+  <div id="shrinkflation" class="hidden"></div>
+</div>
+
+<div id="tab-allitems" class="tab-panel">
+  <h2>All items</h2>
+  <div id="allItems"></div>
+</div>
 
 <script>
 const DATA = __DATA_JSON__;
@@ -108,6 +127,18 @@ const storeMap = {};
 DATA.stores.forEach(s => { storeMap[s.id] = s; });
 const sessionMap = {};
 DATA.sessions.forEach(s => { sessionMap[s.id] = s; });
+
+// --- Tabs ---
+function switchTab(tabId) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  const btn = document.querySelector('.tab-btn[data-tab="' + tabId + '"]');
+  if (btn) btn.classList.add("active");
+  document.getElementById(tabId).classList.add("active");
+}
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = function() { switchTab(this.getAttribute("data-tab")); };
+});
 
 // --- Session items index: session_id -> [{name, obs}] ---
 const sessionItems = {};
@@ -226,6 +257,7 @@ function showSessionDetail(entry) {
       const name = this.getAttribute("data-name");
       document.getElementById("productInput").value = name;
       showProduct(name);
+      switchTab("tab-products");
       document.getElementById("priceChart")
         .scrollIntoView({ behavior: "smooth" });
     };
@@ -617,6 +649,7 @@ function renderAllItems() {
       const name = this.getAttribute("data-name");
       document.getElementById("productInput").value = name;
       showProduct(name);
+      switchTab("tab-products");
       document.getElementById("priceChart")
         .scrollIntoView({ behavior: "smooth" });
     };
@@ -694,6 +727,7 @@ function renderShrinkflation() {
       const name = this.getAttribute("data-name");
       document.getElementById("productInput").value = name;
       showProduct(name);
+      switchTab("tab-products");
       document.getElementById("priceChart")
         .scrollIntoView({ behavior: "smooth" });
     };

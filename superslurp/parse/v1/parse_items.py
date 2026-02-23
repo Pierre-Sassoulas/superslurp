@@ -88,12 +88,23 @@ def _parse_name_grams_units(
     raw_name: str,
 ) -> tuple[str, float | None, int | None]:
     """Extract clean name, grams and units from a raw product name."""
+    name, grams, units, _fat_pct = _parse_name_attributes(raw_name)
+    return name, grams, units
+
+
+def _parse_name_attributes(
+    raw_name: str,
+) -> tuple[str, float | None, int | None, float | None]:
+    """Extract clean name, grams, units and fat % from a raw product name."""
     name, grams, units = _get_gram(raw_name)
     if units is None:
         units = extract_unit_count(raw_name)
         if units is not None:
             name = _UNIT_PATTERN.sub("", name).strip()
-    return name, grams, units
+    fat_pct = _get_fat_pct(name)
+    if fat_pct is not None:
+        name = _FAT_PCT_PATTERN.sub("", name).strip()
+    return name, grams, units, fat_pct
 
 
 def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
@@ -103,7 +114,7 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
     assert raw_name, f"Name is empty: {raw_name}"
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
-    name, grams, units = _parse_name_grams_units(raw_name)
+    name, grams, units, fat_pct = _parse_name_attributes(raw_name)
     quantity_str = item_info.group("quantity")
     if grams is None and quantity_str and "kg" in quantity_str:
         grams = _get_grams_from_quantity(quantity_str)
@@ -120,6 +131,7 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
         "quantity": quantity,
         "units": units,
         "grams": grams,
+        "fat_pct": fat_pct,
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
         "discount": None,
@@ -162,6 +174,17 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
             grams *= units
     name = name.replace(search.group(0), "")
     return name.strip(), grams, units
+
+
+_FAT_PCT_PATTERN = re.compile(r"\s*\d+[.,]?\d*%\s*MG\b")
+
+
+def _get_fat_pct(name: str) -> float | None:
+    """Extract fat percentage (%MG) from a product name."""
+    m = re.search(r"(\d+[.,]?\d*)%\s*MG\b", name)
+    if m is None:
+        return None
+    return float(m.group(1).replace(",", "."))
 
 
 def _get_grams_from_quantity(quantity_str: str) -> float | None:

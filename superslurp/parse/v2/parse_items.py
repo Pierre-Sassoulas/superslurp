@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from superslurp.parse.v1.parse_items import _parse_name_grams_units
+from superslurp.parse.v1.parse_items import _parse_name_attributes
 from superslurp.superslurp_typing import Category, Item, Items
 
 ITEM_PATTERN = re.compile(r"^(.+?)\s{2,}(\(T\)\s+)?([\d,]+ €)\s+(\d{2})\s*$")
@@ -57,7 +57,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
 
             quantity, unit_price, grams_from_weight = _parse_detail_lines(lines, i + 1)
 
-            name, grams_from_name, units = _parse_name_grams_units(raw_name)
+            name, grams_from_name, units, fat_pct = _parse_name_attributes(raw_name)
             grams = (
                 grams_from_weight if grams_from_weight is not None else grams_from_name
             )
@@ -74,6 +74,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "quantity": quantity,
                 "units": units,
                 "grams": grams,
+                "fat_pct": fat_pct,
                 "tr": tr,
                 "way_of_paying": way_of_paying,
                 "discount": None,

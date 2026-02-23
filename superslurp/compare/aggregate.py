@@ -88,6 +88,7 @@ def _build_observation(
         "price_per_kg": price_per_kg,
         "unit_count": unit_count,
         "price_per_unit": price_per_unit,
+        "fat_pct": item.get("fat_pct"),
     }
     if is_bio(item["name"]):
         obs["bio"] = True

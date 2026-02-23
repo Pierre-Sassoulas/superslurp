@@ -19,6 +19,7 @@ class Item(TypedDict):
     quantity: int
     units: int | None
     grams: float | None
+    fat_pct: float | None
     tr: bool
     way_of_paying: str | None
     discount: float | None

@@ -217,6 +217,9 @@ _KNOWN_BRANDS = frozenset(
         "OISHIYA",
         "ROITELET",
         "RICHESMONTS",
+        "SCB",
+        "NUII",
+        "QUAKER",
     }
 )
 

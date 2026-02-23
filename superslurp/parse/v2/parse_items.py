@@ -69,6 +69,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
 
             item: Item = {
                 "raw": line.strip(),
+                "raw_name": raw_name,
                 "name": name,
                 "price": price,
                 "quantity": quantity,

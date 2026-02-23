@@ -4,7 +4,7 @@ import logging
 import re
 from collections import defaultdict
 
-from superslurp.compare.normalize import extract_unit_count
+from superslurp.compare.normalize import expand_synonyms, extract_unit_count
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
 from superslurp.superslurp_typing import Category, Item, Items
@@ -94,8 +94,16 @@ def _parse_name_grams_units(
 
 def _parse_name_attributes(
     raw_name: str,
+    synonyms: dict[str, str] | None = None,
 ) -> tuple[str, float | None, int | None, float | None]:
-    """Extract clean name, grams, units and fat % from a raw product name."""
+    """Extract clean name, grams, units and fat % from a raw product name.
+
+    When *synonyms* is provided, abbreviations are expanded **before**
+    any attribute extraction so that patterns like ``%MG LP`` →
+    ``%MG LAIT PASTEURISE`` fire before ``%MG`` is stripped.
+    """
+    if synonyms:
+        raw_name = expand_synonyms(raw_name, synonyms)
     name, grams, units = _get_gram(raw_name)
     if units is None:
         units = extract_unit_count(raw_name)
@@ -126,6 +134,7 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
     way_of_paying = item_info.group("way_of_paying")
     item: Item = {
         "raw": item_info.group(0).strip(),
+        "raw_name": raw_name,
         "name": name,
         "price": _get_price(price),
         "quantity": quantity,

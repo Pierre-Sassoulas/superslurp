@@ -60,6 +60,16 @@ _HTML_TEMPLATE = """\
   #shrinkflation th.sort-active .sort-arrow { opacity: 1; }
   #shrinkflation td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .shrink-pct { color: #dc2626; font-weight: 600; }
+  #allItems { background: #fff; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  #allItems table { width: 100%%; border-collapse: collapse; font-size: 0.9rem; }
+  #allItems th, #allItems td { text-align: left; padding: 0.3rem 0.6rem;
+                                border-bottom: 1px solid #eee; }
+  #allItems th { background: #f9fafb; position: sticky; top: 0; cursor: pointer; user-select: none; }
+  #allItems th:hover { background: #eef2ff; }
+  #allItems th .sort-arrow { font-size: 0.7em; margin-left: 0.3em; opacity: 0.4; }
+  #allItems th.sort-active .sort-arrow { opacity: 1; }
+  #allItems td.num { text-align: right; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -86,6 +96,9 @@ _HTML_TEMPLATE = """\
   <canvas id="gramsChart"></canvas>
 </div>
 <div id="productDetail" class="chart-container hidden"></div>
+
+<h2>All items</h2>
+<div id="allItems"></div>
 
 <script>
 const DATA = __DATA_JSON__;
@@ -524,6 +537,92 @@ function showProduct(name) {
 document.getElementById("productInput").addEventListener("input", function() {
   showProduct(this.value);
 });
+
+// --- All items table ---
+function renderAllItems() {
+  const rows = [];
+  DATA.products.forEach(p => {
+    p.observations.forEach(obs => {
+      const session = sessionMap[obs.session_id];
+      const store = session && session.store_id ? storeMap[session.store_id] : null;
+      rows.push({
+        date: session ? session.date.slice(0, 10) : '',
+        sessionId: obs.session_id,
+        store: store ? store.location : '?',
+        name: p.canonical_name,
+        quantity: obs.quantity,
+        price: obs.price,
+        grams: obs.grams,
+        price_per_kg: obs.price_per_kg,
+        unit_count: obs.unit_count,
+        price_per_unit: obs.price_per_unit,
+        discount: obs.discount,
+        bio: obs.bio || false,
+      });
+    });
+  });
+  rows.sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name));
+  const panel = document.getElementById("allItems");
+  let html = '<table><thead><tr>'
+    + makeSortableHeader('Date', 'str')
+    + makeSortableHeader('Store', 'str')
+    + makeSortableHeader('Product', 'str')
+    + makeSortableHeader('Qty', 'num')
+    + makeSortableHeader('Price', 'num')
+    + makeSortableHeader('Grams', 'num')
+    + makeSortableHeader('EUR/kg', 'num')
+    + makeSortableHeader('Units', 'num')
+    + makeSortableHeader('EUR/unit', 'num')
+    + makeSortableHeader('Discount', 'num')
+    + '</tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr>';
+    html += '<td><a href="#" class="session-link" data-session-id="'
+      + r.sessionId + '">' + r.date + '</a></td>';
+    html += '<td>' + r.store + '</td>';
+    html += '<td><a href="#" class="product-link" data-name="'
+      + r.name + '">' + r.name + (r.bio ? ' [BIO]' : '') + '</a></td>';
+    html += '<td class="num">' + r.quantity + '</td>';
+    html += '<td class="num">' + r.price.toFixed(2) + '</td>';
+    html += '<td class="num">' + (r.grams != null ? r.grams : '-') + '</td>';
+    html += '<td class="num">' + (r.price_per_kg != null ? r.price_per_kg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (r.unit_count != null ? r.unit_count : '-') + '</td>';
+    html += '<td class="num">' + (r.price_per_unit != null ? r.price_per_unit.toFixed(4) : '-') + '</td>';
+    html += '<td class="num">' + (r.discount != null ? r.discount.toFixed(2) : '-') + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  panel.innerHTML = html;
+  bindSortHandlers(panel);
+  panel.querySelectorAll(".session-link").forEach(link => {
+    link.onclick = function(e) {
+      e.preventDefault();
+      const sid = this.getAttribute("data-session-id");
+      const session = sessionMap[sid];
+      const store = session.store_id ? storeMap[session.store_id] : null;
+      const totEntry = sessionTotalsRaw.find(e => e.session_id === sid);
+      showSessionDetail({
+        sessionId: sid,
+        date: session.date,
+        total: totEntry ? totEntry.total : 0,
+        label: store ? store.location : "?"
+      });
+      document.getElementById("sessionDetail")
+        .scrollIntoView({ behavior: "smooth" });
+    };
+  });
+  panel.querySelectorAll(".product-link").forEach(link => {
+    link.onclick = function(e) {
+      e.preventDefault();
+      const name = this.getAttribute("data-name");
+      document.getElementById("productInput").value = name;
+      showProduct(name);
+      document.getElementById("priceChart")
+        .scrollIntoView({ behavior: "smooth" });
+    };
+  });
+}
+renderAllItems();
 
 // --- Shrinkflation detection ---
 function detectShrinkflation() {

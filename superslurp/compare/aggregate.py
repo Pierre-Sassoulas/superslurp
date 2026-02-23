@@ -77,10 +77,7 @@ def _build_observation(
     price_per_liter: float | None = None
     if volume_ml is not None and volume_ml > 0:
         price_per_liter = round((price / volume_ml) * 1000, 2)
-    unit_count: int | None = item.get("units")
-    price_per_unit: float | None = None
-    if unit_count is not None:
-        price_per_unit = round(price / unit_count, 4)
+    unit_count: int = item.get("units") or 1
     obs: dict[str, Any] = {
         "original_name": item["name"],
         "session_id": session_id,
@@ -92,7 +89,6 @@ def _build_observation(
         "volume_ml": volume_ml,
         "price_per_liter": price_per_liter,
         "unit_count": unit_count,
-        "price_per_unit": price_per_unit,
         "fat_pct": item.get("fat_pct"),
     }
     props = item.get("properties", {})

@@ -458,10 +458,10 @@ def test_price_per_unit_in_observation() -> None:
     result = compare_receipt_dicts(receipts)
     eggs = next(p for p in result["products"] if "OEUF" in p["canonical_name"])
     assert eggs["observations"][0]["unit_count"] == 12
-    assert eggs["observations"][0]["price_per_unit"] == 0.25
+    assert "price_per_unit" not in eggs["observations"][0]
     sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
-    assert sugar["observations"][0]["unit_count"] is None
-    assert sugar["observations"][0]["price_per_unit"] is None
+    assert sugar["observations"][0]["unit_count"] == 1
+    assert "price_per_unit" not in sugar["observations"][0]
 
 
 def test_eggs_grouped_together() -> None:

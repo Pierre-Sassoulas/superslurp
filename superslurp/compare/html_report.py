@@ -262,8 +262,8 @@ function showSessionDetail(entry) {
     html += '<td class="num">' + (o.price_per_kg != null ? o.price_per_kg.toFixed(2) : '-') + '</td>';
     html += '<td class="num">' + (o.volume_ml != null ? o.volume_ml : '-') + '</td>';
     html += '<td class="num">' + (o.price_per_liter != null ? o.price_per_liter.toFixed(2) : '-') + '</td>';
-    html += '<td class="num">' + (o.unit_count != null ? o.unit_count : '-') + '</td>';
-    html += '<td class="num">' + (o.price_per_unit != null ? o.price_per_unit.toFixed(4) : '-') + '</td>';
+    html += '<td class="num">' + o.unit_count + '</td>';
+    html += '<td class="num">' + (o.price / o.unit_count).toFixed(4) + '</td>';
     html += '<td class="num">' + (o.discount != null ? o.discount.toFixed(2) : '-') + '</td>';
     html += '</tr>';
   });
@@ -417,7 +417,6 @@ function showProduct(name) {
         volume_ml: obs.volume_ml,
         price_per_liter: obs.price_per_liter,
         unit_count: obs.unit_count,
-        price_per_unit: obs.price_per_unit,
         discount: obs.discount,
         fat_pct: obs.fat_pct,
         bio: obs.bio || false,
@@ -433,13 +432,13 @@ function showProduct(name) {
 
   const labels = points.map(p => p.date.slice(0, 10));
 
-  // Price chart — use price per unit when available
-  const hasUnits = points.some(p => p.price_per_unit != null);
+  // Price chart — use price per unit when multi-pack
+  const hasUnits = points.some(p => p.unit_count > 1);
   const priceLabel = hasUnits
     ? name + " — Price per unit (EUR)"
     : name + " — Price (EUR)";
   const priceData = points.map(p =>
-    hasUnits ? p.price_per_unit : p.price
+    hasUnits ? p.price / p.unit_count : p.price
   );
 
   if (priceChartInstance) priceChartInstance.destroy();
@@ -675,8 +674,8 @@ function showProduct(name) {
     html += '<td class="num">' + (p.price_per_kg != null ? p.price_per_kg.toFixed(2) : '-') + '</td>';
     html += '<td class="num">' + (p.volume_ml != null ? p.volume_ml : '-') + '</td>';
     html += '<td class="num">' + (p.price_per_liter != null ? p.price_per_liter.toFixed(2) : '-') + '</td>';
-    html += '<td class="num">' + (p.unit_count != null ? p.unit_count : '-') + '</td>';
-    html += '<td class="num">' + (p.price_per_unit != null ? p.price_per_unit.toFixed(4) : '-') + '</td>';
+    html += '<td class="num">' + p.unit_count + '</td>';
+    html += '<td class="num">' + (p.price / p.unit_count).toFixed(4) + '</td>';
     html += '<td class="num">' + (p.fat_pct != null ? p.fat_pct : '-') + '</td>';
     html += '<td class="num">' + (p.discount != null ? p.discount.toFixed(2) : '-') + '</td>';
     html += '<td>' + (p.bio ? 'Yes' : '') + '</td>';
@@ -734,7 +733,8 @@ function renderAllItems() {
       totalQty += o.quantity;
       if (o.grams != null) { totalGrams += o.grams * o.quantity; hasGrams = true; }
       if (o.volume_ml != null) { totalVolume += o.volume_ml * o.quantity; hasVolume = true; }
-      if (o.unit_count != null) { totalUnits += o.unit_count * o.quantity; hasUnits = true; }
+      totalUnits += o.unit_count * o.quantity;
+      if (o.unit_count > 1) hasUnits = true;
     });
     return {
       name: p.canonical_name,
@@ -826,8 +826,8 @@ function renderAllItems() {
           + '<td class="num">' + (o.price_per_kg != null ? o.price_per_kg.toFixed(2) : '-') + '</td>'
           + '<td class="num">' + (o.volume_ml != null ? o.volume_ml : '-') + '</td>'
           + '<td class="num">' + (o.price_per_liter != null ? o.price_per_liter.toFixed(2) : '-') + '</td>'
-          + '<td class="num">' + (o.unit_count != null ? o.unit_count : '-') + '</td>'
-          + '<td class="num">' + (o.price_per_unit != null ? o.price_per_unit.toFixed(4) : '-') + '</td>';
+          + '<td class="num">' + o.unit_count + '</td>'
+          + '<td class="num">' + (o.price / o.unit_count).toFixed(4) + '</td>';
         tbody.insertBefore(tr, ref);
         tr.querySelector(".session-link").onclick = function(e) {
           e.preventDefault();

@@ -72,7 +72,7 @@ def parse_items(
                     items[category][-1]["discount"] = _get_price(discount_str)
                     continue
                 item = get_item_from_item_infos(item_info, synonyms=synonyms)
-                nb_parsed_category += item["quantity"]
+                nb_parsed_category += item["bought"]
                 items[category].append(item)
         if nb_parsed_category == 0:
             err_msg = (
@@ -165,7 +165,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         "raw_name": raw_name,
         "name": name,
         "price": _get_price(price),
-        "quantity": quantity,
+        "bought": quantity,
         "units": units,
         "grams": grams,
         "fat_pct": fat_pct,

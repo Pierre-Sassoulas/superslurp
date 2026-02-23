@@ -17,7 +17,7 @@ class Item(TypedDict):
     raw_name: str
     name: str
     price: float
-    quantity: int
+    bought: int
     units: int | None
     grams: float | None
     fat_pct: float | None

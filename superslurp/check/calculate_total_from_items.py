@@ -12,14 +12,14 @@ def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float,
     for category, items in receipt["items"].items():
         for item in items:
             price = item["price"]
-            quantity = item["quantity"]
+            quantity = item["bought"]
             if price is None:
                 raise UndetectedAttributeError(
                     receipt=receipt, item=item, attribute="price"
                 )
             if quantity is None:
                 raise UndetectedAttributeError(
-                    receipt=receipt, item=item, attribute="quantity"
+                    receipt=receipt, item=item, attribute="bought"
                 )
             actual_price = price * quantity
             discount = item.get("discount") or 0.0

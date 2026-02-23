@@ -24,7 +24,7 @@ class ConsistencyError(Exception):
             result += f"{category} ({len(items)}):\n"
             for item in items:
                 p = item["price"]
-                q = item["quantity"]
+                q = item["bought"]
                 s += p * q
                 result += f"{item['name']}: {p} * {q} ({s:.2f})\n"
         return result

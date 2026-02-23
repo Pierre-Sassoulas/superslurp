@@ -130,7 +130,7 @@ def test_compare_receipt_dicts_basic() -> None:
                     {
                         "name": "SUCRE POUDRE",
                         "price": 1.50,
-                        "quantity": 2,
+                        "bought": 2,
                         "grams": 1000.0,
                         "discount": None,
                     }
@@ -150,7 +150,7 @@ def test_compare_receipt_dicts_basic() -> None:
                     {
                         "name": "SUCRE POUDRE",
                         "price": 1.60,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": 1000.0,
                         "discount": -0.10,
                     }
@@ -191,7 +191,7 @@ def test_compare_receipt_dicts_bio_flag() -> None:
                     {
                         "name": "AIL BLC U BIO FILET",
                         "price": 4.70,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": 250.0,
                         "bio": True,
                         "milk_treatment": None,
@@ -199,7 +199,7 @@ def test_compare_receipt_dicts_bio_flag() -> None:
                     {
                         "name": "AIL BLANC",
                         "price": 3.13,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": None,
                         "bio": False,
                         "milk_treatment": None,
@@ -224,7 +224,7 @@ def test_compare_receipt_dicts_no_grams() -> None:
                     {
                         "name": "PILE LR06",
                         "price": 3.99,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": None,
                     }
                 ]
@@ -240,11 +240,11 @@ def test_compare_receipt_dicts_null_date_session() -> None:
     receipts: list[dict[str, Any]] = [
         {
             "date": None,
-            "items": {"A": [{"name": "X", "price": 1.0, "quantity": 1, "grams": None}]},
+            "items": {"A": [{"name": "X", "price": 1.0, "bought": 1, "grams": None}]},
         },
         {
             "date": "2025-01-01 00:00:00",
-            "items": {"A": [{"name": "X", "price": 2.0, "quantity": 1, "grams": None}]},
+            "items": {"A": [{"name": "X", "price": 2.0, "bought": 1, "grams": None}]},
         },
     ]
     result = compare_receipt_dicts(receipts)
@@ -259,8 +259,8 @@ def test_compare_receipt_dicts_sorted_by_name() -> None:
             "date": None,
             "items": {
                 "A": [
-                    {"name": "ZUCCHINI", "price": 1.0, "quantity": 1, "grams": None},
-                    {"name": "APPLE", "price": 2.0, "quantity": 1, "grams": None},
+                    {"name": "ZUCCHINI", "price": 1.0, "bought": 1, "grams": None},
+                    {"name": "APPLE", "price": 2.0, "bought": 1, "grams": None},
                 ]
             },
         }
@@ -301,14 +301,14 @@ def test_session_totals_basic() -> None:
             "date": "2025-01-15 10:00:00",
             "items": {
                 "A": [
-                    {"name": "X", "price": 10.0, "quantity": 2, "grams": None},
-                    {"name": "Y", "price": 5.0, "quantity": 1, "grams": None},
+                    {"name": "X", "price": 10.0, "bought": 2, "grams": None},
+                    {"name": "Y", "price": 5.0, "bought": 1, "grams": None},
                 ]
             },
         },
         {
             "date": "2025-02-20 11:00:00",
-            "items": {"A": [{"name": "X", "price": 3.0, "quantity": 1, "grams": None}]},
+            "items": {"A": [{"name": "X", "price": 3.0, "bought": 1, "grams": None}]},
         },
     ]
     result = compare_receipt_dicts(receipts)
@@ -324,7 +324,7 @@ def test_session_totals_skips_null_date() -> None:
     receipts: list[dict[str, Any]] = [
         {
             "date": None,
-            "items": {"A": [{"name": "X", "price": 1.0, "quantity": 1, "grams": None}]},
+            "items": {"A": [{"name": "X", "price": 1.0, "bought": 1, "grams": None}]},
         },
     ]
     result = compare_receipt_dicts(receipts)
@@ -389,7 +389,7 @@ def test_compare_output_contains_totals_and_rolling() -> None:
     receipts = [
         {
             "date": "2025-01-15 10:00:00",
-            "items": {"A": [{"name": "X", "price": 5.0, "quantity": 1, "grams": None}]},
+            "items": {"A": [{"name": "X", "price": 5.0, "bought": 1, "grams": None}]},
         },
     ]
     result = compare_receipt_dicts(receipts)
@@ -438,14 +438,14 @@ def test_price_per_unit_in_observation() -> None:
                     {
                         "name": "OEUFS PA CAL.MIXTE U X12",
                         "price": 3.0,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": None,
                         "units": 12,
                     },
                     {
                         "name": "SUCRE POUDRE",
                         "price": 1.50,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": 1000.0,
                         "units": None,
                     },
@@ -472,25 +472,25 @@ def test_eggs_grouped_together() -> None:
                     {
                         "name": "OEUFS PA CAL.MIXTE U X12",
                         "price": 3.0,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": None,
                     },
                     {
                         "name": "OEUFS PLEIN AIR MOYEN X12",
                         "price": 3.95,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": None,
                     },
                     {
                         "name": "18 OEUFS FRAIS",
                         "price": 5.66,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": None,
                     },
                     {
                         "name": "OEUFS CAL.MIXTE U BIO BTE X6",
                         "price": 2.39,
-                        "quantity": 1,
+                        "bought": 1,
                         "grams": None,
                     },
                 ]
@@ -569,8 +569,8 @@ def test_compare_receipt_dicts_pre_expanded_names() -> None:
             "date": "2025-01-15 10:00:00",
             "items": {
                 "A": [
-                    {"name": "BLEDINA BOL", "price": 1.0, "quantity": 1, "grams": None},
-                    {"name": "BLEDINA BOL", "price": 1.2, "quantity": 1, "grams": None},
+                    {"name": "BLEDINA BOL", "price": 1.0, "bought": 1, "grams": None},
+                    {"name": "BLEDINA BOL", "price": 1.2, "bought": 1, "grams": None},
                 ]
             },
         },

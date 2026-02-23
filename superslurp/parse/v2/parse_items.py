@@ -76,7 +76,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "raw_name": raw_name,
                 "name": name,
                 "price": price,
-                "quantity": quantity,
+                "bought": quantity,
                 "units": units,
                 "grams": grams,
                 "fat_pct": fat_pct,

@@ -81,7 +81,7 @@ def _build_observation(
         "original_name": item["name"],
         "session_id": session_id,
         "price": price,
-        "quantity": item.get("quantity", 1),
+        "quantity": item.get("bought", 1),
         "grams": grams,
         "discount": item.get("discount"),
         "price_per_kg": price_per_kg,

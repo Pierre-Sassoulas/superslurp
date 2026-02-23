@@ -24,7 +24,7 @@ class WrongNumberOfItemException(Exception): ...
 
 # Patterns to strip from name once units have been extracted
 _UNIT_PATTERN = re.compile(
-    r"\s*\bX?\d+(?:=\d+)?RLX\b|\s*\bBTEX\d+\b|\s*\bX\d+(?:\+\d+OFF)?\b|\s*\b\d+TR\b|^\d+\s+"
+    r"\s*\bX?\d+(?:=\d+)?RLX\b|\s*\bBTEX\d+\b|\s*(?<!\d)X\d+(?:\+\d+OFF)?\b|\s*\b\d+TR\b|^\d+\s+"
 )
 # Standalone "+3OFF" left behind after _get_gram strips "7X1KG" from "7X1KG+3OFF"
 _OFFERT_PATTERN = re.compile(r"\s*\+\d+OFF\b")

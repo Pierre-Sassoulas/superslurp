@@ -73,14 +73,14 @@ _STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
 # Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, and leading counts like "18 OEUFS"
 _STRIP_UNIT_COUNT = re.compile(
-    r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|\bX\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
+    r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
 )
 _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:L|CL|ML)\b")
 _LEADING_COUNT = re.compile(r"^\d+\s+")
 
 # Extract unit count: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 4=12RLX → 4, 18 OEUFS → 18
 _UNIT_COUNT_PATTERN = re.compile(
-    r"\bX?(\d+)(?:=\d+)?RLX\b|\bBTEX(\d+)\b|\bX(\d+)(?:\+(\d+)OFF)?\b|\b(\d+)TR\b|^(\d+)\s+"
+    r"\bX?(\d+)(?:=\d+)?RLX\b|\bBTEX(\d+)\b|(?<!\d)X(\d+)(?:\+(\d+)OFF)?\b|\b(\d+)TR\b|^(\d+)\s+"
 )
 
 

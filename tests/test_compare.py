@@ -406,6 +406,7 @@ def test_compare_output_contains_totals_and_rolling() -> None:
 def test_extract_unit_count_x_pattern() -> None:
     assert extract_unit_count("OEUFS PA CAL.MIXTE U X12") == 12
     assert extract_unit_count("OEUFS LABEL X6") == 6
+    assert extract_unit_count("SAUCISSE STRASBOURG HOT DOGX10") == 10
 
 
 def test_extract_unit_count_btex_pattern() -> None:

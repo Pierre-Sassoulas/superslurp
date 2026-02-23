@@ -18,6 +18,8 @@ _HTML_TEMPLATE = """\
   h2 { margin: 1.5rem 0 0.5rem; }
   .chart-container { background: #fff; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
                      box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .chart-row { display: flex; gap: 1rem; }
+  .chart-row > .chart-container { flex: 1; min-width: 0; }
   canvas { width: 100%% !important; }
   .product-select { margin: 1rem 0; }
   .product-select input { width: 100%%; padding: 0.5rem; font-size: 1rem;
@@ -89,22 +91,24 @@ _HTML_TEMPLATE = """\
 <div id="sessionDetail" class="hidden"></div>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="tab-products">Product price evolution</button>
+  <button class="tab-btn active" data-tab="tab-products">Product price and weight evolution</button>
   <button class="tab-btn" data-tab="tab-shrinkflation">Shrinkflation</button>
   <button class="tab-btn" data-tab="tab-allitems">All items</button>
 </div>
 
 <div id="tab-products" class="tab-panel active">
-  <h2>Product price evolution</h2>
+  <h2>Product price and weight evolution</h2>
   <div class="product-select">
     <input id="productInput" list="productList" placeholder="Search for a product...">
     <datalist id="productList"></datalist>
   </div>
-  <div class="chart-container">
-    <canvas id="priceChart"></canvas>
-  </div>
-  <div id="gramsSection" class="chart-container hidden">
-    <canvas id="gramsChart"></canvas>
+  <div class="chart-row">
+    <div class="chart-container">
+      <canvas id="priceChart"></canvas>
+    </div>
+    <div id="gramsSection" class="chart-container hidden">
+      <canvas id="gramsChart"></canvas>
+    </div>
   </div>
   <div id="productDetail" class="chart-container hidden"></div>
 </div>

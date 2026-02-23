@@ -24,6 +24,8 @@ class Item(TypedDict):
     tr: bool
     way_of_paying: str | None
     discount: float | None
+    bio: bool
+    milk_treatment: str | None
 
 
 class Category(enum.Enum):

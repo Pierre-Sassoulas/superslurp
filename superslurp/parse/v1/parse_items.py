@@ -4,7 +4,12 @@ import logging
 import re
 from collections import defaultdict
 
-from superslurp.compare.normalize import expand_synonyms, extract_unit_count
+from superslurp.compare.normalize import (
+    expand_synonyms,
+    extract_unit_count,
+    get_milk_treatment,
+    is_bio,
+)
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
 from superslurp.superslurp_typing import Category, Item, Items
@@ -45,7 +50,9 @@ items_patterns = [
 ]
 
 
-def parse_items(text: str, expected_number_of_items: int) -> Items:
+def parse_items(
+    text: str, expected_number_of_items: int, synonyms: dict[str, str] | None = None
+) -> Items:
     nb_parsed = 0
     items: dict[Category, list[Item]] = defaultdict(list)
     category = Category.UNDEFINED
@@ -64,7 +71,7 @@ def parse_items(text: str, expected_number_of_items: int) -> Items:
                 if discount_str is not None:
                     items[category][-1]["discount"] = _get_price(discount_str)
                     continue
-                item = get_item_from_item_infos(item_info)
+                item = get_item_from_item_infos(item_info, synonyms=synonyms)
                 nb_parsed_category += item["quantity"]
                 items[category].append(item)
         if nb_parsed_category == 0:
@@ -97,15 +104,15 @@ def _parse_name_grams_units(
     raw_name: str,
 ) -> tuple[str, float | None, int | None]:
     """Extract clean name, grams and units from a raw product name."""
-    name, grams, units, _fat_pct = _parse_name_attributes(raw_name)
+    name, grams, units, _fat_pct, _bio, _milk = _parse_name_attributes(raw_name)
     return name, grams, units
 
 
 def _parse_name_attributes(
     raw_name: str,
     synonyms: dict[str, str] | None = None,
-) -> tuple[str, float | None, int | None, float | None]:
-    """Extract clean name, grams, units and fat % from a raw product name.
+) -> tuple[str, float | None, int | None, float | None, bool, str | None]:
+    """Extract clean name, grams, units, fat %, bio and milk treatment.
 
     When *synonyms* is provided, abbreviations are expanded **before**
     any attribute extraction so that patterns like ``%MG LP`` →
@@ -127,17 +134,23 @@ def _parse_name_attributes(
     fat_pct = _get_fat_pct(name)
     if fat_pct is not None:
         name = _FAT_PCT_PATTERN.sub("", name).strip()
-    return name, grams, units, fat_pct
+    bio = is_bio(raw_name)
+    milk_treatment = get_milk_treatment(raw_name)
+    return name, grams, units, fat_pct, bio, milk_treatment
 
 
-def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
+def get_item_from_item_infos(  # pylint: disable=too-many-locals
+    item_info: re.Match[str], synonyms: dict[str, str] | None = None
+) -> Item:
     if (matched_name := item_info.group("name")) is None:
         raise ValueError(f"Nothing matched the name in {item_info}")
     raw_name = matched_name.strip()
     assert raw_name, f"Name is empty: {raw_name}"
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
-    name, grams, units, fat_pct = _parse_name_attributes(raw_name)
+    name, grams, units, fat_pct, bio, milk_treatment = _parse_name_attributes(
+        raw_name, synonyms=synonyms
+    )
     quantity_str = item_info.group("quantity")
     if grams is None and quantity_str and "kg" in quantity_str:
         grams = _get_grams_from_quantity(quantity_str)
@@ -159,6 +172,8 @@ def get_item_from_item_infos(item_info: re.Match[str]) -> Item:
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
         "discount": None,
+        "bio": bio,
+        "milk_treatment": milk_treatment,
     }
     return item
 

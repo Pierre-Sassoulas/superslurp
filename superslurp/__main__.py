@@ -40,11 +40,11 @@ def parse_superu_receipt(
     """
     text = convert_to_text(filename)
     logging.debug("Extracted text, parsing receipt...")
-    receipt = parse_text(text)
+    receipt = parse_text(text, synonyms=synonyms)
     logging.debug("Parsing done, checking consistency...")
     check_consistency(receipt)
     logging.debug("Rendering json result...")
-    return make_json_serializable(receipt, include_raw=debug, synonyms=synonyms)
+    return make_json_serializable(receipt, include_raw=debug)
 
 
 def generate_report(
@@ -58,7 +58,7 @@ def generate_report(
     Returns a self-contained HTML string with an interactive price dashboard.
     """
     receipts = [parse_superu_receipt(f, synonyms=synonyms) for f in filenames]
-    aggregate = compare_receipt_dicts(receipts, threshold=threshold, synonyms=synonyms)
+    aggregate = compare_receipt_dicts(receipts, threshold=threshold)
     return generate_html(aggregate)
 
 

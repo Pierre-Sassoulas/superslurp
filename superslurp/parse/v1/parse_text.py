@@ -29,7 +29,7 @@ everything_pattern = re.compile(
 )
 
 
-def parse_text_v1(text: str) -> Receipt:
+def parse_text_v1(text: str, synonyms: dict[str, str] | None = None) -> Receipt:
     if (matches := everything_pattern.search(text)) is None:
         raise ValueError(
             f"Couldn't match the receipt using the current regex for {text}"
@@ -39,7 +39,9 @@ def parse_text_v1(text: str) -> Receipt:
     number_of_items = int(matches.group("number_of_items"))
     items_text = matches.group("items_text")
     receipt_date = parse_date(items_text)
-    items = parse_items(items_text, expected_number_of_items=number_of_items)
+    items = parse_items(
+        items_text, expected_number_of_items=number_of_items, synonyms=synonyms
+    )
     paid_tr = _change_text_to_float(_match_tr_paid(text))
     eligible_tr = _change_text_to_float(_match_eligible_tr(text))
     total_discount = _change_text_to_float(_match_total_discount(text))

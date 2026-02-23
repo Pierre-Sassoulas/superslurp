@@ -8,9 +8,9 @@ from superslurp.parse.v2 import parse_text_v2
 from superslurp.superslurp_typing import Receipt
 
 
-def parse_text(text: str) -> Receipt:
+def parse_text(text: str, synonyms: dict[str, str] | None = None) -> Receipt:
     if (fmt := detect_format(text)) == "v1":
-        return parse_text_v1(text)
+        return parse_text_v1(text, synonyms=synonyms)
     if fmt == "v2":
-        return parse_text_v2(text)
+        return parse_text_v2(text, synonyms=synonyms)
     raise ValueError(f"Unknown receipt format: {fmt!r}")

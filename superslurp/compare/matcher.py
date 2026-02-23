@@ -14,15 +14,13 @@ class FuzzyMatcher:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
         threshold: float = 0.90,
-        synonyms: dict[str, str] | None = None,
     ) -> None:
         self.threshold = threshold
-        self._synonyms = synonyms
         self._canonicals: list[str] = []
 
     def match(self, name: str) -> str:
         """Return the canonical name for the given product."""
-        normalized = normalize_for_matching(name, synonyms=self._synonyms)
+        normalized = normalize_for_matching(name)
         for canon_norm in self._canonicals:
             ratio = SequenceMatcher(None, normalized, canon_norm).ratio()
             if ratio >= self.threshold:

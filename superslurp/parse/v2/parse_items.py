@@ -15,7 +15,9 @@ CATEGORY_PATTERN = re.compile(r"^[A-Z][A-Z0-9 .()\-]+\s*$")
 
 
 def parse_items_v2(  # pylint: disable=too-many-locals
-    items_text: str, expected_number_of_items: int
+    items_text: str,
+    expected_number_of_items: int,
+    synonyms: dict[str, str] | None = None,
 ) -> tuple[Items, float]:
     items: dict[Category, list[Item]] = defaultdict(list)
     total_discount = 0.0
@@ -57,7 +59,9 @@ def parse_items_v2(  # pylint: disable=too-many-locals
 
             quantity, unit_price, grams_from_weight = _parse_detail_lines(lines, i + 1)
 
-            name, grams_from_name, units, fat_pct = _parse_name_attributes(raw_name)
+            name, grams_from_name, units, fat_pct, bio, milk_treatment = (
+                _parse_name_attributes(raw_name, synonyms=synonyms)
+            )
             grams = (
                 grams_from_weight if grams_from_weight is not None else grams_from_name
             )
@@ -79,6 +83,8 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "tr": tr,
                 "way_of_paying": way_of_paying,
                 "discount": None,
+                "bio": bio,
+                "milk_treatment": milk_treatment,
             }
             items[category].append(item)
             last_item = item

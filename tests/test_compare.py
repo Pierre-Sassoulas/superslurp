@@ -193,8 +193,17 @@ def test_compare_receipt_dicts_bio_flag() -> None:
                         "price": 4.70,
                         "quantity": 1,
                         "grams": 250.0,
+                        "bio": True,
+                        "milk_treatment": None,
                     },
-                    {"name": "AIL BLANC", "price": 3.13, "quantity": 1, "grams": None},
+                    {
+                        "name": "AIL BLANC",
+                        "price": 3.13,
+                        "quantity": 1,
+                        "grams": None,
+                        "bio": False,
+                        "milk_treatment": None,
+                    },
                 ]
             },
         }
@@ -265,14 +274,11 @@ def test_compare_receipt_dicts_sorted_by_name() -> None:
 
 
 def test_compare_receipt_files_fixtures() -> None:
-    """Load real fixture JSONs with synonyms and write comparison result."""
+    """Load real fixture JSONs and write comparison result."""
     json_files = sorted(FIXTURES.glob(".Ticket*.json"))[:5]
     if not json_files:
         return  # skip if no fixtures available
-    synonyms_path = FIXTURES / "synonyms.json"
-    with open(synonyms_path, encoding="utf8") as f:
-        synonyms: dict[str, str] = json.load(f)
-    result = compare_receipt_files(json_files, synonyms=synonyms)
+    result = compare_receipt_files(json_files)
     expected_path = FIXTURES / ".compare_result.json"
     if not expected_path.exists():
         with open(expected_path, "w", encoding="utf8") as f:
@@ -518,9 +524,10 @@ def test_normalize_synonyms_none_unchanged() -> None:
     assert normalize_for_matching("BLED BOL") == "BLED BOL"
 
 
-def test_matcher_with_synonyms() -> None:
-    m = FuzzyMatcher(threshold=0.90, synonyms={"BLED": "BLEDINA"})
-    key1 = m.match("BLED BOL CAR/RZ/JAMB 8M")
+def test_matcher_pre_expanded_synonyms() -> None:
+    """Synonyms are applied at parse time; matcher sees already-expanded names."""
+    m = FuzzyMatcher(threshold=0.90)
+    key1 = m.match("BLEDINA BOL CAR/RZ/JAMB 8M")
     key2 = m.match("BLEDINA BOL CAR/RZ/JAMB 8M")
     assert key1 == key2
     assert "BLEDINA" in key1
@@ -555,19 +562,20 @@ def test_normalize_dot_pattern_synonym() -> None:
     assert result == "FROMAGE RAPE"
 
 
-def test_compare_receipt_dicts_with_synonyms() -> None:
+def test_compare_receipt_dicts_pre_expanded_names() -> None:
+    """Synonyms are applied at parse time; aggregate sees already-expanded names."""
     receipts = [
         {
             "date": "2025-01-15 10:00:00",
             "items": {
                 "A": [
-                    {"name": "BLED BOL", "price": 1.0, "quantity": 1, "grams": None},
+                    {"name": "BLEDINA BOL", "price": 1.0, "quantity": 1, "grams": None},
                     {"name": "BLEDINA BOL", "price": 1.2, "quantity": 1, "grams": None},
                 ]
             },
         },
     ]
-    result = compare_receipt_dicts(receipts, synonyms={"BLED": "BLEDINA"})
+    result = compare_receipt_dicts(receipts)
     names = [p["canonical_name"] for p in result["products"]]
     assert len(names) == 1
     assert "BLEDINA" in names[0]

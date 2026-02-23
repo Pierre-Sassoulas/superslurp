@@ -9,12 +9,14 @@ from superslurp.parse.v2.parse_items import parse_items_v2
 from superslurp.superslurp_typing import Card, Items, Receipt, Store
 
 
-def parse_text_v2(text: str) -> Receipt:
+def parse_text_v2(text: str, synonyms: dict[str, str] | None = None) -> Receipt:
     store = _parse_store(text)
     date = _parse_date(text)
     items_text = _extract_items_text(text)
     total, number_of_items = _parse_total(text)
-    items, total_discount = parse_items_v2(items_text, number_of_items)
+    items, total_discount = parse_items_v2(
+        items_text, number_of_items, synonyms=synonyms
+    )
     card = _parse_card(text)
     subtotal = _parse_subtotal(text)
     eligible_tr = _parse_eligible_tr(text)

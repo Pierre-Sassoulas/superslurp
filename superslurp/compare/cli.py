@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from superslurp._cli_args import add_output_arg, add_synonyms_arg, add_threshold_arg
+from superslurp._cli_args import add_output_arg, add_threshold_arg
 from superslurp.compare.aggregate import compare_receipt_files
 from superslurp.compare.html_report import generate_html
 
@@ -21,7 +21,6 @@ def main_aggregate() -> None:
     )
     add_threshold_arg(parser)
     add_output_arg(parser)
-    add_synonyms_arg(parser)
     args = parser.parse_args()
 
     directory: Path = args.directory
@@ -34,13 +33,7 @@ def main_aggregate() -> None:
         print(f"Error: no JSON files found in {directory}", file=sys.stderr)
         sys.exit(1)
 
-    synonyms: dict[str, str] | None = None
-    if args.synonyms:
-        with open(args.synonyms, encoding="utf8") as f:
-            raw = json.load(f)
-        synonyms = {k.upper(): v.upper() for k, v in raw.items()}
-
-    result = compare_receipt_files(paths, threshold=args.threshold, synonyms=synonyms)
+    result = compare_receipt_files(paths, threshold=args.threshold)
     output_json = json.dumps(result, indent=2, ensure_ascii=False)
 
     if args.output:

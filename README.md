@@ -25,7 +25,9 @@ The receipt line `QUENELLE NATURE U X6 240G  /  3 x 0,85 €  2,55 €  11` is p
   "grams": 240.0,
   "tr": false,
   "way_of_paying": "11",
-  "discount": null
+  "discount": null,
+  "bio": false,
+  "milk_treatment": null
 }
 ```
 
@@ -63,14 +65,14 @@ from pathlib import Path
 
 from superslurp.compare.aggregate import compare_receipt_files
 
-synonyms = {"TABS": "TABLETTES", "VAISS": "VAISSELLE"}
-
 result = compare_receipt_files(
     paths=[Path("receipt1.json"), Path("receipt2.json")],
     threshold=0.90,       # difflib threshold (default: 0.90)
-    synonyms=synonyms,    # optional, same format as parse
 )
 ```
+
+Synonyms are applied at parse time (step 1), so the JSON files fed to
+`compare_receipt_files` already contain expanded names.
 
 The result contains stores, sessions, per-session totals, a rolling weekly average, and
 products with their observations:
@@ -94,7 +96,8 @@ products with their observations:
           "discount": null,
           "price_per_kg": null,
           "unit_count": 12,
-          "price_per_unit": 0.2625
+          "price_per_unit": 0.2625,
+          "bio": true
         }
       ]
     }
@@ -105,7 +108,7 @@ products with their observations:
 CLI:
 
 ```bash
-superu-aggregate-parsed-receipt receipts/ --synonyms synonyms.json --output aggregate.json
+superu-aggregate-parsed-receipt receipts/ --output aggregate.json
 ```
 
 ## 3. Generate an HTML report
@@ -149,11 +152,14 @@ superu-report-from-aggregate aggregate.json --output report.html
 Or pipe directly from aggregate:
 
 ```bash
-superu-aggregate-parsed-receipt receipts/ --synonyms synonyms.json \
+superu-aggregate-parsed-receipt receipts/ \
   | superu-report-from-aggregate - --output report.html
 ```
 
 ## Synonyms
+
+Synonyms are applied during **parsing** (step 1) — the aggregate step (step 2) only does
+fuzzy matching on already-expanded names.
 
 Synonyms is an ordered `dict[str, str]`. Entries are applied sequentially with
 word-boundary matching — **insertion order matters**. Earlier entries are replaced

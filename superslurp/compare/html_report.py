@@ -636,22 +636,34 @@ document.getElementById("productInput").addEventListener("input", function() {
 
 // --- All items table ---
 function renderAllItems() {
-  // Build summary per product: most recent obs values, sorted by obs count
+  // Build summary per product: aggregate totals across all observations
   const products = DATA.products.map(p => {
     const obs = p.observations.map(o => {
       const session = sessionMap[o.session_id];
       const store = session && session.store_id ? storeMap[session.store_id] : null;
       return { ...o, date: session ? session.date.slice(0, 10) : '', store: store ? store.location : '?' };
     }).sort((a, b) => b.date.localeCompare(a.date));
-    const latest = obs[0];
+    let totalSpent = 0;
+    let totalQty = 0;
+    let totalUnits = 0;
+    let totalGrams = 0;
+    let hasGrams = false;
+    let hasUnits = false;
+    obs.forEach(o => {
+      totalSpent += o.price * o.quantity;
+      totalQty += o.quantity;
+      if (o.grams != null) { totalGrams += o.grams * o.quantity; hasGrams = true; }
+      if (o.unit_count != null) { totalUnits += o.unit_count * o.quantity; hasUnits = true; }
+    });
     return {
       name: p.canonical_name,
       count: obs.length,
-      price: latest.price,
-      grams: latest.grams,
-      price_per_kg: latest.price_per_kg,
-      unit_count: latest.unit_count,
-      price_per_unit: latest.price_per_unit,
+      totalSpent: totalSpent,
+      totalQty: totalQty,
+      totalGrams: hasGrams ? totalGrams : null,
+      meanEurKg: hasGrams && totalGrams > 0 ? (totalSpent / totalGrams) * 1000 : null,
+      totalUnits: hasUnits ? totalUnits : null,
+      meanEurUnit: hasUnits && totalUnits > 0 ? totalSpent / totalUnits : null,
       obs: obs,
     };
   });
@@ -661,22 +673,24 @@ function renderAllItems() {
   let html = '<table><thead><tr>'
     + makeSortableHeader('Product', 'str')
     + makeSortableHeader('Obs', 'num')
-    + makeSortableHeader('Last price', 'num')
-    + makeSortableHeader('Grams', 'num')
-    + makeSortableHeader('EUR/kg', 'num')
-    + makeSortableHeader('Units', 'num')
-    + makeSortableHeader('EUR/unit', 'num')
+    + makeSortableHeader('Total spent', 'num')
+    + makeSortableHeader('Qty bought', 'num')
+    + makeSortableHeader('Total grams', 'num')
+    + makeSortableHeader('Mean EUR/kg', 'num')
+    + makeSortableHeader('Total units', 'num')
+    + makeSortableHeader('Mean EUR/unit', 'num')
     + '</tr></thead><tbody>';
   products.forEach((p, idx) => {
     html += '<tr class="item-row" data-idx="' + idx + '">';
     html += '<td><a href="#" class="product-link" data-name="'
       + p.name + '">' + p.name + '</a></td>';
     html += '<td class="num">' + p.count + '</td>';
-    html += '<td class="num">' + p.price.toFixed(2) + '</td>';
-    html += '<td class="num">' + (p.grams != null ? p.grams : '-') + '</td>';
-    html += '<td class="num">' + (p.price_per_kg != null ? p.price_per_kg.toFixed(2) : '-') + '</td>';
-    html += '<td class="num">' + (p.unit_count != null ? p.unit_count : '-') + '</td>';
-    html += '<td class="num">' + (p.price_per_unit != null ? p.price_per_unit.toFixed(4) : '-') + '</td>';
+    html += '<td class="num">' + p.totalSpent.toFixed(2) + '</td>';
+    html += '<td class="num">' + p.totalQty + '</td>';
+    html += '<td class="num">' + (p.totalGrams != null ? p.totalGrams : '-') + '</td>';
+    html += '<td class="num">' + (p.meanEurKg != null ? p.meanEurKg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (p.totalUnits != null ? p.totalUnits : '-') + '</td>';
+    html += '<td class="num">' + (p.meanEurUnit != null ? p.meanEurUnit.toFixed(4) : '-') + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';

@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from superslurp._cli_args import add_output_arg, add_synonyms_arg, add_threshold_arg
 from superslurp.check import check_consistency
 from superslurp.compare.aggregate import compare_receipt_dicts
 from superslurp.compare.html_report import generate_html
@@ -64,12 +65,7 @@ def generate_report(
 def main(args: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Parse a receipt.")
     parser.add_argument("filename", type=str, help="The name of the file to process")
-    parser.add_argument(  # pylint: disable=duplicate-code
-        "--synonyms",
-        type=Path,
-        default=None,
-        help="JSON file mapping abbreviations to full names.",
-    )
+    add_synonyms_arg(parser)
     parsed_args = parser.parse_args(args)
     print(f"Processing file: {parsed_args.filename}")
     synonyms = _load_synonyms(parsed_args.synonyms) if parsed_args.synonyms else None
@@ -85,24 +81,9 @@ def main_report(args: list[str] | None = None) -> int:
     parser.add_argument(
         "filenames", nargs="+", type=Path, help="Receipt PDF files to process"
     )
-    parser.add_argument(  # pylint: disable=duplicate-code
-        "--synonyms",
-        type=Path,
-        default=None,
-        help="JSON file mapping abbreviations to full names.",
-    )
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=0.90,
-        help="Fuzzy matching threshold (default: 0.90).",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=None,
-        help="Output file path. Prints to stdout if not specified.",
-    )
+    add_synonyms_arg(parser)
+    add_threshold_arg(parser)
+    add_output_arg(parser)
     parsed_args = parser.parse_args(args)
     synonyms = _load_synonyms(parsed_args.synonyms) if parsed_args.synonyms else None
     html = generate_report(

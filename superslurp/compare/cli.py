@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from superslurp._cli_args import add_output_arg, add_synonyms_arg, add_threshold_arg
 from superslurp.compare.aggregate import compare_receipt_files
 from superslurp.compare.html_report import generate_html
 
@@ -18,24 +19,9 @@ def main_aggregate() -> None:
         type=Path,
         help="Directory containing receipt JSON files.",
     )
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=0.90,
-        help="Fuzzy matching threshold (default: 0.90).",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=None,
-        help="Output file path. Prints to stdout if not specified.",
-    )
-    parser.add_argument(
-        "--synonyms",
-        type=Path,
-        default=None,
-        help="JSON file mapping abbreviations to full names.",
-    )
+    add_threshold_arg(parser)
+    add_output_arg(parser)
+    add_synonyms_arg(parser)
     args = parser.parse_args()
 
     directory: Path = args.directory
@@ -71,12 +57,7 @@ def main_report() -> None:
         "aggregate",
         help="Aggregate JSON file path, or '-' for stdin.",
     )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=None,
-        help="Output file path. Prints to stdout if not specified.",
-    )
+    add_output_arg(parser)
     args = parser.parse_args()
 
     if args.aggregate == "-":

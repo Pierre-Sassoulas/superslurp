@@ -97,13 +97,13 @@ _HTML_TEMPLATE = """\
 <div id="sessionDetail" class="hidden"></div>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="tab-products">Product price and weight evolution</button>
-  <button class="tab-btn" data-tab="tab-shrinkflation">Shrinkflation</button>
+  <button class="tab-btn active" data-tab="tab-products">Product price, weight and quality evolution</button>
+  <button class="tab-btn" data-tab="tab-shrinkflation">Product degradation</button>
   <button class="tab-btn" data-tab="tab-allitems">All items</button>
 </div>
 
 <div id="tab-products" class="tab-panel active">
-  <h2>Product price and weight evolution</h2>
+  <h2>Product price, weight and quality evolution</h2>
   <div class="product-select">
     <input id="productInput" list="productList" placeholder="Search for a product...">
     <datalist id="productList"></datalist>
@@ -115,12 +115,15 @@ _HTML_TEMPLATE = """\
     <div id="gramsSection" class="chart-container hidden">
       <canvas id="gramsChart"></canvas>
     </div>
+    <div id="fatSection" class="chart-container hidden">
+      <canvas id="fatChart"></canvas>
+    </div>
   </div>
   <div id="productDetail" class="chart-container hidden"></div>
 </div>
 
 <div id="tab-shrinkflation" class="tab-panel">
-  <h2>Shrinkflation detected</h2>
+  <h2>Product degradation detected</h2>
   <div id="shrinkflation" class="hidden"></div>
 </div>
 
@@ -384,6 +387,7 @@ productNames.forEach(name => {
 
 let priceChartInstance = null;
 let gramsChartInstance = null;
+let fatChartInstance = null;
 
 function showProduct(name) {
   const product = DATA.products.find(p => p.canonical_name === name);
@@ -402,6 +406,7 @@ function showProduct(name) {
         unit_count: obs.unit_count,
         price_per_unit: obs.price_per_unit,
         discount: obs.discount,
+        fat_pct: obs.fat_pct,
         bio: obs.bio || false,
         store: store ? store.location : "?",
         original_name: obs.original_name || name,
@@ -525,6 +530,53 @@ function showProduct(name) {
     if (gramsChartInstance) { gramsChartInstance.destroy(); gramsChartInstance = null; }
   }
 
+  // Fat % chart
+  const fatSection = document.getElementById("fatSection");
+  const hasFat = points.some(p => p.fat_pct != null);
+  if (hasFat) {
+    fatSection.classList.remove("hidden");
+    if (fatChartInstance) fatChartInstance.destroy();
+    fatChartInstance = new Chart(document.getElementById("fatChart"), {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: name + " — Fat %%MG",
+          data: points.map(p => p.fat_pct),
+          borderColor: "#d97706",
+          backgroundColor: "rgba(217,119,6,0.1)",
+          fill: true,
+          tension: 0.2,
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        onClick: function(evt, elements) {
+          if (elements.length > 0) {
+            const p = points[elements[0].index];
+            const session = sessionMap[p.sessionId];
+            const store = session.store_id ? storeMap[session.store_id] : null;
+            const totEntry = sessionTotalsRaw.find(e => e.session_id === p.sessionId);
+            showSessionDetail({
+              sessionId: p.sessionId,
+              date: session.date,
+              total: totEntry ? totEntry.total : 0,
+              label: store ? store.location : "?"
+            });
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "%%MG" } },
+          x: { title: { display: true, text: "Date" } }
+        }
+      }
+    });
+  } else {
+    fatSection.classList.add("hidden");
+    if (fatChartInstance) { fatChartInstance.destroy(); fatChartInstance = null; }
+  }
+
   // Observations table
   const detailDiv = document.getElementById("productDetail");
   let html = '<h3>Observations</h3>';
@@ -536,6 +588,7 @@ function showProduct(name) {
     + makeSortableHeader('EUR/kg', 'num')
     + makeSortableHeader('Units', 'num')
     + makeSortableHeader('EUR/unit', 'num')
+    + makeSortableHeader('%%MG', 'num')
     + makeSortableHeader('Discount', 'num')
     + makeSortableHeader('BIO', 'str')
     + '</tr></thead><tbody>';
@@ -549,6 +602,7 @@ function showProduct(name) {
     html += '<td class="num">' + (p.price_per_kg != null ? p.price_per_kg.toFixed(2) : '-') + '</td>';
     html += '<td class="num">' + (p.unit_count != null ? p.unit_count : '-') + '</td>';
     html += '<td class="num">' + (p.price_per_unit != null ? p.price_per_unit.toFixed(4) : '-') + '</td>';
+    html += '<td class="num">' + (p.fat_pct != null ? p.fat_pct : '-') + '</td>';
     html += '<td class="num">' + (p.discount != null ? p.discount.toFixed(2) : '-') + '</td>';
     html += '<td>' + (p.bio ? 'Yes' : '') + '</td>';
     html += '</tr>';
@@ -694,27 +748,30 @@ function renderAllItems() {
 }
 renderAllItems();
 
-// --- Shrinkflation detection ---
-function detectShrinkflation() {
+// --- Product degradation detection ---
+function detectDegradation() {
   const results = [];
   DATA.products.forEach(p => {
-    const withGrams = p.observations
-      .filter(o => o.grams != null)
+    const sorted = p.observations
+      .filter(o => o.grams != null || o.fat_pct != null)
       .map(o => ({ ...o, date: sessionMap[o.session_id].date }))
       .sort((a, b) => a.date.localeCompare(b.date));
-    if (withGrams.length < 2) return;
-    for (let i = withGrams.length - 1; i >= 1; i--) {
-      const prev = withGrams[i - 1];
-      const curr = withGrams[i];
-      if (curr.grams < prev.grams && curr.price >= prev.price) {
+    if (sorted.length < 2) return;
+    for (let i = sorted.length - 1; i >= 1; i--) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      if (curr.price < prev.price) continue;
+      const gramsDown = curr.grams != null && prev.grams != null && curr.grams < prev.grams;
+      const fatDown = curr.fat_pct != null && prev.fat_pct != null && curr.fat_pct < prev.fat_pct;
+      if (gramsDown || fatDown) {
         results.push({
           name: p.canonical_name,
           dateBefore: prev.date.slice(0, 10),
           dateAfter: curr.date.slice(0, 10),
-          gramsBefore: prev.grams,
-          gramsAfter: curr.grams,
-          priceBefore: prev.price,
-          priceAfter: curr.price,
+          gramsBefore: prev.grams, gramsAfter: curr.grams,
+          fatBefore: prev.fat_pct, fatAfter: curr.fat_pct,
+          priceBefore: prev.price, priceAfter: curr.price,
+          gramsDown: gramsDown, fatDown: fatDown,
         });
         break;
       }
@@ -723,8 +780,8 @@ function detectShrinkflation() {
   return results;
 }
 
-function renderShrinkflation() {
-  const items = detectShrinkflation();
+function renderDegradation() {
+  const items = detectDegradation();
   const panel = document.getElementById("shrinkflation");
   if (items.length === 0) {
     panel.classList.add("hidden");
@@ -732,27 +789,52 @@ function renderShrinkflation() {
   }
   let html = '<table><thead><tr>'
     + makeSortableHeader('Product', 'str')
+    + makeSortableHeader('Type', 'str')
     + makeSortableHeader('Date before', 'str')
     + makeSortableHeader('Date after', 'str')
-    + makeSortableHeader('Grams before', 'num')
-    + makeSortableHeader('Grams after', 'num')
+    + makeSortableHeader('Before', 'str')
+    + makeSortableHeader('After', 'str')
     + makeSortableHeader('Change', 'num')
     + makeSortableHeader('Price before', 'num')
     + makeSortableHeader('Price after', 'num')
     + '</tr></thead><tbody>';
   items.forEach(it => {
-    const pct = ((it.gramsAfter - it.gramsBefore) / it.gramsBefore * 100).toFixed(1);
-    html += '<tr>';
-    html += '<td><a href="#" class="product-link" data-name="'
-      + it.name + '">' + it.name + '</a></td>';
-    html += '<td>' + it.dateBefore + '</td>';
-    html += '<td>' + it.dateAfter + '</td>';
-    html += '<td class="num">' + it.gramsBefore + '</td>';
-    html += '<td class="num">' + it.gramsAfter + '</td>';
-    html += '<td class="num shrink-pct">' + pct + '%%</td>';
-    html += '<td class="num">' + it.priceBefore.toFixed(2) + '</td>';
-    html += '<td class="num">' + it.priceAfter.toFixed(2) + '</td>';
-    html += '</tr>';
+    const types = [];
+    if (it.gramsDown) types.push('grams');
+    if (it.fatDown) types.push('%%MG');
+    const typeStr = types.join(', ');
+    // Show grams row
+    if (it.gramsDown) {
+      const pct = ((it.gramsAfter - it.gramsBefore) / it.gramsBefore * 100).toFixed(1);
+      html += '<tr>';
+      html += '<td><a href="#" class="product-link" data-name="'
+        + it.name + '">' + it.name + '</a></td>';
+      html += '<td>Grams</td>';
+      html += '<td>' + it.dateBefore + '</td>';
+      html += '<td>' + it.dateAfter + '</td>';
+      html += '<td class="num">' + it.gramsBefore + 'g</td>';
+      html += '<td class="num">' + it.gramsAfter + 'g</td>';
+      html += '<td class="num shrink-pct">' + pct + '%%</td>';
+      html += '<td class="num">' + it.priceBefore.toFixed(2) + '</td>';
+      html += '<td class="num">' + it.priceAfter.toFixed(2) + '</td>';
+      html += '</tr>';
+    }
+    // Show fat row
+    if (it.fatDown) {
+      const pct = ((it.fatAfter - it.fatBefore) / it.fatBefore * 100).toFixed(1);
+      html += '<tr>';
+      html += '<td><a href="#" class="product-link" data-name="'
+        + it.name + '">' + it.name + '</a></td>';
+      html += '<td>%%MG</td>';
+      html += '<td>' + it.dateBefore + '</td>';
+      html += '<td>' + it.dateAfter + '</td>';
+      html += '<td class="num">' + it.fatBefore + '%%</td>';
+      html += '<td class="num">' + it.fatAfter + '%%</td>';
+      html += '<td class="num shrink-pct">' + pct + '%%</td>';
+      html += '<td class="num">' + it.priceBefore.toFixed(2) + '</td>';
+      html += '<td class="num">' + it.priceAfter.toFixed(2) + '</td>';
+      html += '</tr>';
+    }
   });
   html += '</tbody></table>';
   panel.innerHTML = html;
@@ -770,7 +852,7 @@ function renderShrinkflation() {
     };
   });
 }
-renderShrinkflation();
+renderDegradation();
 </script>
 </body>
 </html>

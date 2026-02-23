@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from superslurp.parse.v1.parse_items import _parse_name_attributes
+from superslurp.parse.v1.parse_items import _parse_name_attributes, extract_bare_fat_pct
 from superslurp.superslurp_typing import Category, Item, Items
 
 ITEM_PATTERN = re.compile(r"^(.+?)\s{2,}(\(T\)\s+)?([\d,]+ €)\s+(\d{2})\s*$")
@@ -87,6 +87,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "bio": bio,
                 "milk_treatment": milk_treatment,
             }
+            extract_bare_fat_pct(item, category)
             items[category].append(item)
             last_item = item
             nb_parsed += quantity

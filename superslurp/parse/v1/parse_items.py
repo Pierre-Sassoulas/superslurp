@@ -72,6 +72,7 @@ def parse_items(
                     items[category][-1]["discount"] = _get_price(discount_str)
                     continue
                 item = get_item_from_item_infos(item_info, synonyms=synonyms)
+                extract_bare_fat_pct(item, category)
                 nb_parsed_category += item["bought"]
                 items[category].append(item)
         if nb_parsed_category == 0:
@@ -252,6 +253,28 @@ def _get_volume(name: str) -> tuple[str, float | None, int | None]:
 
 
 _FAT_PCT_PATTERN = re.compile(r"\s*\d+[.,]?\d*%\s*MG\b")
+_BARE_FAT_PCT_RE = re.compile(r"(?<![+\-])(\d+[.,]?\d*)%(?!\s*MG\b)")
+_BARE_FAT_PCT_STRIP = re.compile(r"(?<![+\-])\s*\d+[.,]?\d*%(?!\s*MG\b)")
+
+DAIRY_CATEGORIES = frozenset(
+    c
+    for c in Category
+    if any(
+        kw in c.value
+        for kw in ("FROMAGE", "CREMERIE", "BEURRE", "ULTRA FRAIS", "LAITS")
+    )
+)
+
+
+def extract_bare_fat_pct(item: Item, category: Category) -> None:
+    """Extract bare fat % (without MG suffix) for dairy-category items."""
+    if category not in DAIRY_CATEGORIES or item["fat_pct"] is not None:
+        return
+    m = _BARE_FAT_PCT_RE.search(item["name"])
+    if m is None:
+        return
+    item["fat_pct"] = float(m.group(1).replace(",", "."))
+    item["name"] = _BARE_FAT_PCT_STRIP.sub("", item["name"]).strip()
 
 
 def _get_fat_pct(name: str) -> float | None:

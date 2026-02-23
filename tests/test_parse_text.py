@@ -133,8 +133,7 @@ def _assert_store_has_siret_naf(result: dict[str, Any], path: Path) -> None:
 
 
 def _load_synonyms() -> dict[str, str]:
-    synonyms_path = FIXTURES / "synonyms.json"
-    with open(synonyms_path, encoding="utf8") as f:
+    with open(FIXTURES / "synonyms.json", encoding="utf8") as f:
         raw = json.load(f)
     return {k.upper(): v.upper() for k, v in raw.items()}
 

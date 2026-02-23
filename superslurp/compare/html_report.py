@@ -72,6 +72,12 @@ _HTML_TEMPLATE = """\
   #allItems th .sort-arrow { font-size: 0.7em; margin-left: 0.3em; opacity: 0.4; }
   #allItems th.sort-active .sort-arrow { opacity: 1; }
   #allItems td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #allItems .item-row { cursor: pointer; }
+  #allItems .item-row:hover { background: #f0f4ff; }
+  #allItems .item-row td:first-child::before { content: "\\25B6 "; font-size: 0.7em; color: #999; }
+  #allItems .item-row.expanded td:first-child::before { content: "\\25BC "; }
+  #allItems .detail-row { background: #fafbfc; }
+  #allItems .detail-row td { padding-left: 1.8rem; font-size: 0.85rem; color: #555; }
   .tabs { display: flex; gap: 0; margin-top: 1.5rem; border-bottom: 2px solid #e5e7eb; }
   .tab-btn { padding: 0.5rem 1.2rem; background: none; border: none; border-bottom: 2px solid transparent;
              margin-bottom: -2px; cursor: pointer; font-size: 1rem; color: #666; }
@@ -576,86 +582,113 @@ document.getElementById("productInput").addEventListener("input", function() {
 
 // --- All items table ---
 function renderAllItems() {
-  const rows = [];
-  DATA.products.forEach(p => {
-    p.observations.forEach(obs => {
-      const session = sessionMap[obs.session_id];
+  // Build summary per product: most recent obs values, sorted by obs count
+  const products = DATA.products.map(p => {
+    const obs = p.observations.map(o => {
+      const session = sessionMap[o.session_id];
       const store = session && session.store_id ? storeMap[session.store_id] : null;
-      rows.push({
-        date: session ? session.date.slice(0, 10) : '',
-        sessionId: obs.session_id,
-        store: store ? store.location : '?',
-        name: p.canonical_name,
-        quantity: obs.quantity,
-        price: obs.price,
-        grams: obs.grams,
-        price_per_kg: obs.price_per_kg,
-        unit_count: obs.unit_count,
-        price_per_unit: obs.price_per_unit,
-        discount: obs.discount,
-        bio: obs.bio || false,
-      });
-    });
+      return { ...o, date: session ? session.date.slice(0, 10) : '', store: store ? store.location : '?' };
+    }).sort((a, b) => b.date.localeCompare(a.date));
+    const latest = obs[0];
+    return {
+      name: p.canonical_name,
+      count: obs.length,
+      price: latest.price,
+      grams: latest.grams,
+      price_per_kg: latest.price_per_kg,
+      unit_count: latest.unit_count,
+      price_per_unit: latest.price_per_unit,
+      obs: obs,
+    };
   });
-  rows.sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name));
+  products.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
   const panel = document.getElementById("allItems");
   let html = '<table><thead><tr>'
-    + makeSortableHeader('Date', 'str')
-    + makeSortableHeader('Store', 'str')
     + makeSortableHeader('Product', 'str')
-    + makeSortableHeader('Qty', 'num')
-    + makeSortableHeader('Price', 'num')
+    + makeSortableHeader('Obs', 'num')
+    + makeSortableHeader('Last price', 'num')
     + makeSortableHeader('Grams', 'num')
     + makeSortableHeader('EUR/kg', 'num')
     + makeSortableHeader('Units', 'num')
     + makeSortableHeader('EUR/unit', 'num')
-    + makeSortableHeader('Discount', 'num')
     + '</tr></thead><tbody>';
-  rows.forEach(r => {
-    html += '<tr>';
-    html += '<td><a href="#" class="session-link" data-session-id="'
-      + r.sessionId + '">' + r.date + '</a></td>';
-    html += '<td>' + r.store + '</td>';
+  products.forEach((p, idx) => {
+    html += '<tr class="item-row" data-idx="' + idx + '">';
     html += '<td><a href="#" class="product-link" data-name="'
-      + r.name + '">' + r.name + (r.bio ? ' [BIO]' : '') + '</a></td>';
-    html += '<td class="num">' + r.quantity + '</td>';
-    html += '<td class="num">' + r.price.toFixed(2) + '</td>';
-    html += '<td class="num">' + (r.grams != null ? r.grams : '-') + '</td>';
-    html += '<td class="num">' + (r.price_per_kg != null ? r.price_per_kg.toFixed(2) : '-') + '</td>';
-    html += '<td class="num">' + (r.unit_count != null ? r.unit_count : '-') + '</td>';
-    html += '<td class="num">' + (r.price_per_unit != null ? r.price_per_unit.toFixed(4) : '-') + '</td>';
-    html += '<td class="num">' + (r.discount != null ? r.discount.toFixed(2) : '-') + '</td>';
+      + p.name + '">' + p.name + '</a></td>';
+    html += '<td class="num">' + p.count + '</td>';
+    html += '<td class="num">' + p.price.toFixed(2) + '</td>';
+    html += '<td class="num">' + (p.grams != null ? p.grams : '-') + '</td>';
+    html += '<td class="num">' + (p.price_per_kg != null ? p.price_per_kg.toFixed(2) : '-') + '</td>';
+    html += '<td class="num">' + (p.unit_count != null ? p.unit_count : '-') + '</td>';
+    html += '<td class="num">' + (p.price_per_unit != null ? p.price_per_unit.toFixed(4) : '-') + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
   panel.innerHTML = html;
   bindSortHandlers(panel);
-  panel.querySelectorAll(".session-link").forEach(link => {
-    link.onclick = function(e) {
-      e.preventDefault();
-      const sid = this.getAttribute("data-session-id");
-      const session = sessionMap[sid];
-      const store = session.store_id ? storeMap[session.store_id] : null;
-      const totEntry = sessionTotalsRaw.find(e => e.session_id === sid);
-      showSessionDetail({
-        sessionId: sid,
-        date: session.date,
-        total: totEntry ? totEntry.total : 0,
-        label: store ? store.location : "?"
-      });
-      document.getElementById("sessionDetail")
-        .scrollIntoView({ behavior: "smooth" });
-    };
-  });
+
+  // Product name click -> show price & weight evolution
   panel.querySelectorAll(".product-link").forEach(link => {
     link.onclick = function(e) {
       e.preventDefault();
+      e.stopPropagation();
       const name = this.getAttribute("data-name");
       document.getElementById("productInput").value = name;
       showProduct(name);
       switchTab("tab-products");
       document.getElementById("priceChart")
         .scrollIntoView({ behavior: "smooth" });
+    };
+  });
+
+  // Click to expand/collapse detail rows
+  panel.querySelectorAll(".item-row").forEach(row => {
+    row.onclick = function() {
+      const idx = parseInt(this.getAttribute("data-idx"));
+      const p = products[idx];
+      const expanded = this.classList.toggle("expanded");
+      // Remove existing detail rows for this product
+      let next = this.nextElementSibling;
+      while (next && next.classList.contains("detail-row")) {
+        const toRemove = next;
+        next = next.nextElementSibling;
+        toRemove.remove();
+      }
+      if (!expanded) return;
+      // Insert detail rows
+      const tbody = this.parentNode;
+      const ref = this.nextElementSibling;
+      p.obs.forEach(o => {
+        const tr = document.createElement("tr");
+        tr.className = "detail-row";
+        tr.innerHTML = '<td><a href="#" class="session-link" data-session-id="'
+          + o.session_id + '">' + o.date + ' — ' + o.store + '</a></td>'
+          + '<td class="num">' + o.quantity + '</td>'
+          + '<td class="num">' + o.price.toFixed(2) + '</td>'
+          + '<td class="num">' + (o.grams != null ? o.grams : '-') + '</td>'
+          + '<td class="num">' + (o.price_per_kg != null ? o.price_per_kg.toFixed(2) : '-') + '</td>'
+          + '<td class="num">' + (o.unit_count != null ? o.unit_count : '-') + '</td>'
+          + '<td class="num">' + (o.price_per_unit != null ? o.price_per_unit.toFixed(4) : '-') + '</td>';
+        tbody.insertBefore(tr, ref);
+        tr.querySelector(".session-link").onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const sid = this.getAttribute("data-session-id");
+          const session = sessionMap[sid];
+          const store = session.store_id ? storeMap[session.store_id] : null;
+          const totEntry = sessionTotalsRaw.find(e => e.session_id === sid);
+          showSessionDetail({
+            sessionId: sid,
+            date: session.date,
+            total: totEntry ? totEntry.total : 0,
+            label: store ? store.location : "?"
+          });
+          document.getElementById("sessionDetail")
+            .scrollIntoView({ behavior: "smooth" });
+        };
+      });
     };
   });
 }

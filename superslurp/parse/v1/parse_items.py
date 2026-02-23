@@ -15,8 +15,17 @@ class WrongNumberOfItemException(Exception): ...
 
 # Patterns to strip from name once units have been extracted
 _UNIT_PATTERN = re.compile(
-    r"\s*\bBTEX\d+\b|\s*\bX\d+(?:\+\d+OFF)?\b|\s*\b\d+TR\b|^\d+\s+"
+    r"\s*\bX?\d+(?:=\d+)?RLX\b|\s*\bBTEX\d+\b|\s*\bX\d+(?:\+\d+OFF)?\b|\s*\b\d+TR\b|^\d+\s+"
 )
+# Standalone "+3OFF" left behind after _get_gram strips "7X1KG" from "7X1KG+3OFF"
+_OFFERT_PATTERN = re.compile(r"\s*\+\d+OFF\b")
+_OFFERT_EXTRACT = re.compile(r"\+(\d+)OFF\b")
+
+
+def _get_offert(name: str) -> int | None:
+    """Extract the free-item count from a '+3OFF' (offert) suffix."""
+    m = _OFFERT_EXTRACT.search(name)
+    return int(m.group(1)) if m else None
 
 
 _NAME_CHAR = r"(?:(?!\(T\))[\w .\/%,=\-\"'€°+Éé()\*])"
@@ -105,6 +114,12 @@ def _parse_name_attributes(
     if synonyms:
         raw_name = expand_synonyms(raw_name, synonyms)
     name, grams, units = _get_gram(raw_name)
+    offert = _get_offert(name)
+    name = _OFFERT_PATTERN.sub("", name).strip()
+    if offert and units is not None and grams is not None:
+        per_unit = grams / units
+        units += offert
+        grams = per_unit * units
     if units is None:
         units = extract_unit_count(raw_name)
         if units is not None:

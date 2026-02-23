@@ -58,13 +58,15 @@ _STRIP_WORDS = frozenset(
     }
 )
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
-# Matches X12, BTEX12, X10+5OFF, 6TR, and leading counts like "18 OEUFS"
-_STRIP_UNIT_COUNT = re.compile(r"\bBTEX\d+\b|\bX\d+(?:\+\d+OFF)?\b|\b\d+TR\b")
+# Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, and leading counts like "18 OEUFS"
+_STRIP_UNIT_COUNT = re.compile(
+    r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|\bX\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
+)
 _LEADING_COUNT = re.compile(r"^\d+\s+")
 
-# Extract unit count: X12 → 12, BTEX6 → 6, X10+5OFF → 15, 6TR → 6, 18 OEUFS → 18
+# Extract unit count: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 4=12RLX → 4, 18 OEUFS → 18
 _UNIT_COUNT_PATTERN = re.compile(
-    r"\bBTEX(\d+)\b|\bX(\d+)(?:\+(\d+)OFF)?\b|\b(\d+)TR\b|^(\d+)\s+"
+    r"\bX?(\d+)(?:=\d+)?RLX\b|\bBTEX(\d+)\b|\bX(\d+)(?:\+(\d+)OFF)?\b|\b(\d+)TR\b|^(\d+)\s+"
 )
 
 
@@ -80,7 +82,9 @@ def expand_synonyms(name: str, synonyms: dict[str, str]) -> str:
     """
     name = name.replace(".", " ")
     for pattern, replacement in synonyms.items():
-        pat = pattern.replace(".", " ")
+        pat = pattern.replace(".", " ").strip()
+        if not pat:
+            continue
         name = re.sub(
             r"\b" + re.escape(pat) + r"\b", replacement, name, flags=re.IGNORECASE
         )
@@ -118,27 +122,30 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     return name
 
 
-def extract_unit_count(name: str) -> int | None:
+def extract_unit_count(name: str) -> int | None:  # pylint: disable=too-many-return-statements
     """Extract the number of units from a product name.
 
-    Examples: X12 → 12, BTEX6 → 6, X10+5OFF → 15, 6TR → 6, "18 OEUFS" → 18.
+    Examples: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 12RLX → 12,
+    "18 OEUFS" → 18.
     Returns None if no count found.
     """
     name = name.upper().replace(".", " ")
     m = _UNIT_COUNT_PATTERN.search(name)
     if m is None:
         return None
-    if m.group(1):  # BTEX(\d+)
+    if m.group(1):  # (\d+)RLX
         return int(m.group(1))
-    if m.group(2):  # X(\d+)(+(\d+)OFF)?
-        count = int(m.group(2))
-        if m.group(3):
-            count += int(m.group(3))
+    if m.group(2):  # BTEX(\d+)
+        return int(m.group(2))
+    if m.group(3):  # X(\d+)(+(\d+)OFF)?
+        count = int(m.group(3))
+        if m.group(4):
+            count += int(m.group(4))
         return count
-    if m.group(4):  # (\d+)TR
-        return int(m.group(4))
-    if m.group(5):  # ^(\d+)\s+
+    if m.group(5):  # (\d+)TR
         return int(m.group(5))
+    if m.group(6):  # ^(\d+)\s+
+        return int(m.group(6))
     return None
 
 

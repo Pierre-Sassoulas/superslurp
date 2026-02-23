@@ -228,6 +228,15 @@ _KNOWN_BRANDS = frozenset(
         "SCB",
         "NUII",
         "QUAKER",
+        "NESTLE",
+        "SAMIA",
+        "SOIGNON",
+        "EUROFOOD",
+        "SAUPIQUET",
+        "BELCHARD",
+        "LU",
+        "WHISKAS",
+        "MOULIN DE VALDONNE",
     }
 )
 

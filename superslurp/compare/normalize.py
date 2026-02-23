@@ -33,6 +33,9 @@ _STRIP_WORDS = frozenset(
         "U",
         # Certification (extracted separately as observation flag)
         "BIO",
+        # Milk treatment (standalone words; LAIT PASTEURISE/LAIT CRU handled as phrases below)
+        "PASTEURISE",
+        "CRU",
         # Farming / quality qualifiers
         "PA",
         "LR",
@@ -57,6 +60,13 @@ _STRIP_WORDS = frozenset(
         "D'ELEVEURS",
     }
 )
+# Word pairs where the second word is in _STRIP_WORDS but forms a product name
+# with the first word (e.g. FROMAGE BLANC is a product, not white cheese).
+_PROTECTED_COMPOUNDS: dict[str, set[str]] = {
+    "FROMAGE": {"BLANC"},
+    "VIN": {"BLANC", "ROSE", "NOIR"},
+}
+_STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
 # Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, and leading counts like "18 OEUFS"
 _STRIP_UNIT_COUNT = re.compile(
@@ -106,14 +116,29 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
         name = expand_synonyms(name, synonyms)
     # Normalize dots to spaces (in case no synonyms)
     name = name.replace(".", " ")
+    # Strip multi-word qualifiers (e.g. "LAIT PASTEURISE" as milk treatment)
+    name = _STRIP_PHRASE.sub("", name)
     # Strip count patterns like "3 TETES"
     name = _STRIP_COUNT_PATTERN.sub("", name)
     # Strip unit count patterns like X12, BTEX6, X10+5OFF, leading "18 "
     name = _STRIP_UNIT_COUNT.sub("", name)
     name = _LEADING_COUNT.sub("", name)
-    # Strip known qualifier words
+    # Strip known qualifier words, but keep protected compounds
     words = name.split()
-    words = [w for w in words if w not in _STRIP_WORDS]
+    filtered: list[str] = []
+    for w in words:
+        if w in _STRIP_WORDS:
+            prev = filtered[-1] if filtered else None
+            if (
+                prev
+                and prev in _PROTECTED_COMPOUNDS
+                and w in _PROTECTED_COMPOUNDS[prev]
+            ):
+                filtered.append(w)
+                continue
+            continue
+        filtered.append(w)
+    words = filtered
     name = " ".join(words)
     # Collapse whitespace
     name = re.sub(r"\s+", " ", name).strip()
@@ -152,3 +177,16 @@ def extract_unit_count(name: str) -> int | None:  # pylint: disable=too-many-ret
 def is_bio(name: str) -> bool:
     """Check if a product name contains BIO as a standalone word."""
     return bool(re.search(r"\bBIO\b", name.upper()))
+
+
+def get_milk_treatment(name: str) -> str | None:
+    """Detect milk treatment (pasteurise / cru) from a product name.
+
+    Returns ``"pasteurise"``, ``"cru"``, or ``None``.
+    """
+    name = name.upper()
+    if re.search(r"\bCRU\b", name):
+        return "cru"
+    if re.search(r"\bPASTEURISE\b", name):
+        return "pasteurise"
+    return None

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from superslurp.compare.matcher import FuzzyMatcher
-from superslurp.compare.normalize import is_bio
+from superslurp.compare.normalize import get_milk_treatment, is_bio
 
 
 def _extract_location(store: dict[str, Any]) -> str | None:
@@ -92,6 +92,9 @@ def _build_observation(
     }
     if is_bio(item["name"]):
         obs["bio"] = True
+    milk = get_milk_treatment(item["name"])
+    if milk:
+        obs["milk_treatment"] = milk
     return obs
 
 

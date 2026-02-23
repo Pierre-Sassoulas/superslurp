@@ -14,6 +14,7 @@ from superslurp.compare.aggregate import (
 from superslurp.compare.matcher import FuzzyMatcher
 from superslurp.compare.normalize import (
     extract_unit_count,
+    get_milk_treatment,
     is_bio,
     normalize_for_matching,
 )
@@ -57,6 +58,16 @@ def test_is_bio() -> None:
     assert is_bio("AIL BLC U BIO FILET") is True
     assert is_bio("AUBERGINE") is False
     assert is_bio("ABRICOT BIO") is True
+
+
+def test_get_milk_treatment() -> None:
+    assert get_milk_treatment("FROMAGE BLANC NATURE LAIT PASTEURISE U") == "pasteurise"
+    assert get_milk_treatment("BRIE PASTEURISE ROITELET") == "pasteurise"
+    assert get_milk_treatment("BEAUFORT AOP LAIT CRU") == "cru"
+    assert get_milk_treatment("REBLOCHON SAVOIE AOP LAIT CRU") == "cru"
+    assert get_milk_treatment("TOMME AIL OURS LT PASTEURISE") == "pasteurise"
+    assert get_milk_treatment("AUBERGINE") is None
+    assert get_milk_treatment("BAGUETTE TRADITION") is None
 
 
 # --- matcher ---
@@ -536,9 +547,9 @@ def test_normalize_multiword_synonym_priority() -> None:
 def test_normalize_dot_pattern_synonym() -> None:
     """Patterns with dots are normalized to spaces before matching."""
     synonyms = {"FROM.BLC": "FROMAGE BLANC", "FROM": "FROMAGE"}
-    # BLANC is stripped by _STRIP_WORDS (color qualifier) after expansion
+    # BLANC is kept because FROMAGE BLANC is a protected compound
     result = normalize_for_matching("FROM.BLC NAT", synonyms)
-    assert result == "FROMAGE NAT"
+    assert result == "FROMAGE BLANC NAT"
     # Standalone FROM fallback
     result = normalize_for_matching("FROM.RAPE", synonyms)
     assert result == "FROMAGE RAPE"
@@ -576,9 +587,9 @@ def test_synonyms_fixture_loads_and_expands() -> None:
     result = normalize_for_matching("CHOCO.PATIS.NOIR 52%", synonyms)
     assert result == "CHOCOLAT PATISSIER 52%"
 
-    # FROM.BLC → FROMAGE BLANC → BLANC stripped (color), NAT expanded
+    # FROM.BLC → FROMAGE BLANC (BLANC kept: protected compound), NAT expanded
     result = normalize_for_matching("FROM.BLC NAT.7,6%MG", synonyms)
-    assert result == "FROMAGE NATURE 7,6%MG"
+    assert result == "FROMAGE BLANC NATURE 7,6%MG"
 
     # PAP.TOIL → PAPIER TOILETTE (BLC/U stripped)
     result = normalize_for_matching("PAP.TOIL.BLC 2PL.U", synonyms)

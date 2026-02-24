@@ -78,6 +78,7 @@ _STRIP_WORDS = frozenset(
 _PROTECTED_COMPOUNDS: dict[str, set[str]] = {
     "FROMAGE": {"BLANC"},
     "VIN": {"BLANC", "ROSE", "NOIR"},
+    "ARBRE": {"VERT"},
 }
 _STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")

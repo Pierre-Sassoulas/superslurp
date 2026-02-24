@@ -18,6 +18,7 @@ class Properties(TypedDict, total=False):
     brand: str
     label: str
     packaging: str
+    origin: str
 
 
 class Item(TypedDict):

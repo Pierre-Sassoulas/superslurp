@@ -9,10 +9,12 @@ from superslurp.compare.normalize import (
     extract_unit_count,
     get_brand,
     get_milk_treatment,
+    get_origin,
     get_packaging,
     get_quality_label,
     is_bio,
     strip_brand,
+    strip_origin,
     strip_packaging,
     strip_quality_label,
 )
@@ -112,7 +114,7 @@ def _parse_name_grams_units(
     raw_name: str,
 ) -> tuple[str, float | None, float | None]:
     """Extract clean name, grams and units from a raw product name."""
-    name, grams, units, _fat_pct, _bio, _milk, _volume_ml, _brand, _label, _pkg = (
+    name, grams, units, _fat, _bio, _milk, _vol, _brand, _label, _pkg, _orig = (
         _parse_name_attributes(raw_name)
     )
     return name, grams, units
@@ -132,8 +134,9 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
     str | None,
     str | None,
     str | None,
+    str | None,
 ]:
-    """Extract clean name, grams, units, fat %, bio, milk treatment, volume_ml, brand, label and packaging.
+    """Extract clean name, grams, units, fat %, bio, milk treatment, volume_ml, brand, label, packaging, origin.
 
     When *synonyms* is provided, abbreviations are expanded **before**
     any attribute extraction so that patterns like ``%MG LP`` →
@@ -165,7 +168,7 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
         name = _FAT_PCT_PATTERN.sub("", name).strip()
     if fat_pct is None:
         fat_pct = _infer_milk_fat_pct(raw_name)
-    name, bio, milk_treatment, brand, label, packaging = _extract_properties(
+    name, bio, milk_treatment, brand, label, packaging, origin = _extract_properties(
         name, raw_name
     )
     return (
@@ -179,13 +182,14 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
         brand,
         label,
         packaging,
+        origin,
     )
 
 
 def _extract_properties(
     name: str, raw_name: str
-) -> tuple[str, bool, str | None, str | None, str | None, str | None]:
-    """Detect bio/milk/brand/label/packaging flags and strip them from *name*."""
+) -> tuple[str, bool, str | None, str | None, str | None, str | None, str | None]:
+    """Detect bio/milk/brand/label/packaging/origin flags and strip them from *name*."""
     bio = is_bio(raw_name)
     if bio:
         name = re.sub(r"\bBIO\b", "", name).strip()
@@ -209,16 +213,22 @@ def _extract_properties(
     packaging = get_packaging(name)
     if packaging is not None:
         name = strip_packaging(name, packaging)
+    origin_result = get_origin(name)
+    origin: str | None = None
+    if origin_result is not None:
+        origin, origin_word = origin_result
+        name = strip_origin(name, origin_word)
     name = re.sub(r"\s+", " ", name).strip()
-    return name, bio, milk_treatment, brand, label, packaging
+    return name, bio, milk_treatment, brand, label, packaging, origin
 
 
-def build_properties(
+def build_properties(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     bio: bool,
     milk_treatment: str | None,
     brand: str | None = None,
     label: str | None = None,
     packaging: str | None = None,
+    origin: str | None = None,
 ) -> Properties:
     """Build a Properties dict, only including truthy values."""
     props: Properties = {}
@@ -232,6 +242,8 @@ def build_properties(
         props["label"] = label
     if packaging is not None:
         props["packaging"] = packaging
+    if origin is not None:
+        props["origin"] = origin
     return props
 
 
@@ -255,6 +267,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         brand,
         label,
         packaging,
+        origin,
     ) = _parse_name_attributes(raw_name, synonyms=synonyms)
     quantity_str = item_info.group("quantity")
     if grams is None and quantity_str and "kg" in quantity_str:
@@ -278,7 +291,9 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
         "discount": None,
-        "properties": build_properties(bio, milk_treatment, brand, label, packaging),
+        "properties": build_properties(
+            bio, milk_treatment, brand, label, packaging, origin
+        ),
     }
     return item
 

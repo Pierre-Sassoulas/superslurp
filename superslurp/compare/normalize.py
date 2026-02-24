@@ -33,11 +33,15 @@ _STRIP_WORDS = frozenset(
         "VERRE",
         "PAQUET",
         "RECHARGE",
-        # Origin (country codes)
+        # Origin (country codes and full names)
         "FR",
+        "FRA",
+        "FRANCE",
         "IT",
+        "ITALIA",
         "ES",
         "SP",
+        "ESP",
         # Store brand
         "U",
         # Certification (extracted separately as observation flag)
@@ -349,4 +353,35 @@ def strip_packaging(name: str, packaging: str) -> str:
     """Remove a packaging word from *name* (case-insensitive, whole word)."""
     return re.sub(
         r"\b" + re.escape(packaging) + r"\b", "", name, flags=re.IGNORECASE
+    ).strip()
+
+
+_KNOWN_ORIGINS: dict[str, str] = {
+    "FR": "FRANCE",
+    "FRA": "FRANCE",
+    "FRANCE": "FRANCE",
+    "IT": "ITALIE",
+    "ITALIA": "ITALIE",
+    "ES": "ESPAGNE",
+    "SP": "ESPAGNE",
+    "ESP": "ESPAGNE",
+}
+
+
+def get_origin(name: str) -> tuple[str, str] | None:
+    """Detect a known origin in a product name.
+
+    Returns ``(normalized_country, matched_word)`` or ``None``.
+    """
+    upper = name.upper()
+    for word, country in _KNOWN_ORIGINS.items():
+        if re.search(r"\b" + re.escape(word) + r"\b", upper):
+            return country, word
+    return None
+
+
+def strip_origin(name: str, origin_word: str) -> str:
+    """Remove an origin word from *name* (case-insensitive, whole word)."""
+    return re.sub(
+        r"\b" + re.escape(origin_word) + r"\b", "", name, flags=re.IGNORECASE
     ).strip()

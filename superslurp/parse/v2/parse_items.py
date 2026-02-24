@@ -75,6 +75,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 brand,
                 label,
                 packaging,
+                origin,
             ) = _parse_name_attributes(raw_name, synonyms=synonyms)
             grams = (
                 grams_from_weight if grams_from_weight is not None else grams_from_name
@@ -99,7 +100,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "way_of_paying": way_of_paying,
                 "discount": None,
                 "properties": build_properties(
-                    bio, milk_treatment, brand, label, packaging
+                    bio, milk_treatment, brand, label, packaging, origin
                 ),
             }
             extract_bare_fat_pct(item, category)

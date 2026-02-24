@@ -106,6 +106,9 @@ def _build_observation(
     packaging = props.get("packaging")
     if packaging:
         obs["packaging"] = packaging
+    origin = props.get("origin")
+    if origin:
+        obs["origin"] = origin
     return obs
 
 

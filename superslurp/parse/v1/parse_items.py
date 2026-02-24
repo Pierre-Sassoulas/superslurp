@@ -321,7 +321,7 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
 
 
 _VOLUME_PATTERN = re.compile(
-    r"(?P<multiplier>\d+X)?(?P<vol>\d+[,]?\d*)\s*(?P<unit>L|CL|ML)\b"
+    r"(?P<multiplier>\d+X)?(?P<vol>\d+[,]?\d*)\s*(?P<unit>LITRES?|L|CL|ML)\b"
 )
 
 
@@ -333,7 +333,7 @@ def _get_volume(name: str) -> tuple[str, float | None, int | None]:
     vol_str = m.group("vol").replace(",", ".")
     vol = float(vol_str)
     unit = m.group("unit")
-    if unit == "L":
+    if unit in {"L", "LITRE", "LITRES"}:
         vol *= 1000
     elif unit == "CL":
         vol *= 10

@@ -401,7 +401,8 @@ def extract_bare_fat_pct(item: Item, category: Category) -> None:
     if m is None:
         return
     item["fat_pct"] = float(m.group(1).replace(",", "."))
-    item["name"] = _BARE_FAT_PCT_STRIP.sub("", item["name"]).strip()
+    name = _BARE_FAT_PCT_STRIP.sub(" ", item["name"])
+    item["name"] = re.sub(r"\s+", " ", name).strip()
 
 
 def _get_fat_pct(name: str) -> float | None:

@@ -159,6 +159,8 @@ def _parse_name_attributes(
     fat_pct = _get_fat_pct(name)
     if fat_pct is not None:
         name = _FAT_PCT_PATTERN.sub("", name).strip()
+    if fat_pct is None:
+        fat_pct = _infer_milk_fat_pct(raw_name)
     name, bio, milk_treatment, brand, label = _extract_properties(name, raw_name)
     return name, grams, units, fat_pct, bio, milk_treatment, volume_ml, brand, label
 
@@ -171,6 +173,10 @@ def _extract_properties(
     if bio:
         name = re.sub(r"\bBIO\b", "", name).strip()
     milk_treatment = get_milk_treatment(raw_name)
+    if milk_treatment is not None:
+        name = re.sub(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)", "", name).strip()
+        name = re.sub(r"\bPASTEURISE\w*", "", name).strip()
+        name = re.sub(r"\b(?:CRU|UHT)\b", "", name).strip()
     brand = get_brand(raw_name)
     if brand is not None:
         name = strip_brand(name, brand)
@@ -334,6 +340,26 @@ def _get_fat_pct(name: str) -> float | None:
     if m is None:
         return None
     return float(m.group(1).replace(",", "."))
+
+
+def _infer_milk_fat_pct(name: str) -> float | None:
+    """Infer fat percentage from milk type descriptors.
+
+    * *Lait entier* → 3.6 %
+    * *Lait 1/2 écrémé* / *demi-écrémé* → 1.5 %
+    * *Lait écrémé* → 0.5 %
+    """
+    upper = name.upper()
+    if not re.search(r"\bLAIT\b", upper):
+        return None
+    # Demi-écrémé / 1/2 écrémé — check before plain écrémé
+    if re.search(r"\bDEMI[\s-]?ECREM|1/2\s*ECREM", upper):
+        return 1.5
+    if re.search(r"\bECREM", upper):
+        return 0.5
+    if re.search(r"\bENTIER\b", upper):
+        return 3.6
+    return None
 
 
 def _get_grams_from_quantity(quantity_str: str) -> float | None:

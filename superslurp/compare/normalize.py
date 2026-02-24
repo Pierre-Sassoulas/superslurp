@@ -33,9 +33,10 @@ _STRIP_WORDS = frozenset(
         "U",
         # Certification (extracted separately as observation flag)
         "BIO",
-        # Milk treatment (standalone words; LAIT PASTEURISE/LAIT CRU handled as phrases below)
+        # Milk treatment (standalone words; LAIT PASTEURISE/LAIT CRU/LAIT UHT handled as phrases below)
         "PASTEURISE",
         "CRU",
+        "UHT",
         # Quality labels (extracted separately as observation flag)
         "AOP",
         "IGP",
@@ -69,7 +70,7 @@ _PROTECTED_COMPOUNDS: dict[str, set[str]] = {
     "FROMAGE": {"BLANC"},
     "VIN": {"BLANC", "ROSE", "NOIR"},
 }
-_STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU)\b")
+_STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
 # Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, leading "18 OEUFS", leading "3+1RAC"
 _STRIP_UNIT_COUNT = re.compile(
@@ -194,15 +195,17 @@ def is_bio(name: str) -> bool:
 
 
 def get_milk_treatment(name: str) -> str | None:
-    """Detect milk treatment (pasteurise / cru) from a product name.
+    """Detect milk treatment (pasteurise / cru / UHT) from a product name.
 
-    Returns ``"pasteurise"``, ``"cru"``, or ``None``.
+    Returns ``"pasteurise"``, ``"cru"``, ``"UHT"``, or ``None``.
     """
     name = name.upper()
     if re.search(r"\bCRU\b", name):
         return "cru"
-    if re.search(r"\bPASTEURISE\b", name):
+    if re.search(r"\bPASTEURISE", name):
         return "pasteurise"
+    if re.search(r"\bUHT\b", name):
+        return "UHT"
     return None
 
 

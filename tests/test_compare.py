@@ -20,7 +20,7 @@ from superslurp.compare.normalize import (
     is_bio,
     normalize_for_matching,
 )
-from superslurp.parse.v1.parse_items import _get_volume
+from superslurp.parse.v1.parse_items import _get_volume, _infer_milk_fat_pct
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -61,6 +61,31 @@ def test_is_bio() -> None:
     assert is_bio("AIL BLC U BIO FILET") is True
     assert is_bio("AUBERGINE") is False
     assert is_bio("ABRICOT BIO") is True
+
+
+def test_infer_milk_fat_pct_entier() -> None:
+    assert _infer_milk_fat_pct("LAIT UHT ENTIER U BK 1 LITRE") == 3.6
+    assert _infer_milk_fat_pct("LAIT UHT ENTIER U BRIQUE 6X1L") == 3.6
+    assert _infer_milk_fat_pct("1L BK LAIT ENTIER UHT U") == 3.6
+
+
+def test_infer_milk_fat_pct_demi_ecreme() -> None:
+    assert _infer_milk_fat_pct("LAIT UHT 1/2 ECREM U BK 1L") == 1.5
+    assert _infer_milk_fat_pct("LAIT DEMI-ECREME U 1L") == 1.5
+    assert _infer_milk_fat_pct("LAIT DEMI ECREME LACTEL 6X1L") == 1.5
+
+
+def test_infer_milk_fat_pct_ecreme() -> None:
+    assert _infer_milk_fat_pct("LAIT ECREME U BK 1L") == 0.5
+
+
+def test_infer_milk_fat_pct_no_match() -> None:
+    assert _infer_milk_fat_pct("CREME UHT ENTIERE 35% U BK 1L") is None
+    assert _infer_milk_fat_pct("CHOCOLAT LAIT/NOISET") is None
+    assert _infer_milk_fat_pct("PAIN AU LAIT PASQUIER X10 350G") is None
+    assert _infer_milk_fat_pct("BLEDILAIT CROISSANCE+ 12M 900G") is None
+    assert _infer_milk_fat_pct("LAITUE ICEBERG") is None
+    assert _infer_milk_fat_pct("SUCRE POUDRE 1KG") is None
 
 
 def test_get_milk_treatment() -> None:

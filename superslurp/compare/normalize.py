@@ -10,7 +10,7 @@ _STRIP_WORDS = frozenset(
         "BLANC",
         "BLC",
         "VIOLET",
-        "ROGUE",
+        "ROUGE",
         "RGE",
         "JAUNE",
         "JNE",

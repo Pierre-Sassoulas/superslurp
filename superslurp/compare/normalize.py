@@ -78,7 +78,7 @@ _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
 _STRIP_UNIT_COUNT = re.compile(
     r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
 )
-_STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b")
+_STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLITRES?\b")
 _LEADING_COUNT = re.compile(r"^\d+\s+")
 # Leading "3+1" (sum → 4) or "1/2" (fraction → 0.5), glued or spaced before product word
 _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")

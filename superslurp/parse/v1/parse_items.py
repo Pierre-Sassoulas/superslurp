@@ -321,18 +321,27 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
 
 
 _VOLUME_PATTERN = re.compile(
-    r"(?P<multiplier>\d+X)?(?P<vol>\d+[,]?\d*)\s*(?P<unit>LITRES?|L|CL|ML)\b"
+    r"(?P<multiplier>\d+X)?(?P<vol>\d+[,]?\d*)\s*(?P<unit>LITRES?|L|CL|ML)\b",
+    re.IGNORECASE,
 )
+
+
+_BARE_LITRE_PATTERN = re.compile(r"\bLITRES?\b", re.IGNORECASE)
 
 
 def _get_volume(name: str) -> tuple[str, float | None, int | None]:
     """Extract volume in mL from a product name (e.g. 1L, 75CL, 250ML, 6X1L)."""
     m = _VOLUME_PATTERN.search(name)
     if m is None:
-        return name, None, None
+        # Standalone "LITRE" without a number implies 1 litre.
+        m_bare = _BARE_LITRE_PATTERN.search(name)
+        if m_bare is None:
+            return name, None, None
+        name = name[: m_bare.start()] + name[m_bare.end() :]
+        return re.sub(r"\s+", " ", name).strip(), 1000.0, None
     vol_str = m.group("vol").replace(",", ".")
     vol = float(vol_str)
-    unit = m.group("unit")
+    unit = m.group("unit").upper()
     if unit in {"L", "LITRE", "LITRES"}:
         vol *= 1000
     elif unit == "CL":

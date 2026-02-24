@@ -9,9 +9,11 @@ from superslurp.compare.normalize import (
     extract_unit_count,
     get_brand,
     get_milk_treatment,
+    get_packaging,
     get_quality_label,
     is_bio,
     strip_brand,
+    strip_packaging,
     strip_quality_label,
 )
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
@@ -77,6 +79,7 @@ def parse_items(
                     continue
                 item = get_item_from_item_infos(item_info, synonyms=synonyms)
                 extract_bare_fat_pct(item, category)
+                extract_packaging_abbrev(item, category)
                 nb_parsed_category += item["bought"]
                 items[category].append(item)
         if nb_parsed_category == 0:
@@ -109,13 +112,13 @@ def _parse_name_grams_units(
     raw_name: str,
 ) -> tuple[str, float | None, float | None]:
     """Extract clean name, grams and units from a raw product name."""
-    name, grams, units, _fat_pct, _bio, _milk, _volume_ml, _brand, _label = (
+    name, grams, units, _fat_pct, _bio, _milk, _volume_ml, _brand, _label, _pkg = (
         _parse_name_attributes(raw_name)
     )
     return name, grams, units
 
 
-def _parse_name_attributes(
+def _parse_name_attributes(  # pylint: disable=too-many-locals
     raw_name: str,
     synonyms: dict[str, str] | None = None,
 ) -> tuple[
@@ -128,8 +131,9 @@ def _parse_name_attributes(
     float | None,
     str | None,
     str | None,
+    str | None,
 ]:
-    """Extract clean name, grams, units, fat %, bio, milk treatment, volume_ml, brand and label.
+    """Extract clean name, grams, units, fat %, bio, milk treatment, volume_ml, brand, label and packaging.
 
     When *synonyms* is provided, abbreviations are expanded **before**
     any attribute extraction so that patterns like ``%MG LP`` →
@@ -161,20 +165,39 @@ def _parse_name_attributes(
         name = _FAT_PCT_PATTERN.sub("", name).strip()
     if fat_pct is None:
         fat_pct = _infer_milk_fat_pct(raw_name)
-    name, bio, milk_treatment, brand, label = _extract_properties(name, raw_name)
-    return name, grams, units, fat_pct, bio, milk_treatment, volume_ml, brand, label
+    name, bio, milk_treatment, brand, label, packaging = _extract_properties(
+        name, raw_name
+    )
+    return (
+        name,
+        grams,
+        units,
+        fat_pct,
+        bio,
+        milk_treatment,
+        volume_ml,
+        brand,
+        label,
+        packaging,
+    )
 
 
 def _extract_properties(
     name: str, raw_name: str
-) -> tuple[str, bool, str | None, str | None, str | None]:
-    """Detect bio/milk/brand/label flags and strip them from *name*."""
+) -> tuple[str, bool, str | None, str | None, str | None, str | None]:
+    """Detect bio/milk/brand/label/packaging flags and strip them from *name*."""
     bio = is_bio(raw_name)
     if bio:
         name = re.sub(r"\bBIO\b", "", name).strip()
     milk_treatment = get_milk_treatment(raw_name)
     if milk_treatment is not None:
-        name = re.sub(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)", "", name).strip()
+        m = re.search(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)", name)
+        if m and m.start() == 0:
+            # LAIT is the product (liquid) — keep it, only strip treatment word
+            name = name[: m.start()] + "LAIT" + name[m.end() :]
+        elif m:
+            # LAIT is a qualifier (cheese, etc.) — strip entirely
+            name = name[: m.start()] + name[m.end() :]
         name = re.sub(r"\bPASTEURISE\w*", "", name).strip()
         name = re.sub(r"\b(?:CRU|UHT)\b", "", name).strip()
     brand = get_brand(raw_name)
@@ -183,8 +206,11 @@ def _extract_properties(
     label = get_quality_label(raw_name)
     if label is not None:
         name = strip_quality_label(name)
+    packaging = get_packaging(name)
+    if packaging is not None:
+        name = strip_packaging(name, packaging)
     name = re.sub(r"\s+", " ", name).strip()
-    return name, bio, milk_treatment, brand, label
+    return name, bio, milk_treatment, brand, label, packaging
 
 
 def build_properties(
@@ -192,6 +218,7 @@ def build_properties(
     milk_treatment: str | None,
     brand: str | None = None,
     label: str | None = None,
+    packaging: str | None = None,
 ) -> Properties:
     """Build a Properties dict, only including truthy values."""
     props: Properties = {}
@@ -203,6 +230,8 @@ def build_properties(
         props["brand"] = brand
     if label is not None:
         props["label"] = label
+    if packaging is not None:
+        props["packaging"] = packaging
     return props
 
 
@@ -215,9 +244,18 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
     assert raw_name, f"Name is empty: {raw_name}"
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
-    name, grams, units, fat_pct, bio, milk_treatment, volume_ml, brand, label = (
-        _parse_name_attributes(raw_name, synonyms=synonyms)
-    )
+    (
+        name,
+        grams,
+        units,
+        fat_pct,
+        bio,
+        milk_treatment,
+        volume_ml,
+        brand,
+        label,
+        packaging,
+    ) = _parse_name_attributes(raw_name, synonyms=synonyms)
     quantity_str = item_info.group("quantity")
     if grams is None and quantity_str and "kg" in quantity_str:
         grams = _get_grams_from_quantity(quantity_str)
@@ -240,7 +278,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         "tr": _get_tr(tr),
         "way_of_paying": way_of_paying,
         "discount": None,
-        "properties": build_properties(bio, milk_treatment, brand, label),
+        "properties": build_properties(bio, milk_treatment, brand, label, packaging),
     }
     return item
 
@@ -321,6 +359,38 @@ DAIRY_CATEGORIES = frozenset(
         for kw in ("FROMAGE", "CREMERIE", "BEURRE", "ULTRA FRAIS", "LAITS")
     )
 )
+
+
+_PACKAGING_ABBREV_RE = re.compile(r"\bBK\b")
+_PACKAGING_ABBREV_BL_RE = re.compile(r"\bBL\b")
+
+LIQUID_CATEGORIES = frozenset(
+    c
+    for c in Category
+    if any(
+        kw in c.value
+        for kw in ("LIQUIDE", "LAIT", "CREMERIE", "BOISSON", "JUS", "SIROP")
+    )
+)
+
+
+def extract_packaging_abbrev(item: Item, category: Category) -> None:
+    """Detect BK (brique) / BL (bouteille) abbreviations for liquid-category items with volume."""
+    if category not in LIQUID_CATEGORIES:
+        return
+    if item["volume_ml"] is None:
+        return
+    if item["properties"].get("packaging") is not None:
+        return
+    name = item["name"]
+    if _PACKAGING_ABBREV_RE.search(name):
+        item["properties"]["packaging"] = "BRIQUE"
+        item["name"] = _PACKAGING_ABBREV_RE.sub("", name).strip()
+        item["name"] = re.sub(r"\s+", " ", item["name"])
+    elif _PACKAGING_ABBREV_BL_RE.search(name):
+        item["properties"]["packaging"] = "BOUTEILLE"
+        item["name"] = _PACKAGING_ABBREV_BL_RE.sub("", name).strip()
+        item["name"] = re.sub(r"\s+", " ", item["name"])
 
 
 def extract_bare_fat_pct(item: Item, category: Category) -> None:

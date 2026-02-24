@@ -17,6 +17,7 @@ class Properties(TypedDict, total=False):
     milk_treatment: str
     brand: str
     label: str
+    packaging: str
 
 
 class Item(TypedDict):

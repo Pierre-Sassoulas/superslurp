@@ -16,6 +16,7 @@ from superslurp.compare.normalize import (
     extract_unit_count,
     get_brand,
     get_milk_treatment,
+    get_packaging,
     get_quality_label,
     is_bio,
     normalize_for_matching,
@@ -748,6 +749,24 @@ def test_get_quality_label() -> None:
 def test_get_quality_label_label_rouge_before_lr() -> None:
     """LABEL ROUGE should be detected even when LR also appears."""
     assert get_quality_label("POULET LABEL ROUGE LR") == "Label Rouge"
+
+
+# --- packaging ---
+
+
+def test_get_packaging() -> None:
+    assert get_packaging("LAIT UHT ENTIER U BRIQUE 6X1L") == "BRIQUE"
+    assert get_packaging("EAU MINERALE BOUTEILLE 1,5L") == "BOUTEILLE"
+    assert get_packaging("SUCRE POUDRE 1KG") is None
+    # Abbreviations BK/BL are NOT detected — they're ambiguous (BL = blanc in clothing).
+    # Synonym expansion (BK→BRIQUE, BL→BOUTEILLE) handles them upstream.
+    assert get_packaging("LAIT UHT 1/2 ECREM U BK 1L") is None
+    assert get_packaging("MCH UNI MBLC BL/MA 21/23") is None
+
+
+def test_normalize_strips_packaging_brique_bouteille() -> None:
+    assert "BRIQUE" not in normalize_for_matching("LAIT UHT ENTIER U BRIQUE 6X1L")
+    assert "BOUTEILLE" not in normalize_for_matching("EAU MINERALE BOUTEILLE 1,5L")
 
 
 # --- brand/label in observations ---

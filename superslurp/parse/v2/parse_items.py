@@ -7,6 +7,7 @@ from superslurp.parse.v1.parse_items import (
     _parse_name_attributes,
     build_properties,
     extract_bare_fat_pct,
+    extract_packaging_abbrev,
 )
 from superslurp.superslurp_typing import Category, Item, Items
 
@@ -73,6 +74,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 volume_ml,
                 brand,
                 label,
+                packaging,
             ) = _parse_name_attributes(raw_name, synonyms=synonyms)
             grams = (
                 grams_from_weight if grams_from_weight is not None else grams_from_name
@@ -96,9 +98,12 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 "tr": tr,
                 "way_of_paying": way_of_paying,
                 "discount": None,
-                "properties": build_properties(bio, milk_treatment, brand, label),
+                "properties": build_properties(
+                    bio, milk_treatment, brand, label, packaging
+                ),
             }
             extract_bare_fat_pct(item, category)
+            extract_packaging_abbrev(item, category)
             items[category].append(item)
             last_item = item
             nb_parsed += quantity

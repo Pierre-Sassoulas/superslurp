@@ -24,6 +24,8 @@ _STRIP_WORDS = frozenset(
         "BARQUETTE",
         "VRAC",
         "BTE",
+        "BRIQUE",
+        "BOUTEILLE",
         # Origin (country codes)
         "FR",
         "IT",
@@ -288,3 +290,26 @@ def strip_quality_label(name: str) -> str:
     for pattern, _ in _QUALITY_LABEL_PATTERNS:
         name = pattern.sub("", name)
     return re.sub(r"\s+", " ", name).strip()
+
+
+_KNOWN_PACKAGING = frozenset({"BRIQUE", "BOUTEILLE"})
+
+
+def get_packaging(name: str) -> str | None:
+    """Detect a known packaging type in a product name.
+
+    Only matches full words BRIQUE / BOUTEILLE.  Abbreviations (BK, BL)
+    are handled by synonym expansion before this function is called.
+    """
+    upper = name.upper()
+    for pkg in _KNOWN_PACKAGING:
+        if re.search(r"\b" + re.escape(pkg) + r"\b", upper):
+            return pkg
+    return None
+
+
+def strip_packaging(name: str, packaging: str) -> str:
+    """Remove a packaging word from *name* (case-insensitive, whole word)."""
+    return re.sub(
+        r"\b" + re.escape(packaging) + r"\b", "", name, flags=re.IGNORECASE
+    ).strip()

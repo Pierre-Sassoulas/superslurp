@@ -255,7 +255,8 @@ function showSessionDetail(entry) {
       + (o.bio ? ' [BIO]' : '')
       + (o.milk_treatment ? ' [' + o.milk_treatment + ']' : '')
       + (o.brand ? ' [' + o.brand + ']' : '')
-      + (o.label ? ' [' + o.label + ']' : '') + '</a></td>';
+      + (o.label ? ' [' + o.label + ']' : '')
+      + (o.packaging ? ' [' + o.packaging + ']' : '') + '</a></td>';
     html += '<td class="num">' + o.quantity + '</td>';
     html += '<td class="num">' + o.price.toFixed(2) + '</td>';
     html += '<td class="num">' + (o.grams != null ? o.grams : '-') + '</td>';
@@ -423,6 +424,7 @@ function showProduct(name) {
         milk_treatment: obs.milk_treatment || null,
         brand: obs.brand || null,
         label: obs.label || null,
+        packaging: obs.packaging || null,
         store: store ? store.location : "?",
         original_name: obs.original_name || name,
       };
@@ -489,6 +491,7 @@ function showProduct(name) {
               if (p.milk_treatment) info += " | " + p.milk_treatment;
               if (p.brand) info += " | " + p.brand;
               if (p.label) info += " | " + p.label;
+              if (p.packaging) info += " | " + p.packaging;
               return info;
             }
           }
@@ -663,6 +666,7 @@ function showProduct(name) {
     + makeSortableHeader('Milk', 'str')
     + makeSortableHeader('Brand', 'str')
     + makeSortableHeader('Label', 'str')
+    + makeSortableHeader('Packaging', 'str')
     + '</tr></thead><tbody>';
   points.forEach(p => {
     html += '<tr>';
@@ -682,6 +686,7 @@ function showProduct(name) {
     html += '<td>' + (p.milk_treatment || '') + '</td>';
     html += '<td>' + (p.brand || '') + '</td>';
     html += '<td>' + (p.label || '') + '</td>';
+    html += '<td>' + (p.packaging || '') + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';

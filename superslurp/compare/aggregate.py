@@ -103,6 +103,9 @@ def _build_observation(
     label = props.get("label")
     if label:
         obs["label"] = label
+    packaging = props.get("packaging")
+    if packaging:
+        obs["packaging"] = packaging
     return obs
 
 

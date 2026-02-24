@@ -356,9 +356,11 @@ def _get_volume(name: str) -> tuple[str, float | None, int | None]:
     return name, vol, units
 
 
-_FAT_PCT_PATTERN = re.compile(r"\s*\d+[.,]?\d*%\s*MG\b")
-_BARE_FAT_PCT_RE = re.compile(r"(?<![+\-])(\d+[.,]?\d*)%(?!\s*MG\b)")
-_BARE_FAT_PCT_STRIP = re.compile(r"(?<![+\-])\s*\d+[.,]?\d*%(?!\s*MG\b)")
+_FAT_PCT_PATTERN = re.compile(r"\s*\d+[.,]?\d*%\s*(?:MG|MAT\.?\s*GR\.?)\b")
+_BARE_FAT_PCT_RE = re.compile(r"(?<![+\-])(\d+[.,]?\d*)%(?!\s*(?:MG|MAT\.?\s*GR\.?)\b)")
+_BARE_FAT_PCT_STRIP = re.compile(
+    r"(?<![+\-])\s*\d+[.,]?\d*%(?!\s*(?:MG|MAT\.?\s*GR\.?)\b)"
+)
 
 DAIRY_CATEGORIES = frozenset(
     c
@@ -415,8 +417,8 @@ def extract_bare_fat_pct(item: Item, category: Category) -> None:
 
 
 def _get_fat_pct(name: str) -> float | None:
-    """Extract fat percentage (%MG) from a product name."""
-    m = re.search(r"(\d+[.,]?\d*)%\s*MG\b", name)
+    """Extract fat percentage (%MG or %MAT.GR) from a product name."""
+    m = re.search(r"(\d+[.,]?\d*)%\s*(?:MG|MAT\.?\s*GR\.?)\b", name)
     if m is None:
         return None
     return float(m.group(1).replace(",", "."))

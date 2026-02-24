@@ -86,9 +86,10 @@ _PROTECTED_COMPOUNDS: dict[str, set[str]] = {
 }
 _STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
-# Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, leading "18 OEUFS", leading "3+1RAC"
+# Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, 3X1/4, leading "18 OEUFS", leading "3+1RAC"
 _STRIP_UNIT_COUNT = re.compile(
-    r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|\bX\s\d+(?:\+\d+OFF)?\b|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
+    r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|\bX\s\d+(?:\+\d+OFF)?\b"
+    r"|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+X\d+/\d+\b|\b\d+TR\b"
 )
 _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLITRES?\b")
 _LEADING_COUNT = re.compile(r"^\d+\s+")
@@ -99,7 +100,7 @@ _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
 _UNIT_COUNT_PATTERN = re.compile(
     r"\bX?(\d+)(?:=\d+)?RLX\b|\bBTEX(\d+)\b"
     r"|\bX\s(\d+)(?:\+(\d+)OFF)?\b|(?<!\d)X(\d+)(?:\+(\d+)OFF)?\b"
-    r"|\b(\d+)TR\b|^(\d+)\s+"
+    r"|\b(\d+)X\d+/\d+\b|\b(\d+)TR\b|^(\d+)\s+"
 )
 
 
@@ -201,10 +202,12 @@ def extract_unit_count(name: str) -> float | None:  # pylint: disable=too-many-r
         if x_off:
             count += int(x_off)
         return count
-    if m.group(7):  # (\d+)TR
+    if m.group(7):  # (\d+)X\d+/\d+ multipack
         return int(m.group(7))
-    if m.group(8):  # ^(\d+)\s+
+    if m.group(8):  # (\d+)TR
         return int(m.group(8))
+    if m.group(9):  # ^(\d+)\s+
+        return int(m.group(9))
     return None
 
 

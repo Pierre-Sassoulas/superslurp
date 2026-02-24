@@ -84,7 +84,7 @@ _STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
 # Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, leading "18 OEUFS", leading "3+1RAC"
 _STRIP_UNIT_COUNT = re.compile(
-    r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
+    r"\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|\bX\s\d+(?:\+\d+OFF)?\b|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+TR\b"
 )
 _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLITRES?\b")
 _LEADING_COUNT = re.compile(r"^\d+\s+")
@@ -93,7 +93,9 @@ _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
 
 # Extract unit count: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 4=12RLX → 4, 18 OEUFS → 18
 _UNIT_COUNT_PATTERN = re.compile(
-    r"\bX?(\d+)(?:=\d+)?RLX\b|\bBTEX(\d+)\b|(?<!\d)X(\d+)(?:\+(\d+)OFF)?\b|\b(\d+)TR\b|^(\d+)\s+"
+    r"\bX?(\d+)(?:=\d+)?RLX\b|\bBTEX(\d+)\b"
+    r"|\bX\s(\d+)(?:\+(\d+)OFF)?\b|(?<!\d)X(\d+)(?:\+(\d+)OFF)?\b"
+    r"|\b(\d+)TR\b|^(\d+)\s+"
 )
 
 
@@ -187,15 +189,18 @@ def extract_unit_count(name: str) -> float | None:  # pylint: disable=too-many-r
         return int(m.group(1))
     if m.group(2):  # BTEX(\d+)
         return int(m.group(2))
-    if m.group(3):  # X(\d+)(+(\d+)OFF)?
-        count = int(m.group(3))
-        if m.group(4):
-            count += int(m.group(4))
+    # X\s(\d+) spaced or X(\d+) glued, with optional +OFF
+    x_count = m.group(3) or m.group(5)
+    if x_count:
+        count = int(x_count)
+        x_off = m.group(4) or m.group(6)
+        if x_off:
+            count += int(x_off)
         return count
-    if m.group(5):  # (\d+)TR
-        return int(m.group(5))
-    if m.group(6):  # ^(\d+)\s+
-        return int(m.group(6))
+    if m.group(7):  # (\d+)TR
+        return int(m.group(7))
+    if m.group(8):  # ^(\d+)\s+
+        return int(m.group(8))
     return None
 
 
@@ -288,6 +293,7 @@ _QUALITY_LABEL_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bAOP\b"), "AOP"),
     (re.compile(r"\bIGP\b"), "IGP"),
     (re.compile(r"\bLR\b"), "Label Rouge"),
+    (re.compile(r"\bLABEL\b"), "Label Rouge"),
 ]
 
 

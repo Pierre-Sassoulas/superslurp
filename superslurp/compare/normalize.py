@@ -242,6 +242,15 @@ _KNOWN_BRANDS = frozenset(
         "LU",
         "WHISKAS",
         "MOULIN DE VALDONNE",
+        "NUTELLA",
+        "FERRERO",
+        "FINDUS",
+        "PRESIDENT",
+        "KIRI",
+        "YOPLAIT",
+        "BN",
+        "LOTUS",
+        "MERCUROCHROME",
     }
 )
 

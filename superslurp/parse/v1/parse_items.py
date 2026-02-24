@@ -200,7 +200,7 @@ def _extract_properties(
             name = name[: m.start()] + name[m.end() :]
         name = re.sub(r"\bPASTEURISE\w*", "", name).strip()
         name = re.sub(r"\b(?:CRU|UHT)\b", "", name).strip()
-    brand = get_brand(raw_name)
+    brand = get_brand(raw_name) or get_brand(name)
     if brand is not None:
         name = strip_brand(name, brand)
     label = get_quality_label(raw_name)

@@ -26,6 +26,13 @@ _STRIP_WORDS = frozenset(
         "BTE",
         "BRIQUE",
         "BOUTEILLE",
+        "BOCAL",
+        "BOITE",
+        "CELLOPHANE",
+        "ETUI",
+        "VERRE",
+        "PAQUET",
+        "RECHARGE",
         # Origin (country codes)
         "FR",
         "IT",
@@ -302,7 +309,20 @@ def strip_quality_label(name: str) -> str:
     return re.sub(r"\s+", " ", name).strip()
 
 
-_KNOWN_PACKAGING = frozenset({"BRIQUE", "BOUTEILLE"})
+_KNOWN_PACKAGING = frozenset(
+    {
+        "BRIQUE",
+        "BOUTEILLE",
+        "BOCAL",
+        "BOITE",
+        "CELLOPHANE",
+        "ETUI",
+        "VERRE",
+        "BARQUETTE",
+        "PAQUET",
+        "RECHARGE",
+    }
+)
 
 
 def get_packaging(name: str) -> str | None:

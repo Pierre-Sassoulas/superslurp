@@ -97,12 +97,12 @@ _HTML_TEMPLATE = """\
 <div id="sessionDetail" class="hidden"></div>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="tab-products">Product price, weight and quality evolution</button>
+  <button class="tab-btn active" data-tab="tab-allitems">All items</button>
+  <button class="tab-btn" data-tab="tab-products">Product price, weight and quality evolution</button>
   <button class="tab-btn" data-tab="tab-shrinkflation">Product degradation</button>
-  <button class="tab-btn" data-tab="tab-allitems">All items</button>
 </div>
 
-<div id="tab-products" class="tab-panel active">
+<div id="tab-products" class="tab-panel">
   <h2>Product price, weight and quality evolution</h2>
   <div class="product-select">
     <input id="productInput" list="productList" placeholder="Search for a product...">
@@ -130,7 +130,7 @@ _HTML_TEMPLATE = """\
   <div id="shrinkflation" class="hidden"></div>
 </div>
 
-<div id="tab-allitems" class="tab-panel">
+<div id="tab-allitems" class="tab-panel active">
   <h2>All items</h2>
   <div id="allItems"></div>
 </div>

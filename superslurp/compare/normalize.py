@@ -251,6 +251,7 @@ _KNOWN_BRANDS = frozenset(
         "BN",
         "LOTUS",
         "MERCUROCHROME",
+        "PRIX MINI",
     }
 )
 

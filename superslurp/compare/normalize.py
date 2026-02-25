@@ -294,6 +294,7 @@ _KNOWN_BRANDS = frozenset(
         "MERCUROCHROME",
         "PRIX MINI",
         "LUCOTTE",
+        "LE RUSTIQUE",
     }
 )
 

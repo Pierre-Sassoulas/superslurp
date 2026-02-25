@@ -33,7 +33,7 @@ _STRIP_WORDS = frozenset(
         "VERRE",
         "PAQUET",
         "RECHARGE",
-        # Origin (country codes and full names)
+        # Origin (country codes, full names, regions)
         "FR",
         "FRA",
         "FRANCE",
@@ -42,6 +42,7 @@ _STRIP_WORDS = frozenset(
         "ES",
         "SP",
         "ESP",
+        "SAVOIE",
         # Store brand
         "U",
         # Certification (extracted separately as observation flag)
@@ -389,6 +390,8 @@ _KNOWN_ORIGINS: dict[str, str] = {
     "ES": "ESPAGNE",
     "SP": "ESPAGNE",
     "ESP": "ESPAGNE",
+    "DE SAVOIE": "SAVOIE",
+    "SAVOIE": "SAVOIE",
 }
 
 

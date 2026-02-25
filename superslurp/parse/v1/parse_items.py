@@ -226,8 +226,7 @@ def _extract_properties(
         origin, origin_word = origin_result
         name = strip_origin(name, origin_word)
     affinage_months = get_affinage_months(name)
-    if affinage_months is not None:
-        name = strip_affinage(name)
+    name = strip_affinage(name)
     name = re.sub(r"\s+", " ", name).strip()
     return name, bio, milk_treatment, brand, label, packaging, origin, affinage_months
 

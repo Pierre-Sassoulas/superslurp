@@ -14,20 +14,32 @@ from superslurp import parse_superu_receipt
 result = parse_superu_receipt("Ticket de caisse_01032022-165652.pdf")
 ```
 
-The receipt line `QUENELLE NATURE U X6 240G  /  3 x 0,85 €  2,55 €  11` is parsed as:
+The parser understands the intricacies of French cheese: AOP designation, _fermier_ vs
+_laitier_ production, milk treatment, as defined by the
+[official AOP specification](https://agriculture.gouv.fr/le-reblochon-aop-le-fromage-onctueux-de-savoie).
+
+The receipt line `REBL.SAVE.AOP.FRM.LC BIO BQT.X12 450G 32%MG  8,61 €  11` is parsed as:
 
 ```json
 {
-  "name": "QUENELLE NATURE U",
-  "price": 0.85,
-  "bought": 3,
-  "units": 6,
-  "grams": 240.0,
+  "name": "REBLOCHON",
+  "price": 8.61,
+  "bought": 1,
+  "units": 12,
+  "grams": 450.0,
   "volume_ml": null,
+  "fat_pct": 32.0,
   "tr": false,
   "way_of_paying": "11",
   "discount": null,
-  "properties": {}
+  "properties": {
+    "bio": true,
+    "milk_treatment": "cru",
+    "production": "fermier",
+    "label": "AOP",
+    "packaging": "BARQUETTE",
+    "origin": "SAVOIE"
+  }
 }
 ```
 

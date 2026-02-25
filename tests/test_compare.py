@@ -18,12 +18,17 @@ from superslurp.compare.normalize import (
     get_brand,
     get_milk_treatment,
     get_packaging,
+    get_production,
     get_quality_label,
     is_bio,
     normalize_for_matching,
     strip_affinage,
 )
-from superslurp.parse.v1.parse_items import _get_volume, _infer_milk_fat_pct
+from superslurp.parse.v1.parse_items import (
+    _get_volume,
+    _infer_milk_fat_pct,
+    _parse_name_attributes,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -885,3 +890,92 @@ def test_compare_receipt_dicts_affinage() -> None:
     assert beaufort["observations"][0].get("affinage_months") == 5
     sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
     assert "affinage_months" not in sugar["observations"][0]
+
+
+# --- production (fermier / laitier) ---
+
+
+def test_get_production() -> None:
+    assert get_production("REBLOCHON AOP FERMIER") == "fermier"
+    assert get_production("REBLOCHON AOP LAITIER LC 27%MG") == "laitier"
+    assert get_production("FOURME AMBERT FERMIER") == "fermier"
+    assert get_production("REBLOCHON SAVOIE AOP LAIT CRU") is None
+    assert get_production("SUCRE POUDRE") is None
+    assert get_production("AUBERGINE") is None
+
+
+def test_normalize_strips_production() -> None:
+    assert "FERMIER" not in normalize_for_matching("REBLOCHON AOP FERMIER")
+    assert "LAITIER" not in normalize_for_matching("REBLOCHON AOP LAITIER LC 27%MG")
+
+
+def test_compare_receipt_dicts_production() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {
+                        "name": "REBLOCHON AOP FERMIER",
+                        "price": 5.50,
+                        "bought": 1,
+                        "grams": 450.0,
+                        "properties": {"production": "fermier"},
+                    },
+                    {
+                        "name": "SUCRE POUDRE",
+                        "price": 1.50,
+                        "bought": 1,
+                        "grams": 1000.0,
+                        "properties": {},
+                    },
+                ]
+            },
+        }
+    ]
+    result = compare_receipt_dicts(receipts)
+    reblochon = next(
+        p for p in result["products"] if "REBLOCHON" in p["canonical_name"]
+    )
+    assert reblochon["observations"][0].get("production") == "fermier"
+    sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
+    assert "production" not in sugar["observations"][0]
+
+
+def test_parse_reblochon_readme_example() -> None:
+    """The README example: REBL.SAVE.AOP.LC BIO BQTX12 450G 32%MG."""
+    synonyms = {
+        "REBL": "REBLOCHON",
+        "SAVE": "SAVOIE",
+        "FRM": "FERMIER",
+        "LC": "LAIT CRU",
+        "BQT": "BARQUETTE",
+    }
+    (
+        name,
+        grams,
+        units,
+        fat_pct,
+        bio,
+        milk_treatment,
+        volume_ml,
+        brand,
+        label,
+        packaging,
+        origin,
+        affinage_months,
+        production,
+    ) = _parse_name_attributes("REBL.SAVE.AOP.FRM.LC BIO BQT.X12 450G 32%MG", synonyms)
+    assert name == "REBLOCHON"
+    assert grams == 450.0
+    assert units == 12
+    assert fat_pct == 32.0
+    assert bio is True
+    assert milk_treatment == "cru"
+    assert production == "fermier"
+    assert label == "AOP"
+    assert packaging == "BARQUETTE"
+    assert origin == "SAVOIE"
+    assert volume_ml is None
+    assert brand is None
+    assert affinage_months is None

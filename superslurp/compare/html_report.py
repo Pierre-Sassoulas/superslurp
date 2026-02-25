@@ -255,6 +255,7 @@ function showSessionDetail(entry) {
       + it.name + '">' + it.name
       + (o.bio ? ' [BIO]' : '')
       + (o.milk_treatment ? ' [' + o.milk_treatment + ']' : '')
+      + (o.production ? ' [' + o.production + ']' : '')
       + (o.brand ? ' [' + o.brand + ']' : '')
       + (o.label ? ' [' + o.label + ']' : '')
       + (o.packaging ? ' [' + o.packaging + ']' : '')
@@ -425,6 +426,7 @@ function showProduct(name) {
         fat_pct: obs.fat_pct,
         bio: obs.bio || false,
         milk_treatment: obs.milk_treatment || null,
+        production: obs.production || null,
         brand: obs.brand || null,
         label: obs.label || null,
         packaging: obs.packaging || null,
@@ -494,6 +496,7 @@ function showProduct(name) {
               if (p.discount != null) info += " | discount: " + p.discount;
               if (p.bio) info += " | BIO";
               if (p.milk_treatment) info += " | " + p.milk_treatment;
+              if (p.production) info += " | " + p.production;
               if (p.brand) info += " | " + p.brand;
               if (p.label) info += " | " + p.label;
               if (p.packaging) info += " | " + p.packaging;
@@ -671,6 +674,7 @@ function showProduct(name) {
     + makeSortableHeader('Discount', 'num')
     + makeSortableHeader('BIO', 'str')
     + makeSortableHeader('Milk', 'str')
+    + makeSortableHeader('Production', 'str')
     + makeSortableHeader('Brand', 'str')
     + makeSortableHeader('Label', 'str')
     + makeSortableHeader('Packaging', 'str')
@@ -693,6 +697,7 @@ function showProduct(name) {
     html += '<td class="num">' + (p.discount != null ? p.discount.toFixed(2) : '-') + '</td>';
     html += '<td>' + (p.bio ? 'Yes' : '') + '</td>';
     html += '<td>' + (p.milk_treatment || '') + '</td>';
+    html += '<td>' + (p.production || '') + '</td>';
     html += '<td>' + (p.brand || '') + '</td>';
     html += '<td>' + (p.label || '') + '</td>';
     html += '<td>' + (p.packaging || '') + '</td>';

@@ -64,7 +64,7 @@ def _get_session_id(
     return int(sessions[key]["id"])
 
 
-def _build_observation(  # pylint: disable=too-many-locals
+def _build_observation(  # pylint: disable=too-many-locals,too-complex
     item: dict[str, Any],
     session_id: int,
 ) -> dict[str, Any]:
@@ -97,6 +97,9 @@ def _build_observation(  # pylint: disable=too-many-locals
     milk = props.get("milk_treatment")
     if milk:
         obs["milk_treatment"] = milk
+    production = props.get("production")
+    if production:
+        obs["production"] = production
     brand = props.get("brand")
     if brand:
         obs["brand"] = brand

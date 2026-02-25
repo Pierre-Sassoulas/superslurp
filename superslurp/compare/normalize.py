@@ -81,6 +81,9 @@ _STRIP_WORDS = frozenset(
         "AFFINAGE",
         "AFFINE",
         "MOIS",
+        # Production type (cheese)
+        "FERMIER",
+        "LAITIER",
     }
 )
 # Word pairs where the second word is in _STRIP_WORDS but forms a product name
@@ -248,6 +251,19 @@ def get_milk_treatment(name: str) -> str | None:
         return "pasteurise"
     if re.search(r"\bUHT\b", name):
         return "UHT"
+    return None
+
+
+def get_production(name: str) -> str | None:
+    """Detect cheese production type from a product name.
+
+    Returns ``"fermier"`` or ``"laitier"`` or ``None``.
+    """
+    upper = name.upper()
+    if re.search(r"\bFERMIER\b", upper):
+        return "fermier"
+    if re.search(r"\bLAITIER\b", upper):
+        return "laitier"
     return None
 
 

@@ -15,6 +15,7 @@ class Store(TypedDict):
 class Properties(TypedDict, total=False):
     bio: bool
     milk_treatment: str
+    production: str
     brand: str
     label: str
     packaging: str

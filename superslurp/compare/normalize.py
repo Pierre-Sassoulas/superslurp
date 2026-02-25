@@ -45,6 +45,7 @@ _STRIP_WORDS = frozenset(
         "SAVOIE",
         # Store brand
         "U",
+        "USAV",
         # Certification (extracted separately as observation flag)
         "BIO",
         # Milk treatment (standalone words; LAIT PASTEURISE/LAIT CRU/LAIT UHT handled as phrases below)
@@ -129,17 +130,24 @@ def expand_synonyms(name: str, synonyms: dict[str, str]) -> str:
     multi-word patterns (e.g. ``"CHOCO PATIS": "CHOCOLAT PATISSIER"``) placed
     before single-word fallbacks (``"PATIS": "PATISSERIE"``) take priority.
 
-    Dots are normalized to spaces in both the name and the patterns so that
-    ``CHOCO.PATIS`` and ``FROM.BLC`` are split before matching.
+    Dots and spaces are both treated as word separators, so ``CHOCO.PATIS``
+    and ``FROM.BLC`` match their synonym keys.  Dots are replaced by spaces
+    only **after** all synonyms have been applied.
     """
-    name = name.replace(".", " ")
     for pattern, replacement in synonyms.items():
         pat = pattern.replace(".", " ").strip()
         if not pat:
             continue
-        name = re.sub(
-            r"\b" + re.escape(pat) + r"\b", replacement, name, flags=re.IGNORECASE
+        # Build a regex where spaces in the pattern match either dot or space,
+        # and word boundaries treat dots as separators (not word chars).
+        escaped_words = [re.escape(w) for w in pat.split()]
+        regex = (
+            r"(?:(?<=[\s.])|(?<=^)|(?<=\b))"
+            + r"[.\s]+".join(escaped_words)
+            + r"(?=[\s.]|$|\b)"
         )
+        name = re.sub(regex, replacement, name, flags=re.IGNORECASE)
+    name = name.replace(".", " ")
     return re.sub(r"\s+", " ", name).strip()
 
 
@@ -312,6 +320,7 @@ _KNOWN_BRANDS = frozenset(
         "LUCOTTE",
         "LE RUSTIQUE",
         "BONNE MAMAN",
+        "JACQUET",
     }
 )
 

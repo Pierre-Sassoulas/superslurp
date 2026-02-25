@@ -132,8 +132,11 @@ superu-aggregate-parsed-receipt receipts/ --output aggregate.json
 Parse receipt PDFs and generate a self-contained HTML dashboard in one step:
 
 ```python
+from pathlib import Path
+
 from superslurp import generate_report
 
+synonyms = {"TABS": "TABLETTES", "VAISS": "VAISSELLE"}
 html = generate_report(
     ["receipt1.pdf", "receipt2.pdf", "receipt3.pdf"],
     synonyms=synonyms,    # optional
@@ -153,6 +156,8 @@ superu-report receipts/*.pdf --synonyms synonyms.json --output report.html
 If you already have an aggregate JSON (from step 2):
 
 ```python
+from pathlib import Path
+
 from superslurp.compare.html_report import generate_html
 
 html = generate_html(aggregate_result)

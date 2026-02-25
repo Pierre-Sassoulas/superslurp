@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import json
@@ -257,7 +258,8 @@ function showSessionDetail(entry) {
       + (o.brand ? ' [' + o.brand + ']' : '')
       + (o.label ? ' [' + o.label + ']' : '')
       + (o.packaging ? ' [' + o.packaging + ']' : '')
-      + (o.origin ? ' [' + o.origin + ']' : '') + '</a></td>';
+      + (o.origin ? ' [' + o.origin + ']' : '')
+      + (o.affinage_months ? ' [' + o.affinage_months + ' mois]' : '') + '</a></td>';
     html += '<td class="num">' + o.quantity + '</td>';
     html += '<td class="num">' + o.price.toFixed(2) + '</td>';
     html += '<td class="num">' + (o.grams != null ? o.grams : '-') + '</td>';
@@ -427,6 +429,7 @@ function showProduct(name) {
         label: obs.label || null,
         packaging: obs.packaging || null,
         origin: obs.origin || null,
+        affinage_months: obs.affinage_months || null,
         store: store ? store.location : "?",
         original_name: obs.original_name || name,
       };
@@ -495,6 +498,7 @@ function showProduct(name) {
               if (p.label) info += " | " + p.label;
               if (p.packaging) info += " | " + p.packaging;
               if (p.origin) info += " | " + p.origin;
+              if (p.affinage_months) info += " | " + p.affinage_months + " mois";
               return info;
             }
           }
@@ -671,6 +675,7 @@ function showProduct(name) {
     + makeSortableHeader('Label', 'str')
     + makeSortableHeader('Packaging', 'str')
     + makeSortableHeader('Origin', 'str')
+    + makeSortableHeader('Affinage', 'num')
     + '</tr></thead><tbody>';
   points.forEach(p => {
     html += '<tr>';
@@ -692,6 +697,7 @@ function showProduct(name) {
     html += '<td>' + (p.label || '') + '</td>';
     html += '<td>' + (p.packaging || '') + '</td>';
     html += '<td>' + (p.origin || '') + '</td>';
+    html += '<td class="num">' + (p.affinage_months ? p.affinage_months + ' mois' : '') + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';

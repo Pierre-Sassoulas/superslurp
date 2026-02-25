@@ -64,7 +64,7 @@ def _get_session_id(
     return int(sessions[key]["id"])
 
 
-def _build_observation(
+def _build_observation(  # pylint: disable=too-many-locals
     item: dict[str, Any],
     session_id: int,
 ) -> dict[str, Any]:
@@ -109,6 +109,9 @@ def _build_observation(
     origin = props.get("origin")
     if origin:
         obs["origin"] = origin
+    affinage_months = props.get("affinage_months")
+    if affinage_months:
+        obs["affinage_months"] = affinage_months
     return obs
 
 

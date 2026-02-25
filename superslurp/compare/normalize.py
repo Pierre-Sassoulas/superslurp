@@ -49,6 +49,7 @@ _STRIP_WORDS = frozenset(
         # Milk treatment (standalone words; LAIT PASTEURISE/LAIT CRU/LAIT UHT handled as phrases below)
         "PASTEURISE",
         "CRU",
+        "THERMISE",
         "UHT",
         # Quality labels (extracted separately as observation flag)
         "AOP",
@@ -75,6 +76,10 @@ _STRIP_WORDS = frozenset(
         "CHEZ",
         "NOUS",
         "D'ELEVEURS",
+        # Affinage (cheese aging)
+        "AFFINAGE",
+        "AFFINE",
+        "MOIS",
     }
 )
 # Word pairs where the second word is in _STRIP_WORDS but forms a product name
@@ -84,7 +89,7 @@ _PROTECTED_COMPOUNDS: dict[str, set[str]] = {
     "VIN": {"BLANC", "ROSE", "NOIR"},
     "ARBRE": {"VERT"},
 }
-_STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU|UHT)\b")
+_STRIP_PHRASE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU\s+THERMISE|CRU|UHT)\b")
 _STRIP_COUNT_PATTERN = re.compile(r"\b\d+\s*TETES\b")
 # Matches X12, BTEX12, X10+5OFF, 6TR, 4=12RLX/X4=12RLX, 3X1/4, leading "18 OEUFS", leading "3+1RAC"
 _STRIP_UNIT_COUNT = re.compile(
@@ -95,6 +100,15 @@ _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLIT
 _LEADING_COUNT = re.compile(r"^\d+\s+")
 # Leading "3+1" (sum → 4) or "1/2" (fraction → 0.5), glued or spaced before product word
 _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
+# Affinage patterns for normalization stripping
+_STRIP_AFFINAGE_NORM = re.compile(
+    r"\b\d+\s+MOIS\s+(?:D')?AFFINAGE\b"
+    r"|\bAFFIN[EÉ]\s+\d+\s+MOIS\b"
+    r"|\bAFFINAGE\s+\d+\s+MOIS\b"
+    r"|\b\d+\s+MOIS\b"
+    r"|\b\d+\s*J\.?\b"
+    r"|\b\d+\s+JOURS?\b"
+)
 
 # Extract unit count: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 4=12RLX → 4, 18 OEUFS → 18
 _UNIT_COUNT_PATTERN = re.compile(
@@ -150,6 +164,8 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     name = _STRIP_UNIT_COUNT.sub("", name)
     name = _LEADING_ARITH.sub("", name)
     name = _LEADING_COUNT.sub("", name)
+    # Strip affinage patterns like "5 MOIS AFFINAGE", "AFFINE 9 MOIS", "18 MOIS"
+    name = _STRIP_AFFINAGE_NORM.sub("", name)
     # Strip known qualifier words, but keep protected compounds
     words = name.split()
     filtered: list[str] = []
@@ -217,11 +233,14 @@ def is_bio(name: str) -> bool:
 
 
 def get_milk_treatment(name: str) -> str | None:
-    """Detect milk treatment (pasteurise / cru / UHT) from a product name.
+    """Detect milk treatment from a product name.
 
-    Returns ``"pasteurise"``, ``"cru"``, ``"UHT"``, or ``None``.
+    Returns ``"cru thermise"``, ``"pasteurise"``, ``"cru"``, ``"UHT"``,
+    or ``None``.
     """
     name = name.upper()
+    if re.search(r"\bCRU\s+THERMISE", name):
+        return "cru thermise"
     if re.search(r"\bCRU\b", name):
         return "cru"
     if re.search(r"\bPASTEURISE", name):
@@ -234,6 +253,7 @@ def get_milk_treatment(name: str) -> str | None:
 _KNOWN_BRANDS = frozenset(
     {
         "U",
+        "USAVEURS",
         "PASQUIER",
         "PANZANI",
         "SODEBO",
@@ -272,6 +292,7 @@ _KNOWN_BRANDS = frozenset(
         "LOTUS",
         "MERCUROCHROME",
         "PRIX MINI",
+        "LUCOTTE",
     }
 )
 
@@ -388,3 +409,63 @@ def strip_origin(name: str, origin_word: str) -> str:
     return re.sub(
         r"\b" + re.escape(origin_word) + r"\b", "", name, flags=re.IGNORECASE
     ).strip()
+
+
+# --- Affinage (cheese aging) ---
+
+_AFFINAGE_MONTHS_PATTERNS: list[re.Pattern[str]] = [
+    # "5 MOIS D'AFFINAGE" / "5 MOIS AFFINAGE"
+    re.compile(r"\b(\d+)\s+MOIS\s+(?:D')?AFFINAGE\b"),
+    # "AFFINE 9 MOIS" / "AFFINÉ 9 MOIS"
+    re.compile(r"\bAFFIN[EÉ]\s+(\d+)\s+MOIS\b"),
+    # "AFFINAGE 12 MOIS"
+    re.compile(r"\bAFFINAGE\s+(\d+)\s+MOIS\b"),
+    # "18 MOIS" standalone (cheese aging context)
+    re.compile(r"\b(\d+)\s+MOIS\b"),
+]
+
+# Day-based aging: "50J", "50J.", "50 JOURS"
+_AFFINAGE_DAYS_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\b(\d+)\s*J\.?\b"),
+    re.compile(r"\b(\d+)\s+JOURS?\b"),
+]
+
+_STRIP_AFFINAGE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\b\d+\s+MOIS\s+(?:D')?AFFINAGE\b"),
+    re.compile(r"\bAFFIN[EÉ]\s+\d+\s+MOIS\b"),
+    re.compile(r"\bAFFINAGE\s+\d+\s+MOIS\b"),
+    re.compile(r"\b\d+\s+MOIS\b"),
+    re.compile(r"\b\d+\s*J\.?\b"),
+    re.compile(r"\b\d+\s+JOURS?\b"),
+]
+
+
+def get_affinage_months(name: str) -> int | None:
+    """Extract cheese aging duration from a product name, in months.
+
+    Matches patterns like ``5 MOIS AFFINAGE``, ``AFFINÉ 9 MOIS``,
+    ``AFFINAGE 12 MOIS``, standalone ``18 MOIS``, or day-based
+    ``50J`` / ``50 JOURS`` (converted to months by dividing by 30).
+    Returns the number of months (rounded) or ``None``.
+    """
+    upper = name.upper()
+    for pattern in _AFFINAGE_MONTHS_PATTERNS:
+        m = pattern.search(upper)
+        if m:
+            return int(m.group(1))
+    for pattern in _AFFINAGE_DAYS_PATTERNS:
+        m = pattern.search(upper)
+        if m:
+            return round(int(m.group(1)) / 30)
+    return None
+
+
+def strip_affinage(name: str) -> str:
+    """Remove affinage patterns from *name*."""
+    for pattern in _STRIP_AFFINAGE_PATTERNS:
+        name = pattern.sub("", name)
+    # Also strip standalone AFFINAGE / AFFINE / AFFINÉ / MOIS words left behind
+    name = re.sub(r"\bAFFINAGE\b", "", name)
+    name = re.sub(r"\bAFFIN[EÉ]\b", "", name)
+    name = re.sub(r"\bMOIS\b", "", name)
+    return re.sub(r"\s+", " ", name).strip()

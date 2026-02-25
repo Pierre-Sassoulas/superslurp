@@ -14,12 +14,14 @@ from superslurp.compare.aggregate import (
 from superslurp.compare.matcher import FuzzyMatcher
 from superslurp.compare.normalize import (
     extract_unit_count,
+    get_affinage_months,
     get_brand,
     get_milk_treatment,
     get_packaging,
     get_quality_label,
     is_bio,
     normalize_for_matching,
+    strip_affinage,
 )
 from superslurp.parse.v1.parse_items import _get_volume, _infer_milk_fat_pct
 
@@ -813,3 +815,64 @@ def test_compare_receipt_dicts_brand_label() -> None:
     sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
     assert "brand" not in sugar["observations"][0]
     assert "label" not in sugar["observations"][0]
+
+
+# --- affinage (cheese aging) ---
+
+
+def test_get_affinage_months() -> None:
+    assert get_affinage_months("BEAUFORT 5 MOIS AFFINAGE") == 5
+    assert get_affinage_months("BEAUFORT 5 MOIS D'AFFINAGE") == 5
+    assert get_affinage_months("BEAUFORT AFFINE 9 MOIS") == 9
+    assert get_affinage_months("BEAUFORT AFFINÉ 9 MOIS") == 9
+    assert get_affinage_months("COMTE AFFINAGE 12 MOIS") == 12
+    assert get_affinage_months("COMTE 18 MOIS") == 18
+    assert get_affinage_months("SUCRE POUDRE") is None
+    assert get_affinage_months("AUBERGINE") is None
+
+
+def test_strip_affinage() -> None:
+    assert strip_affinage("BEAUFORT 5 MOIS AFFINAGE") == "BEAUFORT"
+    assert strip_affinage("BEAUFORT AFFINE 9 MOIS") == "BEAUFORT"
+    assert strip_affinage("BEAUFORT AFFINÉ 9 MOIS") == "BEAUFORT"
+    assert strip_affinage("COMTE AFFINAGE 12 MOIS") == "COMTE"
+    assert strip_affinage("COMTE 18 MOIS") == "COMTE"
+    assert strip_affinage("SUCRE POUDRE") == "SUCRE POUDRE"
+
+
+def test_normalize_strips_affinage() -> None:
+    assert "MOIS" not in normalize_for_matching("BEAUFORT 5 MOIS AFFINAGE")
+    assert "AFFINAGE" not in normalize_for_matching("BEAUFORT 5 MOIS AFFINAGE")
+    assert "AFFINE" not in normalize_for_matching("BEAUFORT AFFINE 9 MOIS")
+    assert normalize_for_matching("COMTE 18 MOIS") == "COMTE"
+
+
+def test_compare_receipt_dicts_affinage() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "A": [
+                    {
+                        "name": "BEAUFORT 5 MOIS AFFINAGE",
+                        "price": 12.50,
+                        "bought": 1,
+                        "grams": 250.0,
+                        "properties": {"affinage_months": 5},
+                    },
+                    {
+                        "name": "SUCRE POUDRE",
+                        "price": 1.50,
+                        "bought": 1,
+                        "grams": 1000.0,
+                        "properties": {},
+                    },
+                ]
+            },
+        }
+    ]
+    result = compare_receipt_dicts(receipts)
+    beaufort = next(p for p in result["products"] if "BEAUFORT" in p["canonical_name"])
+    assert beaufort["observations"][0].get("affinage_months") == 5
+    sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
+    assert "affinage_months" not in sugar["observations"][0]

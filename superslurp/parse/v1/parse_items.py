@@ -86,6 +86,7 @@ def parse_items(
                 extract_bare_fat_pct(item, category)
                 extract_packaging_abbrev(item, category)
                 extract_standalone_affinage_months(item, category)
+                expand_context_synonyms(item, category)
                 nb_parsed_category += item["bought"]
                 items[category].append(item)
         if nb_parsed_category == 0:
@@ -516,6 +517,35 @@ def extract_standalone_affinage_months(item: Item, category: Category) -> None:
     if months is not None:
         item["properties"]["affinage_months"] = months
     item["name"] = strip_affinage(item["name"], cheese=True)
+
+
+_CONTEXT_SYNONYMS: dict[str, dict[frozenset[Category], str]] = {
+    "COUL": {
+        DAIRY_CATEGORIES: "COULANT",
+    },
+}
+_CONTEXT_SYNONYMS_DEFAULT: dict[str, str] = {
+    "COUL": "COULISSANT",
+}
+
+
+def expand_context_synonyms(item: Item, category: Category) -> None:
+    """Expand abbreviations whose meaning depends on the receipt category."""
+    name = item["name"]
+    for abbrev, cat_map in _CONTEXT_SYNONYMS.items():
+        if not re.search(r"\b" + re.escape(abbrev) + r"\b", name):
+            continue
+        replacement = None
+        for cats, repl in cat_map.items():
+            if category in cats:
+                replacement = repl
+                break
+        if replacement is None:
+            replacement = _CONTEXT_SYNONYMS_DEFAULT.get(abbrev)
+        if replacement is not None:
+            name = re.sub(r"\b" + re.escape(abbrev) + r"\b", replacement, name)
+    if name != item["name"]:
+        item["name"] = re.sub(r"\s+", " ", name).strip()
 
 
 def _get_fat_pct(name: str) -> float | None:

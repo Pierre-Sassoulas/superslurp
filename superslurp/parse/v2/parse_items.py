@@ -6,6 +6,7 @@ from collections import defaultdict
 from superslurp.parse.v1.parse_items import (
     _parse_name_attributes,
     build_properties,
+    expand_context_synonyms,
     extract_bare_fat_pct,
     extract_packaging_abbrev,
     extract_standalone_affinage_months,
@@ -116,6 +117,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
             extract_bare_fat_pct(item, category)
             extract_packaging_abbrev(item, category)
             extract_standalone_affinage_months(item, category)
+            expand_context_synonyms(item, category)
             items[category].append(item)
             last_item = item
             nb_parsed += quantity

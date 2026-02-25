@@ -89,7 +89,7 @@ main.disable = [
 ]
 
 [tool.codespell]
-ignore-words-list = "superu,thes,jus,rouge"
+ignore-words-list = "superu,thes,jus,rouge,coul"
 write-changes = true
 
 [tool.pyproject-fmt]

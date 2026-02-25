@@ -311,6 +311,7 @@ _KNOWN_BRANDS = frozenset(
         "PRIX MINI",
         "LUCOTTE",
         "LE RUSTIQUE",
+        "BONNE MAMAN",
     }
 )
 

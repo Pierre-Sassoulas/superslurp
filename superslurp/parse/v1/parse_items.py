@@ -385,7 +385,9 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
     grams = None
     units: int | None = None
     search = re.search(
-        r"(?P<multiplier>\d+X)?(?P<grams>\d?[\d+,]?\d+K?GR?(?: ENVIRON)?)", name
+        r"(?P<multiplier>\d+X)?(?P<grams>\d?[\d+,]?\d+K?GR?(?: ENVIRON)?)"
+        r"(?:\+(?P<bonus>\d+)%)?",
+        name,
     )
     if search is None:
         return name, None, None
@@ -402,6 +404,9 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
         if multiplier is not None:
             units = int(multiplier[:-1])
             grams *= units
+        bonus = search.group("bonus")
+        if bonus is not None:
+            grams = round(grams * (1 + int(bonus) / 100))
     name = name.replace(search.group(0), "")
     return name.strip(), grams, units
 

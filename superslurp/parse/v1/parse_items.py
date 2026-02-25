@@ -327,7 +327,7 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
     grams = None
     units: int | None = None
     search = re.search(
-        r"(?P<multiplier>\d+X)?(?P<grams>\d?[\d+,]?\d+K?G(?: ENVIRON)?)", name
+        r"(?P<multiplier>\d+X)?(?P<grams>\d?[\d+,]?\d+K?GR?(?: ENVIRON)?)", name
     )
     if search is None:
         return name, None, None
@@ -335,7 +335,7 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
         grams_as_str = grams_as_str.replace(" ENVIRON", "")
         multiplier = search.group("multiplier")
         weight_unit_multiplier = 1
-        weight_unit = "G"
+        weight_unit = "GR" if "GR" in grams_as_str and "KG" not in grams_as_str else "G"
         if "KG" in grams_as_str:
             weight_unit_multiplier = 1000
             weight_unit = "KG"

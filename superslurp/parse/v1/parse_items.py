@@ -84,6 +84,7 @@ def parse_items(
                 item = get_item_from_item_infos(item_info, synonyms=synonyms)
                 extract_bare_fat_pct(item, category)
                 extract_packaging_abbrev(item, category)
+                extract_standalone_affinage_months(item, category)
                 nb_parsed_category += item["bought"]
                 items[category].append(item)
         if nb_parsed_category == 0:
@@ -399,6 +400,8 @@ DAIRY_CATEGORIES = frozenset(
     )
 )
 
+CHEESE_CATEGORIES = frozenset(c for c in Category if "FROMAGE" in c.value)
+
 
 _PACKAGING_ABBREV_RE = re.compile(r"\bBK\b")
 _PACKAGING_ABBREV_BL_RE = re.compile(r"\bBL\b")
@@ -442,6 +445,21 @@ def extract_bare_fat_pct(item: Item, category: Category) -> None:
     item["fat_pct"] = float(m.group(1).replace(",", "."))
     name = _BARE_FAT_PCT_STRIP.sub(" ", item["name"])
     item["name"] = re.sub(r"\s+", " ", name).strip()
+
+
+def extract_standalone_affinage_months(item: Item, category: Category) -> None:
+    """Detect standalone N MOIS as affinage for cheese-category items.
+
+    Also strips the standalone N MOIS from the item name.
+    """
+    if category not in CHEESE_CATEGORIES:
+        return
+    if item["properties"].get("affinage_months") is not None:
+        return
+    months = get_affinage_months(item["raw"], cheese=True)
+    if months is not None:
+        item["properties"]["affinage_months"] = months
+    item["name"] = strip_affinage(item["name"], cheese=True)
 
 
 def _get_fat_pct(name: str) -> float | None:

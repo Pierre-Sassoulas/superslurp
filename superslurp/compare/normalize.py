@@ -103,10 +103,10 @@ _LEADING_COUNT = re.compile(r"^\d+\s+")
 _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
 # Affinage patterns for normalization stripping
 _STRIP_AFFINAGE_NORM = re.compile(
-    r"\b\d+\s+MOIS\s+(?:D')?AFFINAGE\b"
-    r"|\bAFFIN[EÉ]\s+\d+\s+MOIS\b"
-    r"|\bAFFINAGE\s+\d+\s+MOIS\b"
-    r"|\b\d+\s+MOIS\b"
+    r"\b\d+\s*MOIS\s+(?:D')?AFFINAGE\b"
+    r"|\bAFFIN[EÉ]\s+\d+\s*MOIS\b"
+    r"|\bAFFINAGE\s+\d+\s*MOIS\b"
+    r"|\b\d+\s*MOIS\b"
     r"|\b\d+\s*J\.?\b"
     r"|\b\d+\s+JOURS?\b"
 )
@@ -418,14 +418,12 @@ def strip_origin(name: str, origin_word: str) -> str:
 # --- Affinage (cheese aging) ---
 
 _AFFINAGE_MONTHS_PATTERNS: list[re.Pattern[str]] = [
-    # "5 MOIS D'AFFINAGE" / "5 MOIS AFFINAGE"
-    re.compile(r"\b(\d+)\s+MOIS\s+(?:D')?AFFINAGE\b"),
-    # "AFFINE 9 MOIS" / "AFFINÉ 9 MOIS"
-    re.compile(r"\bAFFIN[EÉ]\s+(\d+)\s+MOIS\b"),
-    # "AFFINAGE 12 MOIS"
-    re.compile(r"\bAFFINAGE\s+(\d+)\s+MOIS\b"),
-    # "18 MOIS" standalone (cheese aging context)
-    re.compile(r"\b(\d+)\s+MOIS\b"),
+    # "5 MOIS D'AFFINAGE" / "5 MOIS AFFINAGE" / "5MOIS AFFINAGE"
+    re.compile(r"\b(\d+)\s*MOIS\s+(?:D')?AFFINAGE\b"),
+    # "AFFINE 9 MOIS" / "AFFINÉ 9MOIS"
+    re.compile(r"\bAFFIN[EÉ]\s+(\d+)\s*MOIS\b"),
+    # "AFFINAGE 12 MOIS" / "AFFINAGE 12MOIS"
+    re.compile(r"\bAFFINAGE\s+(\d+)\s*MOIS\b"),
 ]
 
 # Day-based aging: "50J", "50J.", "50 JOURS"
@@ -435,26 +433,35 @@ _AFFINAGE_DAYS_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 _STRIP_AFFINAGE_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\b\d+\s+MOIS\s+(?:D')?AFFINAGE\b"),
-    re.compile(r"\bAFFIN[EÉ]\s+\d+\s+MOIS\b"),
-    re.compile(r"\bAFFINAGE\s+\d+\s+MOIS\b"),
-    re.compile(r"\b\d+\s+MOIS\b"),
+    re.compile(r"\b\d+\s*MOIS\s+(?:D')?AFFINAGE\b"),
+    re.compile(r"\bAFFIN[EÉ]\s+\d+\s*MOIS\b"),
+    re.compile(r"\bAFFINAGE\s+\d+\s*MOIS\b"),
     re.compile(r"\b\d+\s*J\.?\b"),
     re.compile(r"\b\d+\s+JOURS?\b"),
 ]
+_STRIP_STANDALONE_MOIS_RE = re.compile(r"\b\d+\s*MOIS\b")
 
 
-def get_affinage_months(name: str) -> int | None:
+_STANDALONE_MOIS_RE = re.compile(r"\b(\d+)\s*MOIS\b")
+
+
+def get_affinage_months(name: str, *, cheese: bool = False) -> int | None:
     """Extract cheese aging duration from a product name, in months.
 
     Matches patterns like ``5 MOIS AFFINAGE``, ``AFFINÉ 9 MOIS``,
-    ``AFFINAGE 12 MOIS``, standalone ``18 MOIS``, or day-based
-    ``50J`` / ``50 JOURS`` (converted to months by dividing by 30).
+    ``AFFINAGE 12 MOIS``, or day-based ``50J`` / ``50 JOURS``
+    (converted to months by dividing by 30).
+    When *cheese* is ``True``, also matches standalone ``18 MOIS``
+    (without an affinage keyword).
     Returns the number of months (rounded) or ``None``.
     """
     upper = name.upper()
     for pattern in _AFFINAGE_MONTHS_PATTERNS:
         m = pattern.search(upper)
+        if m:
+            return int(m.group(1))
+    if cheese:
+        m = _STANDALONE_MOIS_RE.search(upper)
         if m:
             return int(m.group(1))
     for pattern in _AFFINAGE_DAYS_PATTERNS:
@@ -464,12 +471,17 @@ def get_affinage_months(name: str) -> int | None:
     return None
 
 
-def strip_affinage(name: str) -> str:
-    """Remove affinage patterns from *name*."""
+def strip_affinage(name: str, *, cheese: bool = False) -> str:
+    """Remove affinage patterns from *name*.
+
+    When *cheese* is ``True``, also strips standalone ``N MOIS``.
+    """
     for pattern in _STRIP_AFFINAGE_PATTERNS:
         name = pattern.sub("", name)
-    # Also strip standalone AFFINAGE / AFFINE / AFFINÉ / MOIS words left behind
+    if cheese:
+        name = _STRIP_STANDALONE_MOIS_RE.sub("", name)
+        name = re.sub(r"\bMOIS\b", "", name)
+    # Also strip standalone AFFINAGE / AFFINE / AFFINÉ words left behind
     name = re.sub(r"\bAFFINAGE\b", "", name)
     name = re.sub(r"\bAFFIN[EÉ]\b", "", name)
-    name = re.sub(r"\bMOIS\b", "", name)
     return re.sub(r"\s+", " ", name).strip()

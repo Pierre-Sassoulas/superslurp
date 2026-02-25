@@ -826,7 +826,12 @@ def test_get_affinage_months() -> None:
     assert get_affinage_months("BEAUFORT AFFINE 9 MOIS") == 9
     assert get_affinage_months("BEAUFORT AFFINÉ 9 MOIS") == 9
     assert get_affinage_months("COMTE AFFINAGE 12 MOIS") == 12
-    assert get_affinage_months("COMTE 18 MOIS") == 18
+    assert get_affinage_months("MONT JURA 9MOIS AFFINAGE") == 9
+    # Standalone N MOIS without affinage keyword → only detected in cheese mode
+    assert get_affinage_months("COMTE 18 MOIS") is None
+    assert get_affinage_months("COMTE 18 MOIS", cheese=True) == 18
+    assert get_affinage_months("BLEDINE BISCUIT 6MOIS") is None
+    assert get_affinage_months("BLEDINE BISCUIT 6MOIS", cheese=True) == 6
     assert get_affinage_months("SUCRE POUDRE") is None
     assert get_affinage_months("AUBERGINE") is None
 
@@ -836,7 +841,11 @@ def test_strip_affinage() -> None:
     assert strip_affinage("BEAUFORT AFFINE 9 MOIS") == "BEAUFORT"
     assert strip_affinage("BEAUFORT AFFINÉ 9 MOIS") == "BEAUFORT"
     assert strip_affinage("COMTE AFFINAGE 12 MOIS") == "COMTE"
-    assert strip_affinage("COMTE 18 MOIS") == "COMTE"
+    # Standalone N MOIS only stripped in cheese mode
+    assert strip_affinage("COMTE 18 MOIS") == "COMTE 18 MOIS"
+    assert strip_affinage("COMTE 18 MOIS", cheese=True) == "COMTE"
+    assert strip_affinage("BLEDINE BISCUIT 6MOIS") == "BLEDINE BISCUIT 6MOIS"
+    assert strip_affinage("BLEDINE BISCUIT 6MOIS", cheese=True) == "BLEDINE BISCUIT"
     assert strip_affinage("SUCRE POUDRE") == "SUCRE POUDRE"
 
 

@@ -8,6 +8,7 @@ from superslurp.parse.v1.parse_items import (
     build_properties,
     extract_bare_fat_pct,
     extract_packaging_abbrev,
+    extract_standalone_affinage_months,
 )
 from superslurp.superslurp_typing import Category, Item, Items
 
@@ -112,6 +113,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
             }
             extract_bare_fat_pct(item, category)
             extract_packaging_abbrev(item, category)
+            extract_standalone_affinage_months(item, category)
             items[category].append(item)
             last_item = item
             nb_parsed += quantity

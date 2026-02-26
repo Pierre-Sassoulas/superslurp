@@ -107,14 +107,14 @@ _STRIP_UNIT_COUNT = re.compile(
     r"|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+X\d+/\d+\b|\b\d+TR\b"
 )
 _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLITRES?\b")
-_STRIP_BABY_AGE = re.compile(r"\b\d+(/\d+)?\s*M\b")
-_BABY_AGE_EXTRACT = re.compile(r"\b(\d+)(?:/\d+)?\s*M\b")
+_STRIP_BABY_AGE = re.compile(r"\bDES\s+\d+(/\d+)?\s*M\b|\b\d+(/\d+)?\s*M\b")
+_BABY_AGE_EXTRACT = re.compile(r"\b(?:DES\s+)?(\d+)(?:/\d+)?\s*M\b")
 
 
 def get_baby_months(name: str) -> int | None:
     """Extract the minimum baby age in months from a product name.
 
-    Matches patterns like ``6M``, ``8M``, ``4/6M``, ``15/36M``.
+    Matches patterns like ``6M``, ``8M``, ``4/6M``, ``15/36M``, ``DES 12M``.
     For fractional ages (4/6M) returns the first (minimum) number.
     Returns ``None`` if no baby age found.
     """

@@ -959,6 +959,8 @@ def test_normalize_strips_baby_food_age() -> None:
     # Fractional age like 4/6M, 15/36M
     assert normalize_for_matching("BLEDINA LEGUMES 4/6M") == "BLEDINA LEGUMES"
     assert normalize_for_matching("BLEDINA CEREALES 15/36M") == "BLEDINA CEREALES"
+    # "DES 12M" = "dès 12 mois" — DES prefix stripped with age
+    assert normalize_for_matching("BLEDINA CROISSANCE DES 12M") == "BLEDINA CROISSANCE"
     # Does NOT strip MG (fat) — %MG is not a baby age suffix
     assert "%MG" in normalize_for_matching("FROMAGE 32%MG")
 

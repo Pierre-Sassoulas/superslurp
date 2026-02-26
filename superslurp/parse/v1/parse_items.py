@@ -5,6 +5,7 @@ import re
 from collections import defaultdict
 
 from superslurp.compare.normalize import (
+    compile_synonyms,
     expand_synonyms,
     extract_unit_count,
     get_affinage_months,
@@ -66,6 +67,7 @@ items_patterns = [
 def parse_items(
     text: str, expected_number_of_items: int, synonyms: dict[str, str] | None = None
 ) -> Items:
+    compiled_syn = compile_synonyms(synonyms) if synonyms else None
     nb_parsed = 0
     items: dict[Category, list[Item]] = defaultdict(list)
     category = Category.UNDEFINED
@@ -84,7 +86,7 @@ def parse_items(
                 if discount_str is not None:
                     items[category][-1]["discount"] = _get_price(discount_str)
                     continue
-                item = get_item_from_item_infos(item_info, synonyms=synonyms)
+                item = get_item_from_item_infos(item_info, synonyms=compiled_syn)
                 extract_bare_fat_pct(item, category)
                 extract_packaging_abbrev(item, category)
                 extract_standalone_affinage_months(item, category)
@@ -143,7 +145,7 @@ def _parse_name_grams_units(  # pylint: disable=too-many-locals
 
 def _parse_name_attributes(  # pylint: disable=too-many-locals
     raw_name: str,
-    synonyms: dict[str, str] | None = None,
+    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
 ) -> tuple[
     str,
     float | None,
@@ -333,7 +335,8 @@ def build_properties(  # pylint: disable=too-many-arguments,too-many-positional-
 
 
 def get_item_from_item_infos(  # pylint: disable=too-many-locals
-    item_info: re.Match[str], synonyms: dict[str, str] | None = None
+    item_info: re.Match[str],
+    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
 ) -> Item:
     if (matched_name := item_info.group("name")) is None:
         raise ValueError(f"Nothing matched the name in {item_info}")

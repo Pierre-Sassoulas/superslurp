@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from bisect import bisect_left
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -64,20 +65,27 @@ def _get_session_id(
     return int(sessions[key]["id"])
 
 
-def _build_observation(  # pylint: disable=too-many-locals,too-complex
+_OBS_PROP_KEYS = (
+    "bio",
+    "milk_treatment",
+    "production",
+    "brand",
+    "label",
+    "packaging",
+    "origin",
+    "affinage_months",
+    "baby_months",
+    "baby_recipe",
+)
+
+
+def _build_observation(
     item: dict[str, Any],
     session_id: int,
 ) -> dict[str, Any]:
     price: float = item["price"]
     grams: float | None = item.get("grams")
-    price_per_kg: float | None = None
-    if grams is not None:
-        price_per_kg = round((price / grams) * 1000, 2)
     volume_ml: float | None = item.get("volume_ml")
-    price_per_liter: float | None = None
-    if volume_ml is not None and volume_ml > 0:
-        price_per_liter = round((price / volume_ml) * 1000, 2)
-    unit_count: float = item.get("units") or 1
     obs: dict[str, Any] = {
         "original_name": item["name"],
         "session_id": session_id,
@@ -85,42 +93,22 @@ def _build_observation(  # pylint: disable=too-many-locals,too-complex
         "quantity": item.get("bought", 1),
         "grams": grams,
         "discount": item.get("discount"),
-        "price_per_kg": price_per_kg,
+        "price_per_kg": round((price / grams) * 1000, 2) if grams is not None else None,
         "volume_ml": volume_ml,
-        "price_per_liter": price_per_liter,
-        "unit_count": unit_count,
+        "price_per_liter": (
+            round((price / volume_ml) * 1000, 2)
+            if volume_ml is not None and volume_ml > 0
+            else None
+        ),
+        "unit_count": item.get("units") or 1,
         "fat_pct": item.get("fat_pct"),
     }
-    props = item.get("properties", {})
-    if props.get("bio"):
-        obs["bio"] = True
-    milk = props.get("milk_treatment")
-    if milk:
-        obs["milk_treatment"] = milk
-    production = props.get("production")
-    if production:
-        obs["production"] = production
-    brand = props.get("brand")
-    if brand:
-        obs["brand"] = brand
-    label = props.get("label")
-    if label:
-        obs["label"] = label
-    packaging = props.get("packaging")
-    if packaging:
-        obs["packaging"] = packaging
-    origin = props.get("origin")
-    if origin:
-        obs["origin"] = origin
-    affinage_months = props.get("affinage_months")
-    if affinage_months:
-        obs["affinage_months"] = affinage_months
-    baby_months = props.get("baby_months")
-    if baby_months:
-        obs["baby_months"] = baby_months
-    baby_recipe = props.get("baby_recipe")
-    if baby_recipe:
-        obs["baby_recipe"] = baby_recipe
+    props = item.get("properties")
+    if props:
+        for key in _OBS_PROP_KEYS:
+            val = props.get(key)
+            if val:
+                obs[key] = val
     return obs
 
 
@@ -172,18 +160,21 @@ def _build_weekly_sums(
     points: list[tuple[datetime, float]],
 ) -> tuple[list[datetime], list[float]]:
     """Bucket session totals into Monday-aligned weeks."""
-    week = timedelta(weeks=1)
     first_dt = points[0][0]
     min_week = first_dt - timedelta(days=first_dt.weekday())
     max_dt = points[-1][0]
+    # Bucket points by week offset in O(P)
+    buckets: dict[int, float] = {}
+    for dt, total in points:
+        idx = (dt - min_week).days // 7
+        buckets[idx] = buckets.get(idx, 0) + total
+    # Build contiguous week list in O(W)
+    num_weeks = (max_dt - min_week).days // 7 + 2
     week_starts: list[datetime] = []
     week_sums: list[float] = []
-    w = min_week
-    while w <= max_dt + week:
-        total = sum(t for dt, t in points if w <= dt < w + week)
-        week_starts.append(w)
-        week_sums.append(total)
-        w += week
+    for i in range(num_weeks):
+        week_starts.append(min_week + timedelta(weeks=i))
+        week_sums.append(buckets.get(i, 0))
     return week_starts, week_sums
 
 
@@ -204,9 +195,18 @@ def _compute_rolling_average(
     week_starts, week_sums = _build_weekly_sums(points)
 
     max_gap_secs = timedelta(weeks=4).total_seconds()
+    # Pre-sort session datetimes for O(log P) nearest-point lookup via bisect
+    sorted_dts = sorted(dt for dt, _ in points)
     result = []
     for i, w_start in enumerate(week_starts):
-        nearest = min(abs((dt - w_start).total_seconds()) for dt, _ in points)
+        j = bisect_left(sorted_dts, w_start)
+        nearest = min(
+            (
+                abs((sorted_dts[k] - w_start).total_seconds())
+                for k in (j - 1, j)
+                if 0 <= k < len(sorted_dts)
+            ),
+        )
         if nearest > max_gap_secs:
             continue
         window = [

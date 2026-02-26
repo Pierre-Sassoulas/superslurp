@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
+from superslurp.compare.normalize import compile_synonyms
 from superslurp.parse.v1.parse_items import (
     _parse_name_attributes,
     build_properties,
@@ -21,11 +22,12 @@ PESEE_PATTERN = re.compile(r"^\s+Pesée manuelle\s*$")
 CATEGORY_PATTERN = re.compile(r"^[A-Z][A-Z0-9 .()\-]+\s*$")
 
 
-def parse_items_v2(  # pylint: disable=too-many-locals
+def parse_items_v2(  # pylint: disable=too-many-locals,too-many-statements
     items_text: str,
     expected_number_of_items: int,
     synonyms: dict[str, str] | None = None,
 ) -> tuple[Items, float]:
+    compiled_syn = compile_synonyms(synonyms) if synonyms else None
     items: dict[Category, list[Item]] = defaultdict(list)
     total_discount = 0.0
     category = Category.UNDEFINED
@@ -82,7 +84,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 production,
                 baby_months,
                 baby_recipe,
-            ) = _parse_name_attributes(raw_name, synonyms=synonyms)
+            ) = _parse_name_attributes(raw_name, synonyms=compiled_syn)
             grams = (
                 grams_from_weight if grams_from_weight is not None else grams_from_name
             )

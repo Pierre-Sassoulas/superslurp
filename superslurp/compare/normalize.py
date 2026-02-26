@@ -148,6 +148,10 @@ _BABY_RECIPE_STRIP = re.compile(
     + r"|\bBIO\b"
 )
 _BABY_DOT_PREFIX = re.compile(r"^(?:BOLS?|POTS?)\.")
+# Precompiled baby placeholder dedup patterns for normalize_for_matching
+_BABY_PLACEHOLDER_DEDUP: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(rf"({re.escape(p)})(\s+\1)+"), p) for p in _BABY_PLACEHOLDER_SET
+]
 
 
 def get_baby_recipe(name: str) -> str | None:
@@ -169,6 +173,12 @@ def get_baby_recipe(name: str) -> str | None:
 
 
 _LEADING_COUNT = re.compile(r"^\d+\s+")
+# Precompiled accent-stripping pattern (matches combining marks after NFD decomposition)
+_COMBINING_MARKS = re.compile(r"[\u0300-\u036f]+")
+# Precompiled whitespace collapse
+_MULTI_SPACE = re.compile(r"\s+")
+# Precompiled OEUFS normalization
+_OEUFS_NORM = re.compile(r"\bOEUF\b")
 # Leading "3+1" (sum → 4) or "1/2" (fraction → 0.5), glued or spaced before product word
 _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
 # Affinage patterns for normalization stripping
@@ -189,7 +199,32 @@ _UNIT_COUNT_PATTERN = re.compile(
 )
 
 
-def expand_synonyms(name: str, synonyms: dict[str, str]) -> str:
+def compile_synonyms(
+    synonyms: dict[str, str],
+) -> list[tuple[re.Pattern[str], str]]:
+    """Pre-compile synonym dict into a list of (compiled_regex, replacement).
+
+    Call once per synonym dict, then pass the result to :func:`expand_synonyms`.
+    """
+    compiled: list[tuple[re.Pattern[str], str]] = []
+    for pattern, replacement in synonyms.items():
+        pat = pattern.replace(".", " ").strip()
+        if not pat:
+            continue
+        escaped_words = [re.escape(w) for w in pat.split()]
+        regex = (
+            r"(?:(?<=[\s.])|(?<=^)|(?<=\b))"
+            + r"[.\s]+".join(escaped_words)
+            + r"(?=[\s.]|$|\b)"
+        )
+        compiled.append((re.compile(regex, re.IGNORECASE), replacement))
+    return compiled
+
+
+def expand_synonyms(
+    name: str,
+    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]],
+) -> str:
     """Expand abbreviations in a product name using an ordered synonym dict.
 
     Keys are patterns, values are replacements.  Iteration order matters:
@@ -199,34 +234,33 @@ def expand_synonyms(name: str, synonyms: dict[str, str]) -> str:
     Dots and spaces are both treated as word separators, so ``CHOCO.PATIS``
     and ``FROM.BLC`` match their synonym keys.  Dots are replaced by spaces
     only **after** all synonyms have been applied.
+
+    *synonyms* can be either a raw ``dict[str, str]`` (compiled on the fly)
+    or a pre-compiled list from :func:`compile_synonyms` (much faster when
+    called repeatedly).
     """
-    for pattern, replacement in synonyms.items():
-        pat = pattern.replace(".", " ").strip()
-        if not pat:
-            continue
-        # Build a regex where spaces in the pattern match either dot or space,
-        # and word boundaries treat dots as separators (not word chars).
-        escaped_words = [re.escape(w) for w in pat.split()]
-        regex = (
-            r"(?:(?<=[\s.])|(?<=^)|(?<=\b))"
-            + r"[.\s]+".join(escaped_words)
-            + r"(?=[\s.]|$|\b)"
-        )
-        name = re.sub(regex, replacement, name, flags=re.IGNORECASE)
+    if isinstance(synonyms, dict):
+        compiled = compile_synonyms(synonyms)
+    else:
+        compiled = synonyms
+    for pattern, replacement in compiled:
+        name = pattern.sub(replacement, name)
     name = name.replace(".", " ")
-    return re.sub(r"\s+", " ", name).strip()
+    return _MULTI_SPACE.sub(" ", name).strip()
 
 
-def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) -> str:
+def normalize_for_matching(
+    name: str,
+    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
+) -> str:
     """Normalize a product name for fuzzy matching.
 
     Uppercase, strip accents, collapse whitespace, remove common qualifiers
     (color, packaging, origin, brand, BIO).
     """
     name = name.upper().strip()
-    # Strip accents via NFD decomposition + removing combining chars
-    name = unicodedata.normalize("NFD", name)
-    name = "".join(c for c in name if unicodedata.category(c) != "Mn")
+    # Strip accents via NFD decomposition + removing combining marks
+    name = _COMBINING_MARKS.sub("", unicodedata.normalize("NFD", name))
     # Expand synonyms (also normalizes dots to spaces)
     if synonyms:
         name = expand_synonyms(name, synonyms)
@@ -247,8 +281,8 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     # Replace baby-food sub-brands with type-specific placeholders
     name = _BABY_FOOD_RE.sub(lambda m: _BABY_FOOD_REPLACEMENTS[m.group()], name)
     # Collapse duplicate placeholders (e.g. "BLEDICHEF ASSIETTE" → "PLAT BEBE PLAT BEBE")
-    for placeholder in _BABY_PLACEHOLDER_SET:
-        name = re.sub(rf"({re.escape(placeholder)})(\s+\1)+", placeholder, name)
+    for pattern, placeholder in _BABY_PLACEHOLDER_DEDUP:
+        name = pattern.sub(placeholder, name)
     # Strip content after baby-food placeholder — group all PLAT BEBE together
     for placeholder in _BABY_PLACEHOLDER_SET:
         if placeholder in name:
@@ -274,9 +308,9 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     words = filtered
     name = " ".join(words)
     # Collapse whitespace
-    name = re.sub(r"\s+", " ", name).strip()
+    name = _MULTI_SPACE.sub(" ", name).strip()
     # Normalize common singular/plural
-    name = re.sub(r"\bOEUF\b", "OEUFS", name)
+    name = _OEUFS_NORM.sub("OEUFS", name)
     return name
 
 

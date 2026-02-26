@@ -81,6 +81,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                 affinage_months,
                 production,
                 baby_months,
+                baby_recipe,
             ) = _parse_name_attributes(raw_name, synonyms=synonyms)
             grams = (
                 grams_from_weight if grams_from_weight is not None else grams_from_name
@@ -114,6 +115,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
                     affinage_months,
                     production,
                     baby_months,
+                    baby_recipe,
                 ),
             }
             extract_bare_fat_pct(item, category)

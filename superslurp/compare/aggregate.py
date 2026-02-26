@@ -118,6 +118,9 @@ def _build_observation(  # pylint: disable=too-many-locals,too-complex
     baby_months = props.get("baby_months")
     if baby_months:
         obs["baby_months"] = baby_months
+    baby_recipe = props.get("baby_recipe")
+    if baby_recipe:
+        obs["baby_recipe"] = baby_recipe
     return obs
 
 

@@ -9,6 +9,7 @@ from superslurp.compare.normalize import (
     extract_unit_count,
     get_affinage_months,
     get_baby_months,
+    get_baby_recipe,
     get_brand,
     get_milk_treatment,
     get_origin,
@@ -116,7 +117,7 @@ def get_new_category(line: str) -> Category:
         raise ValueError(f"Missing value in enum '{Category!r}': {e}") from e
 
 
-def _parse_name_grams_units(
+def _parse_name_grams_units(  # pylint: disable=too-many-locals
     raw_name: str,
 ) -> tuple[str, float | None, float | None]:
     """Extract clean name, grams and units from a raw product name."""
@@ -135,6 +136,7 @@ def _parse_name_grams_units(
         _aff,
         _prod,
         _baby,
+        _recipe,
     ) = _parse_name_attributes(raw_name)
     return name, grams, units
 
@@ -157,9 +159,10 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
     int | None,
     str | None,
     int | None,
+    str | None,
 ]:
     """Extract name, grams, units, fat%, bio, milk, volume, brand, label,
-    packaging, origin, affinage, production, baby_months.
+    packaging, origin, affinage, production, baby_months, baby_recipe.
 
     When *synonyms* is provided, abbreviations are expanded **before**
     any attribute extraction so that patterns like ``%MG LP`` →
@@ -202,6 +205,7 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
         origin,
         affinage_months,
         baby_months,
+        baby_recipe,
     ) = _extract_properties(name, raw_name)
     return (
         name,
@@ -218,6 +222,7 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
         affinage_months,
         production,
         baby_months,
+        baby_recipe,
     )
 
 
@@ -234,9 +239,11 @@ def _extract_properties(
     str | None,
     int | None,
     int | None,
+    str | None,
 ]:
-    """Detect bio/milk/production/brand/label/packaging/origin/affinage/baby-age flags and strip them from *name*."""
+    """Detect bio/milk/production/brand/label/packaging/origin/affinage/baby-age/recipe flags."""
     baby_months = get_baby_months(raw_name) or get_baby_months(name)
+    baby_recipe = get_baby_recipe(name) or get_baby_recipe(raw_name)
     bio = is_bio(raw_name)
     if bio:
         name = re.sub(r"\bBIO\b", "", name).strip()
@@ -284,10 +291,11 @@ def _extract_properties(
         origin,
         affinage_months,
         baby_months,
+        baby_recipe,
     )
 
 
-def build_properties(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def build_properties(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-complex
     bio: bool,
     milk_treatment: str | None,
     brand: str | None = None,
@@ -297,6 +305,7 @@ def build_properties(  # pylint: disable=too-many-arguments,too-many-positional-
     affinage_months: int | None = None,
     production: str | None = None,
     baby_months: int | None = None,
+    baby_recipe: str | None = None,
 ) -> Properties:
     """Build a Properties dict, only including truthy values."""
     props: Properties = {}
@@ -318,6 +327,8 @@ def build_properties(  # pylint: disable=too-many-arguments,too-many-positional-
         props["affinage_months"] = affinage_months
     if baby_months is not None:
         props["baby_months"] = baby_months
+    if baby_recipe is not None:
+        props["baby_recipe"] = baby_recipe
     return props
 
 
@@ -345,6 +356,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
         affinage_months,
         production,
         baby_months,
+        baby_recipe,
     ) = _parse_name_attributes(raw_name, synonyms=synonyms)
     quantity_str = item_info.group("quantity")
     if grams is None and quantity_str and "kg" in quantity_str:
@@ -378,6 +390,7 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
             affinage_months,
             production,
             baby_months,
+            baby_recipe,
         ),
     }
     return item

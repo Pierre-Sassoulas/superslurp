@@ -137,6 +137,37 @@ _BABY_FOOD_REPLACEMENTS: dict[str, str] = {
     "POTS": "PLAT BEBE",
 }
 _BABY_FOOD_RE = re.compile(r"\b(?:" + "|".join(_BABY_FOOD_REPLACEMENTS) + r")\b")
+_BABY_PLACEHOLDER_SET = frozenset(_BABY_FOOD_REPLACEMENTS.values())
+# Pattern to strip baby-food keywords, age, and codes from a name to get the recipe
+_BABY_RECIPE_STRIP = re.compile(
+    r"\b(?:"
+    + "|".join(sorted(_BABY_FOOD_REPLACEMENTS.keys(), key=len, reverse=True))
+    + r")\b"
+    + r"|\b(?:UTP|UTPB)\b"
+    + r"|\bDES\s+\d+(?:/\d+)?\s*M\b|\b\d+(?:/\d+)?\s*M\b"
+    + r"|\bBIO\b"
+)
+_BABY_DOT_PREFIX = re.compile(r"^(?:BOLS?|POTS?)\.")
+
+
+def get_baby_recipe(name: str) -> str | None:
+    """Extract baby food recipe/content from a product name.
+
+    Returns the food description after stripping baby food keywords
+    (BLEDICHEF, BOL, etc.), age suffixes, internal codes, and BIO.
+    Returns ``None`` if no baby food keyword found.
+    """
+    upper = name.upper()
+    if not (_BABY_FOOD_RE.search(upper) or _BABY_DOT_PREFIX.match(upper)):
+        return None
+    result = _BABY_RECIPE_STRIP.sub("", upper)
+    result = _BABY_DOT_PREFIX.sub("", result)
+    # Clean up dots/whitespace
+    result = re.sub(r"^\s*\.?\s*", "", result)
+    result = re.sub(r"\s+", " ", result).strip()
+    return result if result else None
+
+
 _LEADING_COUNT = re.compile(r"^\d+\s+")
 # Leading "3+1" (sum → 4) or "1/2" (fraction → 0.5), glued or spaced before product word
 _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
@@ -216,8 +247,13 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     # Replace baby-food sub-brands with type-specific placeholders
     name = _BABY_FOOD_RE.sub(lambda m: _BABY_FOOD_REPLACEMENTS[m.group()], name)
     # Collapse duplicate placeholders (e.g. "BLEDICHEF ASSIETTE" → "PLAT BEBE PLAT BEBE")
-    for placeholder in set(_BABY_FOOD_REPLACEMENTS.values()):
+    for placeholder in _BABY_PLACEHOLDER_SET:
         name = re.sub(rf"({re.escape(placeholder)})(\s+\1)+", placeholder, name)
+    # Strip content after baby-food placeholder — group all PLAT BEBE together
+    for placeholder in _BABY_PLACEHOLDER_SET:
+        if placeholder in name:
+            name = name[: name.index(placeholder) + len(placeholder)]
+            break
     # Strip affinage patterns like "5 MOIS AFFINAGE", "AFFINE 9 MOIS", "18 MOIS"
     name = _STRIP_AFFINAGE_NORM.sub("", name)
     # Strip known qualifier words, but keep protected compounds

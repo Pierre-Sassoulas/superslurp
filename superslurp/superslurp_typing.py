@@ -22,6 +22,7 @@ class Properties(TypedDict, total=False):
     origin: str
     affinage_months: int
     baby_months: int
+    baby_recipe: str
 
 
 class Item(TypedDict):

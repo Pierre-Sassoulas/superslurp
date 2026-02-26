@@ -552,9 +552,10 @@ def test_eggs_grouped_together() -> None:
 
 def test_normalize_with_synonyms() -> None:
     synonyms = {"BLED": "BLEDINA", "CRST": "CROISSANT"}
+    # BOL → PLAT BEBE (baby food format), 8M stripped (baby age)
     assert (
         normalize_for_matching("BLED BOL CAR/RZ/JAMB 8M", synonyms)
-        == "BLEDINA BOL CAR/RZ/JAMB 8M"
+        == "BLEDINA PLAT BEBE CAR/RZ/JAMB"
     )
     assert normalize_for_matching("CRST CHOCO", synonyms) == "CROISSANT CHOCO"
 
@@ -565,7 +566,8 @@ def test_normalize_synonyms_after_dot_expansion() -> None:
 
 
 def test_normalize_synonyms_none_unchanged() -> None:
-    assert normalize_for_matching("BLED BOL") == "BLED BOL"
+    # BOL → PLAT BEBE (baby food format), BLED stays without synonym expansion
+    assert normalize_for_matching("BLED BOL") == "BLED PLAT BEBE"
 
 
 def test_matcher_pre_expanded_synonyms() -> None:
@@ -940,6 +942,46 @@ def test_compare_receipt_dicts_production() -> None:
     assert reblochon["observations"][0].get("production") == "fermier"
     sugar = next(p for p in result["products"] if "SUCRE" in p["canonical_name"])
     assert "production" not in sugar["observations"][0]
+
+
+# --- baby food normalization ---
+
+
+def test_normalize_strips_baby_food_age() -> None:
+    assert normalize_for_matching("BLEDINA CAR/RZ/JAMB 8M") == "BLEDINA CAR/RZ/JAMB"
+    assert normalize_for_matching("BLEDINA CAR/RZ/JAMB 6M") == "BLEDINA CAR/RZ/JAMB"
+    assert (
+        normalize_for_matching("BLEDINA RISOTTO SAUMON 15M") == "BLEDINA RISOTTO SAUMON"
+    )
+    assert (
+        normalize_for_matching("BLEDINA RISOTTO SAUMON 12M") == "BLEDINA RISOTTO SAUMON"
+    )
+    # Fractional age like 4/6M, 15/36M
+    assert normalize_for_matching("BLEDINA LEGUMES 4/6M") == "BLEDINA LEGUMES"
+    assert normalize_for_matching("BLEDINA CEREALES 15/36M") == "BLEDINA CEREALES"
+    # Does NOT strip MG (fat) — %MG is not a baby age suffix
+    assert "%MG" in normalize_for_matching("FROMAGE 32%MG")
+
+
+def test_normalize_replaces_baby_food_subbrands() -> None:
+    assert (
+        normalize_for_matching("BLEDICHEF RISOTTO SAUMON") == "PLAT BEBE RISOTTO SAUMON"
+    )
+    assert normalize_for_matching("BLEDINER LEGUMES RIZ") == "PLAT BEBE LEGUMES RIZ"
+    assert normalize_for_matching("BLEDINE BISCUIT") == "CEREALES BEBE BISCUIT"
+    assert normalize_for_matching("BLEDILAIT CROISSANCE") == "LAIT BEBE CROISSANCE"
+
+
+def test_normalize_replaces_baby_food_formats() -> None:
+    assert (
+        normalize_for_matching("BLEDINA BOL CAR/RZ/JAMB")
+        == "BLEDINA PLAT BEBE CAR/RZ/JAMB"
+    )
+    assert normalize_for_matching("BLEDINA POT LEGUMES") == "BLEDINA PLAT BEBE LEGUMES"
+    assert (
+        normalize_for_matching("BLEDINA ASSIETTE RISOTTO")
+        == "BLEDINA PLAT BEBE RISOTTO"
+    )
 
 
 def test_parse_reblochon_readme_example() -> None:

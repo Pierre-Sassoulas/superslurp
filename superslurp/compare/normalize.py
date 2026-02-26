@@ -87,6 +87,9 @@ _STRIP_WORDS = frozenset(
         # Production type (cheese)
         "FERMIER",
         "LAITIER",
+        # Baby food internal codes
+        "UTP",
+        "UTPB",
     }
 )
 # Word pairs where the second word is in _STRIP_WORDS but forms a product name
@@ -104,6 +107,20 @@ _STRIP_UNIT_COUNT = re.compile(
     r"|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+X\d+/\d+\b|\b\d+TR\b"
 )
 _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLITRES?\b")
+_STRIP_BABY_AGE = re.compile(r"\b\d+(/\d+)?\s*M\b")
+# Baby food sub-brands → type-specific placeholders (applied before word stripping)
+_BABY_FOOD_REPLACEMENTS: dict[str, str] = {
+    "BLEDICHEF": "PLAT BEBE",
+    "BLEDINER": "PLAT BEBE",
+    "BLEDINE": "CEREALES BEBE",
+    "BLEDILAIT": "LAIT BEBE",
+    "ASSIETTE": "PLAT BEBE",
+    "BOL": "PLAT BEBE",
+    "BOLS": "PLAT BEBE",
+    "POT": "PLAT BEBE",
+    "POTS": "PLAT BEBE",
+}
+_BABY_FOOD_RE = re.compile(r"\b(?:" + "|".join(_BABY_FOOD_REPLACEMENTS) + r")\b")
 _LEADING_COUNT = re.compile(r"^\d+\s+")
 # Leading "3+1" (sum → 4) or "1/2" (fraction → 0.5), glued or spaced before product word
 _LEADING_ARITH = re.compile(r"^(\d+)([+/])(\d+)\s*")
@@ -178,6 +195,10 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     name = _STRIP_UNIT_COUNT.sub("", name)
     name = _LEADING_ARITH.sub("", name)
     name = _LEADING_COUNT.sub("", name)
+    # Strip baby-food age suffixes like 6M, 8M, 4/6M, 15/36M
+    name = _STRIP_BABY_AGE.sub("", name)
+    # Replace baby-food sub-brands with type-specific placeholders
+    name = _BABY_FOOD_RE.sub(lambda m: _BABY_FOOD_REPLACEMENTS[m.group()], name)
     # Strip affinage patterns like "5 MOIS AFFINAGE", "AFFINE 9 MOIS", "18 MOIS"
     name = _STRIP_AFFINAGE_NORM.sub("", name)
     # Strip known qualifier words, but keep protected compounds

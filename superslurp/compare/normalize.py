@@ -24,6 +24,7 @@ _STRIP_WORDS = frozenset(
         "BARQUETTE",
         "VRAC",
         "BTE",
+        "TUB",
         "BRIQUE",
         "BOUTEILLE",
         "BOCAL",
@@ -32,6 +33,7 @@ _STRIP_WORDS = frozenset(
         "ETUI",
         "VERRE",
         "PAQUET",
+        "TUBE",
         "RECHARGE",
         # Origin (country codes, full names, regions)
         "FR",
@@ -383,9 +385,16 @@ _KNOWN_PACKAGING = frozenset(
         "VERRE",
         "BARQUETTE",
         "PAQUET",
+        "TUB",
+        "TUBE",
         "RECHARGE",
     }
 )
+
+# Map abbreviations to canonical packaging name for get_packaging()
+_PACKAGING_ALIASES: dict[str, str] = {
+    "TUB": "TUBE",
+}
 
 
 def get_packaging(name: str) -> str | None:
@@ -393,8 +402,12 @@ def get_packaging(name: str) -> str | None:
 
     Only matches full words BRIQUE / BOUTEILLE.  Abbreviations (BK, BL)
     are handled by synonym expansion before this function is called.
+    Aliases like TUB → TUBE are resolved to the canonical name.
     """
     upper = name.upper()
+    for alias, canonical in _PACKAGING_ALIASES.items():
+        if re.search(r"\b" + re.escape(alias) + r"\b", upper):
+            return canonical
     for pkg in _KNOWN_PACKAGING:
         if re.search(r"\b" + re.escape(pkg) + r"\b", upper):
             return pkg
@@ -402,10 +415,17 @@ def get_packaging(name: str) -> str | None:
 
 
 def strip_packaging(name: str, packaging: str) -> str:
-    """Remove a packaging word from *name* (case-insensitive, whole word)."""
-    return re.sub(
-        r"\b" + re.escape(packaging) + r"\b", "", name, flags=re.IGNORECASE
-    ).strip()
+    """Remove a packaging word from *name* (case-insensitive, whole word).
+
+    Also strips any alias that maps to *packaging* (e.g. TUB for TUBE).
+    """
+    name = re.sub(r"\b" + re.escape(packaging) + r"\b", "", name, flags=re.IGNORECASE)
+    for alias, canonical in _PACKAGING_ALIASES.items():
+        if canonical == packaging:
+            name = re.sub(
+                r"\b" + re.escape(alias) + r"\b", "", name, flags=re.IGNORECASE
+            )
+    return name.strip()
 
 
 _KNOWN_ORIGINS: dict[str, str] = {

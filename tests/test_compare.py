@@ -309,7 +309,7 @@ def test_compare_receipt_dicts_sorted_by_name() -> None:
 
 def test_compare_receipt_files_fixtures() -> None:
     """Load real fixture JSONs and write comparison result."""
-    json_files = sorted(FIXTURES.glob(".Ticket*.json"))[:5]
+    json_files = sorted(FIXTURES.glob(".Ticket*.json"))
     if not json_files:
         return  # skip if no fixtures available
     result = compare_receipt_files(json_files)

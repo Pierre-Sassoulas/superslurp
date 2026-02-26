@@ -984,6 +984,14 @@ def test_normalize_replaces_baby_food_formats() -> None:
     )
 
 
+def test_normalize_deduplicates_baby_food_placeholders() -> None:
+    # BLEDICHEF + ASSIETTE both map to PLAT BEBE → should not duplicate
+    assert (
+        normalize_for_matching("BLEDICHEF ASSIETTE PDT/CH FL") == "PLAT BEBE PDT/CH FL"
+    )
+    assert normalize_for_matching("BLEDINER BOL LEGUMES RIZ") == "PLAT BEBE LEGUMES RIZ"
+
+
 def test_parse_reblochon_readme_example() -> None:
     """The README example: REBL.SAVE.AOP.LC BIO BQTX12 450G 32%MG."""
     synonyms = {

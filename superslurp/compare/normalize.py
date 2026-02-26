@@ -215,6 +215,9 @@ def normalize_for_matching(name: str, synonyms: dict[str, str] | None = None) ->
     name = _STRIP_BABY_AGE.sub("", name)
     # Replace baby-food sub-brands with type-specific placeholders
     name = _BABY_FOOD_RE.sub(lambda m: _BABY_FOOD_REPLACEMENTS[m.group()], name)
+    # Collapse duplicate placeholders (e.g. "BLEDICHEF ASSIETTE" → "PLAT BEBE PLAT BEBE")
+    for placeholder in set(_BABY_FOOD_REPLACEMENTS.values()):
+        name = re.sub(rf"({re.escape(placeholder)})(\s+\1)+", placeholder, name)
     # Strip affinage patterns like "5 MOIS AFFINAGE", "AFFINE 9 MOIS", "18 MOIS"
     name = _STRIP_AFFINAGE_NORM.sub("", name)
     # Strip known qualifier words, but keep protected compounds

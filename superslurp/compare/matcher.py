@@ -21,6 +21,8 @@ class FuzzyMatcher:  # pylint: disable=too-few-public-methods
         self.threshold = threshold
         self._canonicals: list[str] = []
         self._cache: dict[str, str] = {}
+        # Raw name → canonical, skips normalize_for_matching entirely on repeats
+        self._raw_cache: dict[str, str] = {}
         # One SequenceMatcher per canonical, with seq2 pre-set
         self._matchers: list[SequenceMatcher[str]] = []
         # Token → list of canonical indices (inverted index)
@@ -28,9 +30,14 @@ class FuzzyMatcher:  # pylint: disable=too-few-public-methods
 
     def match(self, name: str) -> str:
         """Return the canonical name for the given product."""
+        cached = self._raw_cache.get(name)
+        if cached is not None:
+            return cached
         normalized = normalize_for_matching(name)
         if normalized in self._cache:
-            return self._cache[normalized]
+            result = self._cache[normalized]
+            self._raw_cache[name] = result
+            return result
 
         # Find candidates that share at least one word token
         tokens = normalized.split()
@@ -53,6 +60,7 @@ class FuzzyMatcher:  # pylint: disable=too-few-public-methods
             sm.set_seq1(normalized)
             if sm.quick_ratio() >= self.threshold and sm.ratio() >= self.threshold:
                 self._cache[normalized] = canon_norm
+                self._raw_cache[name] = canon_norm
                 return canon_norm
 
         # No match — register new canonical
@@ -63,4 +71,5 @@ class FuzzyMatcher:  # pylint: disable=too-few-public-methods
         for token in tokens:
             self._token_index.setdefault(token, []).append(idx)
         self._cache[normalized] = normalized
+        self._raw_cache[name] = normalized
         return normalized

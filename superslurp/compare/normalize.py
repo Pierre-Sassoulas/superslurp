@@ -190,6 +190,33 @@ _STRIP_AFFINAGE_NORM = re.compile(
     r"|\b\d+\s*J\.?\b"
     r"|\b\d+\s+JOURS?\b"
 )
+# Combined stripping regex: merges _STRIP_PHRASE, _STRIP_COUNT_PATTERN, _STRIP_VOLUME,
+# _STRIP_UNIT_COUNT, _LEADING_ARITH, _LEADING_COUNT, _STRIP_BABY_AGE,
+# _STRIP_AFFINAGE_NORM into a single pass (7 regex subs → 1).
+_STRIP_ALL = re.compile(
+    # Leading arithmetic like "3+1 " or "1/2 " (must be before _LEADING_COUNT)
+    r"^\d+[+/]\d+\s*"
+    # Leading count like "18 "
+    r"|^\d+\s+"
+    # Milk treatment phrases
+    r"|\bLAIT\s+(?:PASTEURISE|CRU\s+THERMISE|CRU|UHT)\b"
+    # Count patterns like "3 TETES"
+    r"|\b\d+\s*TETES\b"
+    # Volume patterns like 1L, 75CL, 250ML, 6X1L
+    r"|\b(?:\d+X)?\d+,?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLITRES?\b"
+    # Unit count patterns like X12, BTEX12, X10+5OFF, 6TR, 4=12RLX
+    r"|\bX?\d+(?:=\d+)?RLX\b|\bBTEX\d+\b|\bX\s\d+(?:\+\d+OFF)?\b"
+    r"|(?<!\d)X\d+(?:\+\d+OFF)?\b|\b\d+X\d+/\d+\b|\b\d+TR\b"
+    # Baby-food age suffixes like 6M, 8M, 4/6M, DES 12M
+    r"|\bDES\s+\d+(?:/\d+)?\s*M\b|\b\d+(?:/\d+)?\s*M\b"
+    # Affinage patterns
+    r"|\b\d+\s*MOIS\s+(?:D')?AFFINAGE\b"
+    r"|\bAFFIN[EÉ]\s+\d+\s*MOIS\b"
+    r"|\bAFFINAGE\s+\d+\s*MOIS\b"
+    r"|\b\d+\s*MOIS\b"
+    r"|\b\d+\s*J\.?\b"
+    r"|\b\d+\s+JOURS?\b"
+)
 
 # Extract unit count: X12 → 12, BTEX6 → 6, X3+1OFF → 4, 6TR → 6, 4=12RLX → 4, 18 OEUFS → 18
 _UNIT_COUNT_PATTERN = re.compile(
@@ -266,18 +293,10 @@ def normalize_for_matching(
         name = expand_synonyms(name, synonyms)
     # Normalize dots to spaces (in case no synonyms)
     name = name.replace(".", " ")
-    # Strip multi-word qualifiers (e.g. "LAIT PASTEURISE" as milk treatment)
-    name = _STRIP_PHRASE.sub("", name)
-    # Strip count patterns like "3 TETES"
-    name = _STRIP_COUNT_PATTERN.sub("", name)
-    # Strip volume patterns like 1L, 75CL, 250ML, 6X1L
-    name = _STRIP_VOLUME.sub("", name)
-    # Strip unit count patterns like X12, BTEX6, X10+5OFF, leading "18 ", "3+1", "1/2"
-    name = _STRIP_UNIT_COUNT.sub("", name)
-    name = _LEADING_ARITH.sub("", name)
-    name = _LEADING_COUNT.sub("", name)
-    # Strip baby-food age suffixes like 6M, 8M, 4/6M, 15/36M
-    name = _STRIP_BABY_AGE.sub("", name)
+    # Strip all quantitative/qualifier patterns in a single regex pass:
+    # milk phrases, TETES, volumes, unit counts, leading arith/count,
+    # baby-food ages, affinage durations.
+    name = _STRIP_ALL.sub("", name)
     # Replace baby-food sub-brands with type-specific placeholders
     name = _BABY_FOOD_RE.sub(lambda m: _BABY_FOOD_REPLACEMENTS[m.group()], name)
     # Collapse duplicate placeholders (e.g. "BLEDICHEF ASSIETTE" → "PLAT BEBE PLAT BEBE")
@@ -288,8 +307,6 @@ def normalize_for_matching(
         if placeholder in name:
             name = name[: name.index(placeholder) + len(placeholder)]
             break
-    # Strip affinage patterns like "5 MOIS AFFINAGE", "AFFINE 9 MOIS", "18 MOIS"
-    name = _STRIP_AFFINAGE_NORM.sub("", name)
     # Strip known qualifier words, but keep protected compounds
     words = name.split()
     filtered: list[str] = []

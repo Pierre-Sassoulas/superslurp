@@ -65,17 +65,19 @@ def _get_session_id(
     return int(sessions[key]["id"])
 
 
-_OBS_PROP_KEYS = (
-    "bio",
-    "milk_treatment",
-    "production",
-    "brand",
-    "label",
-    "packaging",
-    "origin",
-    "affinage_months",
-    "baby_months",
-    "baby_recipe",
+_OBS_PROP_KEYS = frozenset(
+    {
+        "bio",
+        "milk_treatment",
+        "production",
+        "brand",
+        "label",
+        "packaging",
+        "origin",
+        "affinage_months",
+        "baby_months",
+        "baby_recipe",
+    }
 )
 
 
@@ -93,54 +95,47 @@ def _build_observation(
         "quantity": item.get("bought", 1),
         "grams": grams,
         "discount": item.get("discount"),
-        "price_per_kg": round((price / grams) * 1000, 2) if grams is not None else None,
+        "price_per_kg": round(price / grams * 1000, 2) if grams else None,
         "volume_ml": volume_ml,
-        "price_per_liter": (
-            round((price / volume_ml) * 1000, 2)
-            if volume_ml is not None and volume_ml > 0
-            else None
-        ),
+        "price_per_liter": round(price / volume_ml * 1000, 2) if volume_ml else None,
         "unit_count": item.get("units") or 1,
         "fat_pct": item.get("fat_pct"),
     }
     props = item.get("properties")
     if props:
-        for key in _OBS_PROP_KEYS:
-            val = props.get(key)
-            if val:
-                obs[key] = val
+        # Iterate the (small) props dict rather than always checking 10 keys
+        obs.update({k: v for k, v in props.items() if v and k in _OBS_PROP_KEYS})
     return obs
 
 
-def _process_receipt(
+def _process_receipt(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     receipt: dict[str, Any],
     matcher: FuzzyMatcher,
     products: dict[str, list[dict[str, Any]]],
     stores: dict[str, dict[str, Any]],
     sessions: dict[tuple[str | None, str | None], dict[str, Any]],
+    session_totals: dict[int, float],
 ) -> None:
     date = receipt.get("date")
     store_data: dict[str, Any] = receipt.get("store", {})
     store_id = _get_store_id(store_data, stores)
     session_id = _get_session_id(date, store_id, sessions)
     items_by_category: dict[str, list[dict[str, Any]]] = receipt.get("items", {})
+    session_total = 0.0
     for category_items in items_by_category.values():
         for item in category_items:
             key = matcher.match(item["name"])
             obs = _build_observation(item, session_id)
             products.setdefault(key, []).append(obs)
+            session_total += obs["price"] * obs["quantity"]
+    session_totals[session_id] = session_totals.get(session_id, 0) + session_total
 
 
 def _compute_session_totals(
     sessions: list[dict[str, Any]],
-    products: list[dict[str, Any]],
+    totals: dict[int, float],
 ) -> list[dict[str, Any]]:
-    """Compute the total spent per session."""
-    totals: dict[int, float] = {}
-    for product in products:
-        for obs in product["observations"]:
-            sid = obs["session_id"]
-            totals[sid] = totals.get(sid, 0) + obs["price"] * obs["quantity"]
+    """Format pre-computed session totals into sorted output list."""
     result = []
     for session in sessions:
         sid = session["id"]
@@ -230,21 +225,19 @@ def compare_receipt_dicts(
     products: dict[str, list[dict[str, Any]]] = {}
     stores: dict[str, dict[str, Any]] = {}
     sessions: dict[tuple[str | None, str | None], dict[str, Any]] = {}
+    session_totals_acc: dict[int, float] = {}
 
     for receipt in receipts:
-        _process_receipt(receipt, matcher, products, stores, sessions)
-
-    result = []
-    for canonical_name, observations in products.items():
-        result.append(
-            {
-                "canonical_name": canonical_name,
-                "observations": observations,
-            }
+        _process_receipt(
+            receipt, matcher, products, stores, sessions, session_totals_acc
         )
+
+    result = [
+        {"canonical_name": name, "observations": obs} for name, obs in products.items()
+    ]
     result.sort(key=lambda p: str(p["canonical_name"]))
     session_list = sorted(sessions.values(), key=lambda s: s["id"])
-    session_totals = _compute_session_totals(session_list, result)
+    session_totals = _compute_session_totals(session_list, session_totals_acc)
     rolling_avg = _compute_rolling_average(session_totals)
     return {
         "stores": list(stores.values()),

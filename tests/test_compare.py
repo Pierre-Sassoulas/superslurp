@@ -15,6 +15,7 @@ from superslurp.compare.matcher import FuzzyMatcher
 from superslurp.compare.normalize import (
     extract_unit_count,
     get_affinage_months,
+    get_baby_food_type,
     get_baby_recipe,
     get_brand,
     get_milk_treatment,
@@ -979,9 +980,30 @@ def test_get_baby_recipe() -> None:
     assert get_baby_recipe("BOLS LEG.OUBLIES 8M UTP BIO") == "LEG.OUBLIES"
     assert get_baby_recipe("BOL.H.VERT/PLET 6M UTPB") == "H.VERT/PLET"
     assert get_baby_recipe("BOLS SPAGHET/BOLO 8M UTP BIO") == "SPAGHET/BOLO"
+    # BLEDINA and LRB stripped from recipe
+    assert (
+        get_baby_recipe("BLEDINA BOL TOMATE/PATES/JAMBON 12M") == "TOMATE/PATES/JAMBON"
+    )
+    assert get_baby_recipe("LRB POT CAROTTE/JAMBON 6M") == "CAROTTE/JAMBON"
     # Not baby food
     assert get_baby_recipe("FROMAGE COMTÉ 12 MOIS") is None
     assert get_baby_recipe("SAUCE TOMATE") is None
+
+
+def test_get_baby_food_type() -> None:
+    # Sub-brands
+    assert get_baby_food_type("BLEDICHEF ASSIETTE RISOTTO 15M") == "PLAT BEBE"
+    assert get_baby_food_type("BLEDINER BOL AUB/CAR 12M") == "PLAT BEBE"
+    assert get_baby_food_type("BLEDINE CER INST BLE/CACAO") == "CEREALES BEBE"
+    assert get_baby_food_type("BLEDILAIT CROISSANCE 12M") == "LAIT BEBE"
+    # Format words
+    assert get_baby_food_type("BOL TOMATE/PATES 8M") == "PLAT BEBE"
+    assert get_baby_food_type("POT CAROTTE/JAMBON 6M") == "PLAT BEBE"
+    # Dot prefix
+    assert get_baby_food_type("BOL.H.VERT/PLET 6M") == "PLAT BEBE"
+    # Not baby food
+    assert get_baby_food_type("FROMAGE COMTÉ") is None
+    assert get_baby_food_type("SAUCE TOMATE") is None
 
 
 def test_parse_reblochon_readme_example() -> None:  # pylint: disable=too-many-locals

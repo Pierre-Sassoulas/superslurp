@@ -138,15 +138,18 @@ _BABY_FOOD_REPLACEMENTS: dict[str, str] = {
 }
 _BABY_FOOD_RE = re.compile(r"\b(?:" + "|".join(_BABY_FOOD_REPLACEMENTS) + r")\b")
 _BABY_PLACEHOLDER_SET = frozenset(_BABY_FOOD_REPLACEMENTS.values())
-# Pattern to strip baby-food keywords, age, and codes from a name to get the recipe
+# Pattern to strip baby-food keywords, brands, age, and codes from a name to get the recipe
 _BABY_RECIPE_STRIP = re.compile(
     r"\b(?:"
     + "|".join(sorted(_BABY_FOOD_REPLACEMENTS.keys(), key=len, reverse=True))
     + r")\b"
+    + r"|\b(?:BLEDINA|LRB)\b"
     + r"|\b(?:UTP|UTPB)\b"
     + r"|\bDES\s+\d+(?:/\d+)?\s*M\b|\b\d+(?:/\d+)?\s*M\b"
     + r"|\bBIO\b"
 )
+# Keywords that definitively identify baby food (vs false positives like "EPICES POT")
+_BABY_DEFINITE_RE = re.compile(r"\b(?:BLEDICHEF|BLEDINER|BLEDINE|BLEDILAIT)\b")
 _BABY_DOT_PREFIX = re.compile(r"^(?:BOLS?|POTS?)\.")
 # Precompiled baby placeholder dedup patterns for normalize_for_matching
 _BABY_PLACEHOLDER_DEDUP: list[tuple[re.Pattern[str], str]] = [
@@ -158,7 +161,8 @@ def get_baby_recipe(name: str) -> str | None:
     """Extract baby food recipe/content from a product name.
 
     Returns the food description after stripping baby food keywords
-    (BLEDICHEF, BOL, etc.), age suffixes, internal codes, and BIO.
+    (BLEDICHEF, BOL, etc.), brands (BLEDINA, LRB), age suffixes,
+    internal codes, and BIO.
     Returns ``None`` if no baby food keyword found.
     """
     upper = name.upper()
@@ -170,6 +174,22 @@ def get_baby_recipe(name: str) -> str | None:
     result = re.sub(r"^\s*\.?\s*", "", result)
     result = re.sub(r"\s+", " ", result).strip()
     return result if result else None
+
+
+def get_baby_food_type(name: str) -> str | None:
+    """Return the normalized baby food type for a product name.
+
+    Returns ``"PLAT BEBE"``, ``"CEREALES BEBE"``, or ``"LAIT BEBE"``
+    based on which baby food keyword is found in *name*.
+    Returns ``None`` if no keyword matches.
+    """
+    upper = name.upper()
+    for keyword, placeholder in _BABY_FOOD_REPLACEMENTS.items():
+        if re.search(r"\b" + re.escape(keyword) + r"\b", upper):
+            return placeholder
+    if _BABY_DOT_PREFIX.match(upper):
+        return "PLAT BEBE"
+    return None
 
 
 _LEADING_COUNT = re.compile(r"^\d+\s+")

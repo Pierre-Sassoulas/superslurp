@@ -5,10 +5,12 @@ import re
 from collections import defaultdict
 
 from superslurp.compare.normalize import (
+    _BABY_DEFINITE_RE,
     compile_synonyms,
     expand_synonyms,
     extract_unit_count,
     get_affinage_months,
+    get_baby_food_type,
     get_baby_months,
     get_baby_recipe,
     get_brand,
@@ -228,7 +230,7 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
     )
 
 
-def _extract_properties(
+def _extract_properties(  # pylint: disable=too-many-locals,too-complex
     name: str, raw_name: str
 ) -> tuple[
     str,
@@ -281,6 +283,16 @@ def _extract_properties(
         name = strip_origin(name, origin_word)
     affinage_months = get_affinage_months(name)
     name = strip_affinage(name)
+    # Replace baby food name with normalized type (PLAT BEBE, CEREALES BEBE, LAIT BEBE)
+    # Guard against false positives (e.g. "MELANGE EPICES POT" where POT is not baby food)
+    if baby_recipe is not None:
+        is_baby = baby_months is not None or bool(
+            _BABY_DEFINITE_RE.search(raw_name.upper())
+        )
+        if is_baby:
+            baby_type = get_baby_food_type(raw_name) or get_baby_food_type(name)
+            if baby_type is not None:
+                name = baby_type
     name = re.sub(r"\s+", " ", name).strip()
     return (
         name,

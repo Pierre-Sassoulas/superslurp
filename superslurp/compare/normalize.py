@@ -108,6 +108,22 @@ _STRIP_UNIT_COUNT = re.compile(
 )
 _STRIP_VOLUME = re.compile(r"\b(?:\d+X)?\d+[,]?\d*\s*(?:LITRES?|L|CL|ML)\b|\bLITRES?\b")
 _STRIP_BABY_AGE = re.compile(r"\b\d+(/\d+)?\s*M\b")
+_BABY_AGE_EXTRACT = re.compile(r"\b(\d+)(?:/\d+)?\s*M\b")
+
+
+def get_baby_months(name: str) -> int | None:
+    """Extract the minimum baby age in months from a product name.
+
+    Matches patterns like ``6M``, ``8M``, ``4/6M``, ``15/36M``.
+    For fractional ages (4/6M) returns the first (minimum) number.
+    Returns ``None`` if no baby age found.
+    """
+    m = _BABY_AGE_EXTRACT.search(name.upper())
+    if m:
+        return int(m.group(1))
+    return None
+
+
 # Baby food sub-brands → type-specific placeholders (applied before word stripping)
 _BABY_FOOD_REPLACEMENTS: dict[str, str] = {
     "BLEDICHEF": "PLAT BEBE",

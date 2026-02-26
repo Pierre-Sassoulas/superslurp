@@ -21,6 +21,7 @@ class Properties(TypedDict, total=False):
     packaging: str
     origin: str
     affinage_months: int
+    baby_months: int
 
 
 class Item(TypedDict):

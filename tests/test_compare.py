@@ -1007,6 +1007,7 @@ def test_parse_reblochon_readme_example() -> None:
         origin,
         affinage_months,
         production,
+        baby_months,
     ) = _parse_name_attributes("REBL.SAVE.AOP.FRM.LC BIO BQT.X12 450G 32%MG", synonyms)
     assert name == "REBLOCHON"
     assert grams == 450.0
@@ -1021,3 +1022,4 @@ def test_parse_reblochon_readme_example() -> None:
     assert volume_ml is None
     assert brand is None
     assert affinage_months is None
+    assert baby_months is None

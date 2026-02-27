@@ -453,32 +453,32 @@ def build_item(  # pylint: disable=too-many-arguments
     *,
     raw: str,
     raw_name: str,
-    name: str,
+    attrs: ParsedAttributes,
     price: float,
     bought: int,
-    units: float | None,
-    grams: float | None,
-    volume_ml: float | None,
-    fat_pct: float | None,
     tr: bool,
     way_of_paying: str | None,
-    properties: Properties,
+    grams: float | None = None,
 ) -> Item:
-    """Construct an Item dict."""
+    """Construct an Item dict from parsed attributes.
+
+    *grams* overrides ``attrs.grams`` when the caller has a better value
+    (e.g. from a weighed quantity line).
+    """
     return {
         "raw": raw,
         "raw_name": raw_name,
-        "name": name,
+        "name": attrs.name,
         "price": price,
         "bought": bought,
-        "units": units,
-        "grams": grams,
-        "volume_ml": volume_ml,
-        "fat_pct": fat_pct,
+        "units": attrs.units,
+        "grams": grams if grams is not None else attrs.grams,
+        "volume_ml": attrs.volume_ml,
+        "fat_pct": attrs.fat_pct,
         "tr": tr,
         "way_of_paying": way_of_paying,
         "discount": None,
-        "properties": properties,
+        "properties": attrs.properties,
     }
 
 

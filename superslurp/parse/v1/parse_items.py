@@ -106,21 +106,15 @@ def get_item_from_item_infos(
         price = item_info.group("price")
     else:
         price = item_info.group("quantity").split("x")[1]
-    tr = item_info.group("tr")
-    way_of_paying = item_info.group("way_of_paying")
     return build_item(
         raw=item_info.group(0).strip(),
         raw_name=raw_name,
-        name=attrs.name,
+        attrs=attrs,
         price=_get_price(price),
         bought=quantity,
-        units=attrs.units,
+        tr=_get_tr(item_info.group("tr")),
+        way_of_paying=item_info.group("way_of_paying"),
         grams=grams,
-        volume_ml=attrs.volume_ml,
-        fat_pct=attrs.fat_pct,
-        tr=_get_tr(tr),
-        way_of_paying=way_of_paying,
-        properties=attrs.properties,
     )
 
 

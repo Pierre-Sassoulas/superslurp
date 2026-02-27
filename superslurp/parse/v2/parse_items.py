@@ -66,7 +66,6 @@ def parse_items_v2(  # pylint: disable=too-many-locals
             quantity, unit_price, grams_from_weight = _parse_detail_lines(lines, i + 1)
 
             attrs = _parse_name_attributes(raw_name, synonyms=compiled_syn)
-            grams = grams_from_weight if grams_from_weight is not None else attrs.grams
 
             if quantity > 1:
                 price = unit_price if unit_price is not None else total_price
@@ -76,16 +75,12 @@ def parse_items_v2(  # pylint: disable=too-many-locals
             item = build_item(
                 raw=line.strip(),
                 raw_name=raw_name,
-                name=attrs.name,
+                attrs=attrs,
                 price=price,
                 bought=quantity,
-                units=attrs.units,
-                grams=grams,
-                volume_ml=attrs.volume_ml,
-                fat_pct=attrs.fat_pct,
                 tr=tr,
                 way_of_paying=way_of_paying,
-                properties=attrs.properties,
+                grams=grams_from_weight,
             )
             post_process_item(item, category)
             items[category].append(item)

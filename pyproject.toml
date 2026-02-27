@@ -87,7 +87,6 @@ main.disable = [
 main.enable = [
     "useless-suppression",
 ]
-main.min-similarity-lines = 6
 
 [tool.codespell]
 ignore-words-list = "superu,thes,jus,rouge,coul"

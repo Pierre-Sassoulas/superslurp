@@ -86,7 +86,6 @@ main.disable = [
     "consider-using-assignment-expr", # walrus operator preference
     "unsubscriptable-object",         # false positive with TypedDict
     "duplicate-code",                 # v1/v2 parsers both call build_item
-    "too-many-lines",                 # test files grow naturally
 ]
 
 [tool.codespell]

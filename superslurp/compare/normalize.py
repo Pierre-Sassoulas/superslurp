@@ -515,16 +515,20 @@ _KNOWN_BRANDS = frozenset(
 )
 
 
+_KNOWN_BRANDS_RE = re.compile(
+    r"\b(?:"
+    + "|".join(re.escape(b) for b in sorted(_KNOWN_BRANDS, key=len, reverse=True))
+    + r")\b"
+)
+
+
 def get_brand(name: str) -> str | None:
     """Detect a known brand in a product name.
 
     Returns the brand string or ``None``.
     """
-    upper = name.upper()
-    for brand in _KNOWN_BRANDS:
-        if re.search(r"\b" + re.escape(brand) + r"\b", upper):
-            return brand
-    return None
+    m = _KNOWN_BRANDS_RE.search(name.upper())
+    return m.group(0) if m else None
 
 
 def strip_brand(name: str, brand: str) -> str:

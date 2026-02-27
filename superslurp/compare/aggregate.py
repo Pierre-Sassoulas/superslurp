@@ -11,8 +11,7 @@ from superslurp.compare.matcher import FuzzyMatcher
 
 def _extract_location(store: dict[str, Any]) -> str | None:
     """Extract city/location from a store's address lines."""
-    address = store.get("address")
-    if not address:
+    if not (address := store.get("address")):
         return None
     lines = [line.strip() for line in address.strip().split("\n") if line.strip()]
     # V1: line 0 = street, line 1 = city, line 2 = postal code
@@ -36,8 +35,7 @@ def _get_store_id(
     naf = store_data.get("naf")
     if siret is None or naf is None:
         return None
-    store_id = f"{siret}_{naf}"
-    if store_id not in stores:
+    if (store_id := f"{siret}_{naf}") not in stores:
         stores[store_id] = {
             "id": store_id,
             "store_name": store_data.get("store_name"),
@@ -54,8 +52,7 @@ def _get_session_id(
     sessions: dict[tuple[str | None, str | None], dict[str, Any]],
 ) -> int:
     """Return the session id for this receipt, registering it if new."""
-    key = (date, store_id)
-    if key not in sessions:
+    if (key := (date, store_id)) not in sessions:
         session_id = len(sessions) + 1
         sessions[key] = {
             "id": session_id,
@@ -101,8 +98,7 @@ def _build_observation(
         "unit_count": item.get("units") or 1,
         "fat_pct": item.get("fat_pct"),
     }
-    props = item.get("properties")
-    if props:
+    if props := item.get("properties"):
         # Iterate the (small) props dict rather than always checking 10 keys
         obs.update({k: v for k, v in props.items() if v and k in _OBS_PROP_KEYS})
     return obs

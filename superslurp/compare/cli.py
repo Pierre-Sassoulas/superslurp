@@ -28,8 +28,7 @@ def main_aggregate() -> None:
         print(f"Error: {directory} is not a directory", file=sys.stderr)
         sys.exit(1)
 
-    paths = sorted(directory.glob("*.json"))
-    if not paths:
+    if not (paths := sorted(directory.glob("*.json"))):
         print(f"Error: no JSON files found in {directory}", file=sys.stderr)
         sys.exit(1)
 

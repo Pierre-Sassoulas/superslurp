@@ -74,16 +74,14 @@ lint.pyupgrade.keep-runtime-typing = false
 # Maximum number of characters on a single line.
 main.max-line-length = 120
 main.disable = [
-    "redefined-outer-name",           # pytest fixtures
-    "wrong-import-order",             # handled by isort / ruff
-    "wrong-import-position",          # handled by isort / ruff
-    "docstring-first-line-empty",     # annoying shit
-    "missing-docstring",              # annoying shit
-    "magic-value-comparison",         # annoying shit
-    "logging-fstring-interpolation",  # useless in our time and age
-    "consider-ternary-expression",    # no nuance at all
-    "while-used",                     # while loops are fine
-    "consider-using-assignment-expr", # walrus operator preference
+    "redefined-outer-name",          # pytest fixtures
+    "wrong-import-order",            # handled by isort / ruff
+    "wrong-import-position",         # handled by isort / ruff
+    "missing-docstring",
+    "magic-value-comparison",        # too noisy for literal comparisons
+    "logging-fstring-interpolation",
+    "consider-ternary-expression",   # no nuance
+    "while-used",                    # while loops are fine
 ]
 main.enable = [
     "useless-suppression",

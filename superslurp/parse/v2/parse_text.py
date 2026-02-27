@@ -51,8 +51,7 @@ def _infer_tr_flags(
     Returns the eligible_tr value to use on the receipt (may be set to None
     when per-item TR eligibility cannot be determined).
     """
-    any_tr = any(item["tr"] for cat_items in items.values() for item in cat_items)
-    if any_tr:
+    if any(item["tr"] for cat_items in items.values() for item in cat_items):
         return eligible_tr
 
     # No (T) flags found. If eligible_tr equals total, all items are TR-eligible.
@@ -98,8 +97,11 @@ def _parse_address(text: str) -> str | None:
 
 
 def _parse_date(text: str) -> str | None:
-    m = re.search(r"Date\s+Heure.*\n\s+(\d{2}/\d{2}/\d{2})\s+(\d{2}:\d{2}:\d{2})", text)
-    if m is None:
+    if (
+        m := re.search(
+            r"Date\s+Heure.*\n\s+(\d{2}/\d{2}/\d{2})\s+(\d{2}:\d{2}:\d{2})", text
+        )
+    ) is None:
         return None
     date_str = m.group(1)
     time_str = m.group(2)
@@ -119,8 +121,7 @@ def _extract_items_text(text: str) -> str:
 
 
 def _parse_total(text: str) -> tuple[float, int]:
-    m = re.search(r"TOTAL\s+\[(\d+)\]\s+Articles\s+([\d,]+)\s*€", text)
-    if m is None:
+    if (m := re.search(r"TOTAL\s+\[(\d+)\]\s+Articles\s+([\d,]+)\s*€", text)) is None:
         raise ValueError("Could not find TOTAL line in V2 receipt")
     number_of_items = int(m.group(1))
     total = float(m.group(2).replace(",", "."))

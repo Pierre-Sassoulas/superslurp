@@ -168,8 +168,7 @@ def _get_offert(name: str) -> int | None:
 def _get_gram(name: str) -> GramResult:
     grams = None
     units: int | None = None
-    search = _GRAM_PATTERN.search(name)
-    if search is None:
+    if (search := _GRAM_PATTERN.search(name)) is None:
         return GramResult(name, None, None)
     if (grams_as_str := search.group("grams")) is not None:
         grams_as_str = grams_as_str.replace(" ENVIRON", "")
@@ -184,8 +183,7 @@ def _get_gram(name: str) -> GramResult:
         if multiplier is not None:
             units = int(multiplier[:-1])
             grams *= units
-        bonus = search.group("bonus")
-        if bonus is not None:
+        if (bonus := search.group("bonus")) is not None:
             grams = round(grams * (1 + int(bonus) / 100))
     name = name.replace(search.group(0), "")
     return GramResult(name.strip(), grams, units)
@@ -193,11 +191,9 @@ def _get_gram(name: str) -> GramResult:
 
 def _get_volume(name: str) -> VolumeResult:
     """Extract volume in mL from a product name (e.g. 1L, 75CL, 250ML, 6X1L)."""
-    m = _VOLUME_PATTERN.search(name)
-    if m is None:
+    if (m := _VOLUME_PATTERN.search(name)) is None:
         # Standalone "LITRE" without a number implies 1 litre.
-        m_bare = _BARE_LITRE_PATTERN.search(name)
-        if m_bare is None:
+        if (m_bare := _BARE_LITRE_PATTERN.search(name)) is None:
             return VolumeResult(name, None, None)
         name = name[: m_bare.start()] + name[m_bare.end() :]
         return VolumeResult(re.sub(r"\s+", " ", name).strip(), 1000.0, None)
@@ -210,8 +206,7 @@ def _get_volume(name: str) -> VolumeResult:
         vol *= 10
     # ML: vol stays as-is
     units: int | None = None
-    multiplier = m.group("multiplier")
-    if multiplier is not None:
+    if (multiplier := m.group("multiplier")) is not None:
         units = int(multiplier[:-1])
         vol *= units
     name = name.replace(m.group(0), "").strip()
@@ -220,8 +215,7 @@ def _get_volume(name: str) -> VolumeResult:
 
 def _get_fat_pct(name: str) -> float | None:
     """Extract fat percentage (%MG or %MAT.GR) from a product name."""
-    m = _FAT_EXTRACT_RE.search(name)
-    if m is None:
+    if (m := _FAT_EXTRACT_RE.search(name)) is None:
         return None
     return float(m.group(1).replace(",", "."))
 
@@ -321,8 +315,7 @@ def _parse_name_attributes(
         if units_from_vol is not None and units is None:
             units = units_from_vol
     if units is None:
-        units = extract_unit_count(raw_name)
-        if units is not None:
+        if (units := extract_unit_count(raw_name)) is not None:
             name = _UNIT_PATTERN.sub("", name).strip()
             name = _LEADING_ARITH_RE.sub("", name).strip()
     fat_pct = _get_fat_pct(name)
@@ -356,11 +349,9 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many
     """Detect bio/milk/production/brand/label/packaging/origin/affinage/baby-age/recipe flags."""
     baby_months = get_baby_months(raw_name) or get_baby_months(name)
     baby_recipe = get_baby_recipe(name) or get_baby_recipe(raw_name)
-    bio = is_bio(raw_name)
-    if bio:
+    if bio := is_bio(raw_name):
         name = _BIO_RE.sub("", name).strip()
-    milk_treatment = get_milk_treatment(raw_name)
-    if milk_treatment is not None:
+    if (milk_treatment := get_milk_treatment(raw_name)) is not None:
         m = _LAIT_TREATMENT_RE.search(name)
         if m and m.start() == 0:
             # LAIT is the product (liquid) — keep it, only strip treatment word
@@ -371,20 +362,15 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many
         name = _THERMISE_RE.sub("", name).strip()
         name = _PASTEURISE_RE.sub("", name).strip()
         name = _CRU_UHT_RE.sub("", name).strip()
-    production = get_production(raw_name)
-    if production is not None:
+    if (production := get_production(raw_name)) is not None:
         name = _FERMIER_RE.sub("", name).strip()
         name = _LAITIER_RE.sub("", name).strip()
-    brand = get_brand(raw_name) or get_brand(name)
-    if brand is not None:
-        stripped = strip_brand(name, brand)
-        if stripped:
+    if (brand := get_brand(raw_name) or get_brand(name)) is not None:
+        if stripped := strip_brand(name, brand):
             name = stripped
-    label = get_quality_label(raw_name)
-    if label is not None:
+    if (label := get_quality_label(raw_name)) is not None:
         name = strip_quality_label(name)
-    packaging = get_packaging(name)
-    if packaging is not None:
+    if (packaging := get_packaging(name)) is not None:
         name = strip_packaging(name, packaging)
     origin_result = get_origin(name)
     origin: str | None = None
@@ -400,8 +386,9 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many
             _BABY_DEFINITE_RE.search(raw_name.upper())
         )
         if is_baby:
-            baby_type = get_baby_food_type(raw_name) or get_baby_food_type(name)
-            if baby_type is not None:
+            if (
+                baby_type := get_baby_food_type(raw_name) or get_baby_food_type(name)
+            ) is not None:
                 name = baby_type
     name = _MULTI_SPACE_RE.sub(" ", name).strip()
     return ExtractedProperties(
@@ -426,8 +413,7 @@ def extract_bare_fat_pct(item: Item, category: Category) -> None:
     """Extract bare fat % (without MG suffix) for dairy-category items."""
     if category not in DAIRY_CATEGORIES or item["fat_pct"] is not None:
         return
-    m = _BARE_FAT_PCT_RE.search(item["name"])
-    if m is None:
+    if (m := _BARE_FAT_PCT_RE.search(item["name"])) is None:
         return
     item["fat_pct"] = float(m.group(1).replace(",", "."))
     name = _BARE_FAT_PCT_STRIP.sub(" ", item["name"])
@@ -462,8 +448,7 @@ def extract_standalone_affinage_months(item: Item, category: Category) -> None:
         return
     if item["properties"].get("affinage_months") is not None:
         return
-    months = get_affinage_months(item["raw"], cheese=True)
-    if months is not None:
+    if (months := get_affinage_months(item["raw"], cheese=True)) is not None:
         item["properties"]["affinage_months"] = months
     item["name"] = strip_affinage(item["name"], cheese=True)
 

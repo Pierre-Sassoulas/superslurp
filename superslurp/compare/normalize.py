@@ -119,8 +119,7 @@ def get_baby_months(name: str) -> int | None:
     For fractional ages (4/6M) returns the first (minimum) number.
     Returns ``None`` if no baby age found.
     """
-    m = _BABY_AGE_EXTRACT.search(name.upper())
-    if m:
+    if m := _BABY_AGE_EXTRACT.search(name.upper()):
         return int(m.group(1))
     return None
 
@@ -272,8 +271,7 @@ def compile_synonyms(
     single_word_map: dict[str, str] = {}
 
     for pattern, replacement in synonyms.items():
-        pat = pattern.replace(".", " ").strip()
-        if not pat:
+        if not (pat := pattern.replace(".", " ").strip()):
             continue
         words = pat.split()
         if len(words) > 1:
@@ -400,23 +398,19 @@ def extract_unit_count(name: str) -> float | None:  # pylint: disable=too-many-r
     """
     name = name.upper().replace(".", " ")
     # Leading N+M or N/M (e.g. "3+1RAC" → 4, "1/2 REBLOCH" → 0.5)
-    lm = _LEADING_ARITH.match(name)
-    if lm:
+    if lm := _LEADING_ARITH.match(name):
         a, op, b = int(lm.group(1)), lm.group(2), int(lm.group(3))
         return a + b if op == "+" else a / b
-    m = _UNIT_COUNT_PATTERN.search(name)
-    if m is None:
+    if (m := _UNIT_COUNT_PATTERN.search(name)) is None:
         return None
     if m.group(1):  # (\d+)RLX
         return int(m.group(1))
     if m.group(2):  # BTEX(\d+)
         return int(m.group(2))
     # X\s(\d+) spaced or X(\d+) glued, with optional +OFF
-    x_count = m.group(3) or m.group(5)
-    if x_count:
+    if x_count := m.group(3) or m.group(5):
         count = int(x_count)
-        x_off = m.group(4) or m.group(6)
-        if x_off:
+        if x_off := m.group(4) or m.group(6):
             count += int(x_off)
         return count
     if m.group(7):  # (\d+)X\d+/\d+ multipack
@@ -569,8 +563,7 @@ def get_brand(name: str) -> str | None:
     the **rightmost** match is returned — in receipt names the actual product
     brand appears after the description, before the quantity info.
     """
-    matches = list(_KNOWN_BRANDS_RE.finditer(name.upper()))
-    if not matches:
+    if not (matches := list(_KNOWN_BRANDS_RE.finditer(name.upper()))):
         return None
     return matches[-1].group(0)
 
@@ -652,8 +645,7 @@ def get_packaging(name: str) -> str | None:
     are handled by synonym expansion before this function is called.
     Aliases like TUB → TUBE are resolved to the canonical name.
     """
-    m = _PACKAGING_RE.search(name.upper())
-    if m is None:
+    if (m := _PACKAGING_RE.search(name.upper())) is None:
         return None
     return _PACKAGING_LOOKUP[m.group(1)]
 
@@ -698,8 +690,7 @@ def get_origin(name: str) -> tuple[str, str] | None:
 
     Returns ``(normalized_country, matched_word)`` or ``None``.
     """
-    m = _ORIGIN_RE.search(name.upper())
-    if m is None:
+    if (m := _ORIGIN_RE.search(name.upper())) is None:
         return None
     word = m.group(1)
     return _KNOWN_ORIGINS[word], word
@@ -754,16 +745,13 @@ def get_affinage_months(name: str, *, cheese: bool = False) -> int | None:
     """
     upper = name.upper()
     for pattern in _AFFINAGE_MONTHS_PATTERNS:
-        m = pattern.search(upper)
-        if m:
+        if m := pattern.search(upper):
             return int(m.group(1))
     if cheese:
-        m = _STANDALONE_MOIS_RE.search(upper)
-        if m:
+        if m := _STANDALONE_MOIS_RE.search(upper):
             return int(m.group(1))
     for pattern in _AFFINAGE_DAYS_PATTERNS:
-        m = pattern.search(upper)
-        if m:
+        if m := pattern.search(upper):
             return round(int(m.group(1)) / 30)
     return None
 

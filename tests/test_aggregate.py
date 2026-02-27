@@ -247,8 +247,7 @@ def test_compare_receipt_dicts_pre_expanded_names() -> None:
 
 def test_compare_receipt_files_fixtures() -> None:
     """Load real fixture JSONs and write comparison result."""
-    json_files = sorted(FIXTURES.glob(".Ticket*.json"))
-    if not json_files:
+    if not (json_files := sorted(FIXTURES.glob(".Ticket*.json"))):
         return  # skip if no fixtures available
     result = compare_receipt_files(json_files)
     expected_path = FIXTURES / ".compare_result.json"

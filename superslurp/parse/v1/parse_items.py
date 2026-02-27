@@ -55,8 +55,7 @@ def parse_items(
                 continue
             for item_info in matched_items:
                 logging.debug(f"Item found in {category}: {item_info}")
-                discount_str = _get_discount(item_info)
-                if discount_str is not None:
+                if (discount_str := _get_discount(item_info)) is not None:
                     items[category][-1]["discount"] = _get_price(discount_str)
                     continue
                 item = get_item_from_item_infos(item_info, synonyms=compiled_syn)
@@ -134,8 +133,7 @@ def _parse_quantity(quantity: str | None) -> int:
 
 def _get_grams_from_quantity(quantity_str: str) -> float | None:
     """Extract grams from a weighted quantity string like '0,980 kg  x  3,75 €/kg'."""
-    match = re.search(r"([\d,]+)\s*kg", quantity_str)
-    if match is None:
+    if (match := re.search(r"([\d,]+)\s*kg", quantity_str)) is None:
         return None
     return float(match.group(1).replace(",", ".")) * 1000
 

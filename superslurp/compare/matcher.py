@@ -30,11 +30,9 @@ class FuzzyMatcher:  # pylint: disable=too-few-public-methods
 
     def match(self, name: str) -> str:
         """Return the canonical name for the given product."""
-        cached = self._raw_cache.get(name)
-        if cached is not None:
+        if (cached := self._raw_cache.get(name)) is not None:
             return cached
-        normalized = normalize_for_matching(name)
-        if normalized in self._cache:
+        if (normalized := normalize_for_matching(name)) in self._cache:
             result = self._cache[normalized]
             self._raw_cache[name] = result
             return result
@@ -43,8 +41,7 @@ class FuzzyMatcher:  # pylint: disable=too-few-public-methods
         tokens = normalized.split()
         candidate_indices: set[int] = set()
         for token in tokens:
-            indices = self._token_index.get(token)
-            if indices is not None:
+            if (indices := self._token_index.get(token)) is not None:
                 candidate_indices.update(indices)
 
         len_n = len(normalized)

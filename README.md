@@ -1,10 +1,11 @@
-# superslurp : Super, Sublime, Light, and Unprecedented Receipt Parser
+# Superslurp is a Utility for Parsing & Extracting Receipts via Savage Layers of Unreadable Regex & Processing
 
 Parser for [SuperU](https://fr.wikipedia.org/wiki/Coop%C3%A9rative_U) receipts. Take the
-PDF receipt sent by mail as input and return a json.
+PDF receipt sent by mail as input and return a json, aggregate result and generate reports
+from the aggregate.
 
 Useful when you want to display the instantaneous cheese consumption intensity of your
-home in € inside grafana.
+home in €/day inside Grafana.
 
 ## 1. Parse a receipt
 

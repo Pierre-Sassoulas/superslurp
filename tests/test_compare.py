@@ -13,6 +13,8 @@ from superslurp.compare.aggregate import (
 )
 from superslurp.compare.matcher import FuzzyMatcher
 from superslurp.compare.normalize import (
+    compile_synonyms,
+    expand_synonyms,
     extract_unit_count,
     get_affinage_months,
     get_baby_food_type,
@@ -743,6 +745,34 @@ def test_get_brand_u_standalone() -> None:
     """U should only match as a standalone word, not inside other words."""
     assert get_brand("SUCRE POUDRE") is None
     assert get_brand("AIL BLC U BIO FILET") == "U"
+
+
+def test_get_brand_new_brands() -> None:
+    """Newly added brands are detected."""
+    assert get_brand("GLACE EXTREME VANILLE") == "EXTREME"
+    assert get_brand("FIGURINE SCHLEICH DINOSAURE") == "SCHLEICH"
+    assert get_brand("TABS LAVE VAISSELLE SUN") == "SUN"
+    assert get_brand("SUZI-WAN SAUCE SOJA") == "SUZI-WAN"
+    assert get_brand("FOL EPI FROMAGE TRANCHE") == "FOL EPI"
+    assert get_brand("GALETTES SAINT MICHEL") == "SAINT MICHEL"
+
+
+def test_get_brand_nana_no_ananas() -> None:
+    r"""NANA brand must not match inside ANANAS (\\b prevents it)."""
+    assert get_brand("SERVIETTES NANA ULTRA") == "NANA"
+    assert get_brand("ANANAS ENTIER") is None
+
+
+def test_synonym_digit_lookahead() -> None:
+    """Synonym followed by digits expands correctly after regex fix."""
+    synonyms = compile_synonyms({"B MAMAN": "BONNE MAMAN"})
+    assert expand_synonyms("B.MAMAN750G", synonyms) == "BONNE MAMAN750G"
+
+
+def test_synonym_bmam_expansion() -> None:
+    """BMAM abbreviation expands to BONNE MAMAN."""
+    synonyms = compile_synonyms({"BMAM": "BONNE MAMAN"})
+    assert expand_synonyms("BMAM CONF FRAISE", synonyms) == "BONNE MAMAN CONF FRAISE"
 
 
 # --- quality label ---

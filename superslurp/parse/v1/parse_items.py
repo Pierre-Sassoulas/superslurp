@@ -230,7 +230,7 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
     )
 
 
-def _extract_properties(  # pylint: disable=too-many-locals,too-complex
+def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many-branches
     name: str, raw_name: str
 ) -> tuple[
     str,
@@ -269,7 +269,9 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex
         name = re.sub(r"\bLAITIER\b", "", name, flags=re.IGNORECASE).strip()
     brand = get_brand(raw_name) or get_brand(name)
     if brand is not None:
-        name = strip_brand(name, brand)
+        stripped = strip_brand(name, brand)
+        if stripped:
+            name = stripped
     label = get_quality_label(raw_name)
     if label is not None:
         name = strip_quality_label(name)

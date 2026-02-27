@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from typing import NamedTuple
 
 __all__ = ["CompiledSynonyms"]
 
@@ -127,6 +128,35 @@ _CONTEXT_SYNONYMS_DEFAULT: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
+# Extraction helpers — return types
+# ---------------------------------------------------------------------------
+class GramResult(NamedTuple):
+    name: str
+    grams: float | None
+    units: int | None
+
+
+class VolumeResult(NamedTuple):
+    name: str
+    volume_ml: float | None
+    units: int | None
+
+
+class ExtractedProperties(NamedTuple):
+    name: str
+    bio: bool
+    milk_treatment: str | None
+    production: str | None
+    brand: str | None
+    label: str | None
+    packaging: str | None
+    origin: str | None
+    affinage_months: int | None
+    baby_months: int | None
+    baby_recipe: str | None
+
+
+# ---------------------------------------------------------------------------
 # Extraction helpers
 # ---------------------------------------------------------------------------
 def _get_offert(name: str) -> int | None:
@@ -135,12 +165,12 @@ def _get_offert(name: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def _get_gram(name: str) -> tuple[str, float | None, int | None]:
+def _get_gram(name: str) -> GramResult:
     grams = None
     units: int | None = None
     search = _GRAM_PATTERN.search(name)
     if search is None:
-        return name, None, None
+        return GramResult(name, None, None)
     if (grams_as_str := search.group("grams")) is not None:
         grams_as_str = grams_as_str.replace(" ENVIRON", "")
         multiplier = search.group("multiplier")
@@ -158,19 +188,19 @@ def _get_gram(name: str) -> tuple[str, float | None, int | None]:
         if bonus is not None:
             grams = round(grams * (1 + int(bonus) / 100))
     name = name.replace(search.group(0), "")
-    return name.strip(), grams, units
+    return GramResult(name.strip(), grams, units)
 
 
-def _get_volume(name: str) -> tuple[str, float | None, int | None]:
+def _get_volume(name: str) -> VolumeResult:
     """Extract volume in mL from a product name (e.g. 1L, 75CL, 250ML, 6X1L)."""
     m = _VOLUME_PATTERN.search(name)
     if m is None:
         # Standalone "LITRE" without a number implies 1 litre.
         m_bare = _BARE_LITRE_PATTERN.search(name)
         if m_bare is None:
-            return name, None, None
+            return VolumeResult(name, None, None)
         name = name[: m_bare.start()] + name[m_bare.end() :]
-        return re.sub(r"\s+", " ", name).strip(), 1000.0, None
+        return VolumeResult(re.sub(r"\s+", " ", name).strip(), 1000.0, None)
     vol_str = m.group("vol").replace(",", ".")
     vol = float(vol_str)
     unit = m.group("unit").upper()
@@ -185,7 +215,7 @@ def _get_volume(name: str) -> tuple[str, float | None, int | None]:
         units = int(multiplier[:-1])
         vol *= units
     name = name.replace(m.group(0), "").strip()
-    return name, vol, units
+    return VolumeResult(name, vol, units)
 
 
 def _get_fat_pct(name: str) -> float | None:
@@ -263,7 +293,7 @@ class ParsedAttributes:  # pylint: disable=too-many-instance-attributes
         return props
 
 
-def _parse_name_attributes(  # pylint: disable=too-many-locals
+def _parse_name_attributes(
     raw_name: str,
     synonyms: dict[str, str] | CompiledSynonyms | None = None,
 ) -> ParsedAttributes:
@@ -300,53 +330,29 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
         name = _FAT_PCT_PATTERN.sub("", name).strip()
     if fat_pct is None:
         fat_pct = _infer_milk_fat_pct(raw_name)
-    (
-        name,
-        bio,
-        milk_treatment,
-        production,
-        brand,
-        label,
-        packaging,
-        origin,
-        affinage_months,
-        baby_months,
-        baby_recipe,
-    ) = _extract_properties(name, raw_name)
+    props = _extract_properties(name, raw_name)
     return ParsedAttributes(
-        name=name,
+        name=props.name,
         grams=grams,
         units=units,
         fat_pct=fat_pct,
-        bio=bio,
-        milk_treatment=milk_treatment,
+        bio=props.bio,
+        milk_treatment=props.milk_treatment,
         volume_ml=volume_ml,
-        brand=brand,
-        label=label,
-        packaging=packaging,
-        origin=origin,
-        affinage_months=affinage_months,
-        production=production,
-        baby_months=baby_months,
-        baby_recipe=baby_recipe,
+        brand=props.brand,
+        label=props.label,
+        packaging=props.packaging,
+        origin=props.origin,
+        affinage_months=props.affinage_months,
+        production=props.production,
+        baby_months=props.baby_months,
+        baby_recipe=props.baby_recipe,
     )
 
 
 def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many-branches
     name: str, raw_name: str
-) -> tuple[
-    str,
-    bool,
-    str | None,
-    str | None,
-    str | None,
-    str | None,
-    str | None,
-    str | None,
-    int | None,
-    int | None,
-    str | None,
-]:
+) -> ExtractedProperties:
     """Detect bio/milk/production/brand/label/packaging/origin/affinage/baby-age/recipe flags."""
     baby_months = get_baby_months(raw_name) or get_baby_months(name)
     baby_recipe = get_baby_recipe(name) or get_baby_recipe(raw_name)
@@ -398,18 +404,18 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many
             if baby_type is not None:
                 name = baby_type
     name = _MULTI_SPACE_RE.sub(" ", name).strip()
-    return (
-        name,
-        bio,
-        milk_treatment,
-        production,
-        brand,
-        label,
-        packaging,
-        origin,
-        affinage_months,
-        baby_months,
-        baby_recipe,
+    return ExtractedProperties(
+        name=name,
+        bio=bio,
+        milk_treatment=milk_treatment,
+        production=production,
+        brand=brand,
+        label=label,
+        packaging=packaging,
+        origin=origin,
+        affinage_months=affinage_months,
+        baby_months=baby_months,
+        baby_recipe=baby_recipe,
     )
 
 

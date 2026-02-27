@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from typing import NamedTuple
 
 from superslurp.parse.common import (
     CompiledSynonyms,
@@ -101,9 +102,13 @@ def parse_items_v2(  # pylint: disable=too-many-locals
     return items, total_discount
 
 
-def _parse_detail_lines(
-    lines: list[str], start: int
-) -> tuple[int, float | None, float | None]:
+class DetailLineResult(NamedTuple):
+    quantity: int
+    unit_price: float | None
+    grams: float | None
+
+
+def _parse_detail_lines(lines: list[str], start: int) -> DetailLineResult:
     quantity = 1
     unit_price: float | None = None
     grams: float | None = None
@@ -126,7 +131,7 @@ def _parse_detail_lines(
             break
         break
 
-    return quantity, unit_price, grams
+    return DetailLineResult(quantity, unit_price, grams)
 
 
 def _parse_category(line: str) -> Category:

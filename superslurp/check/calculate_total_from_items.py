@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from superslurp.exception import ConsistencyError, UndetectedAttributeError
 from superslurp.superslurp_typing import Category, Receipt
 
 
-def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float, float]:
+class RecalculatedTotals(NamedTuple):
+    sub_total: float
+    total: float
+    total_discount: float
+    eligible_tr: float
+
+
+def _calculate_totals_from_items(receipt: Receipt) -> RecalculatedTotals:
     recalculated_sub_total = 0.0
     recalculated_total = 0.0
     recalculated_total_discount = 0.0
@@ -37,9 +46,9 @@ def _calculate_totals_from_items(receipt: Receipt) -> tuple[float, float, float,
             recalculated_sub_total += actual_price
             recalculated_total += actual_price
             print(f"Added {actual_price} to total {recalculated_total}")
-    return (
-        recalculated_sub_total,
-        recalculated_total,
-        recalculated_total_discount,
-        recalculated_eligible_tr,
+    return RecalculatedTotals(
+        sub_total=recalculated_sub_total,
+        total=recalculated_total,
+        total_discount=recalculated_total_discount,
+        eligible_tr=recalculated_eligible_tr,
     )

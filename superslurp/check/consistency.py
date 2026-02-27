@@ -8,18 +8,13 @@ from superslurp.superslurp_typing import Receipt
 
 
 def check_consistency(receipt: Receipt) -> None:
-    (  # pylint: disable=unused-variable
-        recalculated_sub_total,
-        recalculated_total,
-        recalculated_total_discount,
-        recalculated_eligible_tr,
-    ) = _calculate_totals_from_items(receipt)
-    if not math.isclose(recalculated_total, receipt["total"], abs_tol=0.01):
+    totals = _calculate_totals_from_items(receipt)
+    if not math.isclose(totals.total, receipt["total"], abs_tol=0.01):
         raise UnexpectedSumOfParsedItems(
             receipt=receipt,
             total="total",
             description="the total",
-            actual_value=recalculated_total,
+            actual_value=totals.total,
             expected_value=receipt["total"],
         )
 
@@ -62,12 +57,12 @@ def check_consistency(receipt: Receipt) -> None:
     if (
         eligible_tr is not None
         and not math.isclose(eligible_tr, 0.0)
-        and not math.isclose(recalculated_eligible_tr, eligible_tr)
+        and not math.isclose(totals.eligible_tr, eligible_tr)
     ):
         raise UnexpectedSumOfParsedItems(
             receipt=receipt,
             total="eligible_tr",
             description="the sum of prices of items eligible for TR",
-            actual_value=recalculated_eligible_tr,
+            actual_value=totals.eligible_tr,
             expected_value=eligible_tr,
         )

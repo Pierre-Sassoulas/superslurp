@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import re
 
 from superslurp.compare.normalize import (
@@ -180,50 +181,57 @@ def _infer_milk_fat_pct(name: str) -> float | None:
     return None
 
 
-def _parse_name_grams_units(  # pylint: disable=too-many-locals
-    raw_name: str,
-) -> tuple[str, float | None, float | None]:
-    """Extract clean name, grams and units from a raw product name."""
-    (
-        name,
-        grams,
-        units,
-        _fat,
-        _bio,
-        _milk,
-        _vol,
-        _brand,
-        _label,
-        _pkg,
-        _orig,
-        _aff,
-        _prod,
-        _baby,
-        _recipe,
-    ) = _parse_name_attributes(raw_name)
-    return name, grams, units
+@dataclasses.dataclass(slots=True)
+class ParsedAttributes:  # pylint: disable=too-many-instance-attributes
+    """All attributes extracted from a raw product name."""
+
+    name: str
+    grams: float | None
+    units: float | None
+    fat_pct: float | None
+    bio: bool
+    milk_treatment: str | None
+    volume_ml: float | None
+    brand: str | None
+    label: str | None
+    packaging: str | None
+    origin: str | None
+    affinage_months: int | None
+    production: str | None
+    baby_months: int | None
+    baby_recipe: str | None
+
+    @property
+    def properties(self) -> Properties:  # pylint: disable=too-complex
+        """Build a Properties dict, only including truthy values."""
+        props: Properties = {}
+        if self.bio:
+            props["bio"] = True
+        if self.milk_treatment is not None:
+            props["milk_treatment"] = self.milk_treatment
+        if self.production is not None:
+            props["production"] = self.production
+        if self.brand is not None:
+            props["brand"] = self.brand
+        if self.label is not None:
+            props["label"] = self.label
+        if self.packaging is not None:
+            props["packaging"] = self.packaging
+        if self.origin is not None:
+            props["origin"] = self.origin
+        if self.affinage_months is not None:
+            props["affinage_months"] = self.affinage_months
+        if self.baby_months is not None:
+            props["baby_months"] = self.baby_months
+        if self.baby_recipe is not None:
+            props["baby_recipe"] = self.baby_recipe
+        return props
 
 
 def _parse_name_attributes(  # pylint: disable=too-many-locals
     raw_name: str,
     synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
-) -> tuple[
-    str,
-    float | None,
-    float | None,
-    float | None,
-    bool,
-    str | None,
-    float | None,
-    str | None,
-    str | None,
-    str | None,
-    str | None,
-    int | None,
-    str | None,
-    int | None,
-    str | None,
-]:
+) -> ParsedAttributes:
     """Extract name, grams, units, fat%, bio, milk, volume, brand, label,
     packaging, origin, affinage, production, baby_months, baby_recipe.
 
@@ -270,22 +278,22 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
         baby_months,
         baby_recipe,
     ) = _extract_properties(name, raw_name)
-    return (
-        name,
-        grams,
-        units,
-        fat_pct,
-        bio,
-        milk_treatment,
-        volume_ml,
-        brand,
-        label,
-        packaging,
-        origin,
-        affinage_months,
-        production,
-        baby_months,
-        baby_recipe,
+    return ParsedAttributes(
+        name=name,
+        grams=grams,
+        units=units,
+        fat_pct=fat_pct,
+        bio=bio,
+        milk_treatment=milk_treatment,
+        volume_ml=volume_ml,
+        brand=brand,
+        label=label,
+        packaging=packaging,
+        origin=origin,
+        affinage_months=affinage_months,
+        production=production,
+        baby_months=baby_months,
+        baby_recipe=baby_recipe,
     )
 
 
@@ -368,43 +376,6 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many
         baby_months,
         baby_recipe,
     )
-
-
-def build_properties(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-complex
-    bio: bool,
-    milk_treatment: str | None,
-    brand: str | None = None,
-    label: str | None = None,
-    packaging: str | None = None,
-    origin: str | None = None,
-    affinage_months: int | None = None,
-    production: str | None = None,
-    baby_months: int | None = None,
-    baby_recipe: str | None = None,
-) -> Properties:
-    """Build a Properties dict, only including truthy values."""
-    props: Properties = {}
-    if bio:
-        props["bio"] = True
-    if milk_treatment is not None:
-        props["milk_treatment"] = milk_treatment
-    if production is not None:
-        props["production"] = production
-    if brand is not None:
-        props["brand"] = brand
-    if label is not None:
-        props["label"] = label
-    if packaging is not None:
-        props["packaging"] = packaging
-    if origin is not None:
-        props["origin"] = origin
-    if affinage_months is not None:
-        props["affinage_months"] = affinage_months
-    if baby_months is not None:
-        props["baby_months"] = baby_months
-    if baby_recipe is not None:
-        props["baby_recipe"] = baby_recipe
-    return props
 
 
 # ---------------------------------------------------------------------------

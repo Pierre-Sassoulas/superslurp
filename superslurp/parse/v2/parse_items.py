@@ -7,7 +7,6 @@ from superslurp.compare.normalize import compile_synonyms
 from superslurp.parse.common import (
     _parse_name_attributes,
     build_item,
-    build_properties,
     post_process_item,
 )
 from superslurp.superslurp_typing import Category, Item, Items
@@ -66,26 +65,8 @@ def parse_items_v2(  # pylint: disable=too-many-locals,too-many-statements
 
             quantity, unit_price, grams_from_weight = _parse_detail_lines(lines, i + 1)
 
-            (
-                name,
-                grams_from_name,
-                units,
-                fat_pct,
-                bio,
-                milk_treatment,
-                volume_ml,
-                brand,
-                label,
-                packaging,
-                origin,
-                affinage_months,
-                production,
-                baby_months,
-                baby_recipe,
-            ) = _parse_name_attributes(raw_name, synonyms=compiled_syn)
-            grams = (
-                grams_from_weight if grams_from_weight is not None else grams_from_name
-            )
+            attrs = _parse_name_attributes(raw_name, synonyms=compiled_syn)
+            grams = grams_from_weight if grams_from_weight is not None else attrs.grams
 
             if quantity > 1:
                 price = unit_price if unit_price is not None else total_price
@@ -95,27 +76,16 @@ def parse_items_v2(  # pylint: disable=too-many-locals,too-many-statements
             item = build_item(
                 raw=line.strip(),
                 raw_name=raw_name,
-                name=name,
+                name=attrs.name,
                 price=price,
                 bought=quantity,
-                units=units,
+                units=attrs.units,
                 grams=grams,
-                volume_ml=volume_ml,
-                fat_pct=fat_pct,
+                volume_ml=attrs.volume_ml,
+                fat_pct=attrs.fat_pct,
                 tr=tr,
                 way_of_paying=way_of_paying,
-                properties=build_properties(
-                    bio,
-                    milk_treatment,
-                    brand,
-                    label,
-                    packaging,
-                    origin,
-                    affinage_months,
-                    production,
-                    baby_months,
-                    baby_recipe,
-                ),
+                properties=attrs.properties,
             )
             post_process_item(item, category)
             items[category].append(item)

@@ -8,7 +8,6 @@ from superslurp.compare.normalize import compile_synonyms
 from superslurp.parse.common import (
     _parse_name_attributes,
     build_item,
-    build_properties,
     post_process_item,
 )
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
@@ -88,7 +87,7 @@ def get_new_category(line: str) -> Category:
         raise ValueError(f"Missing value in enum '{Category!r}': {e}") from e
 
 
-def get_item_from_item_infos(  # pylint: disable=too-many-locals
+def get_item_from_item_infos(
     item_info: re.Match[str],
     synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
 ) -> Item:
@@ -98,24 +97,9 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
     assert raw_name, f"Name is empty: {raw_name}"
     if len(raw_name) < 10:
         logging.warning(f"Name is really short, that suspicious: {raw_name}")
-    (
-        name,
-        grams,
-        units,
-        fat_pct,
-        bio,
-        milk_treatment,
-        volume_ml,
-        brand,
-        label,
-        packaging,
-        origin,
-        affinage_months,
-        production,
-        baby_months,
-        baby_recipe,
-    ) = _parse_name_attributes(raw_name, synonyms=synonyms)
+    attrs = _parse_name_attributes(raw_name, synonyms=synonyms)
     quantity_str = item_info.group("quantity")
+    grams = attrs.grams
     if grams is None and quantity_str and "kg" in quantity_str:
         grams = _get_grams_from_quantity(quantity_str)
     if (quantity := _parse_quantity(quantity_str)) == 1:
@@ -127,27 +111,16 @@ def get_item_from_item_infos(  # pylint: disable=too-many-locals
     return build_item(
         raw=item_info.group(0).strip(),
         raw_name=raw_name,
-        name=name,
+        name=attrs.name,
         price=_get_price(price),
         bought=quantity,
-        units=units,
+        units=attrs.units,
         grams=grams,
-        volume_ml=volume_ml,
-        fat_pct=fat_pct,
+        volume_ml=attrs.volume_ml,
+        fat_pct=attrs.fat_pct,
         tr=_get_tr(tr),
         way_of_paying=way_of_paying,
-        properties=build_properties(
-            bio,
-            milk_treatment,
-            brand,
-            label,
-            packaging,
-            origin,
-            affinage_months,
-            production,
-            baby_months,
-            baby_recipe,
-        ),
+        properties=attrs.properties,
     )
 
 

@@ -467,7 +467,7 @@ def test_get_baby_food_type() -> None:
 # --- parse pipeline (end-to-end) ---
 
 
-def test_parse_reblochon_readme_example() -> None:  # pylint: disable=too-many-locals
+def test_parse_reblochon_readme_example() -> None:
     """The README example: REBL.SAVE.AOP.LC BIO BQTX12 450G 32%MG."""
     synonyms = {
         "REBL": "REBLOCHON",
@@ -476,35 +476,21 @@ def test_parse_reblochon_readme_example() -> None:  # pylint: disable=too-many-l
         "LC": "LAIT CRU",
         "BQT": "BARQUETTE",
     }
-    (
-        name,
-        grams,
-        units,
-        fat_pct,
-        bio,
-        milk_treatment,
-        volume_ml,
-        brand,
-        label,
-        packaging,
-        origin,
-        affinage_months,
-        production,
-        baby_months,
-        baby_recipe,
-    ) = _parse_name_attributes("REBL.SAVE.AOP.FRM.LC BIO BQT.X12 450G 32%MG", synonyms)
-    assert name == "REBLOCHON"
-    assert grams == 450.0
-    assert units == 12
-    assert fat_pct == 32.0
-    assert bio is True
-    assert milk_treatment == "cru"
-    assert production == "fermier"
-    assert label == "AOP"
-    assert packaging == "BARQUETTE"
-    assert origin == "SAVOIE"
-    assert volume_ml is None
-    assert brand is None
-    assert affinage_months is None
-    assert baby_months is None
-    assert baby_recipe is None
+    attrs = _parse_name_attributes(
+        "REBL.SAVE.AOP.FRM.LC BIO BQT.X12 450G 32%MG", synonyms
+    )
+    assert attrs.name == "REBLOCHON"
+    assert attrs.grams == 450.0
+    assert attrs.units == 12
+    assert attrs.fat_pct == 32.0
+    assert attrs.bio is True
+    assert attrs.milk_treatment == "cru"
+    assert attrs.production == "fermier"
+    assert attrs.label == "AOP"
+    assert attrs.packaging == "BARQUETTE"
+    assert attrs.origin == "SAVOIE"
+    assert attrs.volume_ml is None
+    assert attrs.brand is None
+    assert attrs.affinage_months is None
+    assert attrs.baby_months is None
+    assert attrs.baby_recipe is None

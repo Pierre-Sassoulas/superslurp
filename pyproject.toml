@@ -83,8 +83,8 @@ main.disable = [
     "consider-ternary-expression",    # no nuance at all
     "while-used",                     # while loops are fine
     "consider-using-assignment-expr", # walrus operator preference
-    "duplicate-code",                 # tuple unpacking of _parse_name_attributes at call sites
 ]
+main.min-similarity-lines = 6
 
 [tool.codespell]
 ignore-words-list = "superu,thes,jus,rouge,coul"

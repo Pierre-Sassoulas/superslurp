@@ -1,109 +1,98 @@
-# Superslurp is a Utility for Parsing & Extracting Receipts via Savage Layers of Unreadable Regex & Processing
+# Superslurp
 
-Parser for [SuperU](https://fr.wikipedia.org/wiki/Coop%C3%A9rative_U) receipts. Take the
-PDF receipt sent by mail as input and return a json, aggregate result and generate reports
-from the aggregate.
+SuperSlurp is a Utility for Parsing & Extracting Receipts via Savage Layers of
+Unreadable Regex & Processing
 
-Useful when you want to display the instantaneous cheese consumption intensity of your
-home in €/day inside Grafana.
+It parses [Super U](https://fr.wikipedia.org/wiki/Coop%C3%A9rative_U) PDF receipts. Can
+generate a JSON from a receipt, or a JSON aggregate from multiple receipts for
+consumption from another tools, or generate an HTML report directly.
 
-## 1. Parse a receipt
-
-```python
-from superslurp import parse_superu_receipt
-
-result = parse_superu_receipt("Ticket de caisse_01032022-165652.pdf")
-```
-
-The parser understands the intricacies of French cheese: AOP designation, _fermier_ vs
-_laitier_ production, milk treatment, as defined by the
+The parser understands the intricacies of French cuisine, for example it knows a
+Reblochon _fermier_ from a _laitier_, as per the French government's
 [official AOP specification](https://agriculture.gouv.fr/le-reblochon-aop-le-fromage-onctueux-de-savoie).
 
-The receipt line `REBL.SAVE.AOP.FRM.LC BIO BQT.X12 450G 32%MG  8,61 €  11` is parsed as:
+Useful when you want to display cheese consumption intensity in €/day inside Grafana, or
+detect sneaky shrinkflation via fat-content drift on your favorite _fromage blanc_.
+
+## Quick start
+
+### Install
+
+```bash
+pip install superslurp
+```
+
+### Run
+
+Generate a report from directory of PDF receipts:
+
+```bash
+superu-report receipts/*.pdf -o report.html
+```
+
+Then open `report.html`
+
+### Synonyms
+
+Receipts are full of abbreviations (`REBL.SAV.` for `REBLOCHON SAVOIE`). ~200 built-in
+synonyms handle the common ones. To add your own, create a JSON file mapping
+abbreviations to full names:
 
 ```json
 {
+  "FAR.FROM": "FARINE DE FROMENT",
+  "FROM": "FROMAGE"
+}
+```
+
+```bash
+superu-report receipts/*.pdf --synonyms extra.json -o report.html
+```
+
+**Order matters** — put multi-word abbreviations before their single-word parts. Here
+`FAR.FROM` comes before `FROM`, so a receipt line `FAR.FROM` correctly becomes
+`FARINE DE FROMENT`. If `FROM` came first, it would be replaced by `FROMAGE` and you'd
+end up with flour cheese instead of wheat flour.
+
+Use `--no-default-synonyms` to disable the built-in set entirely.
+
+## Parse example
+
+`REBL.SAV.AOP.FRM.LC BIO BQT.X12 450G 32%MG  8,61 €  11` is parsed as:
+
+```jsonc
+{
+  "raw": "REBL.SAV.AOP.FRM.LC BIO BQT.X12 450G 32%MG  8,61 €  11", // debug=True
   "name": "REBLOCHON",
   "price": 8.61,
   "bought": 1,
   "units": 12,
   "grams": 450.0,
-  "volume_ml": null,
   "fat_pct": 32.0,
-  "tr": false,
-  "way_of_paying": "11",
-  "discount": null,
   "properties": {
     "bio": true,
     "milk_treatment": "cru",
     "production": "fermier",
     "label": "AOP",
     "packaging": "BARQUETTE",
-    "origin": "SAVOIE"
-  }
+    "origin": "SAVOIE",
+  },
+  "...": "...",
 }
 ```
 
-Pass `debug=True` to include the original receipt line (`"raw"` field):
+## Aggregate output
 
-```python
-from superslurp import parse_superu_receipt
+Products are grouped under a canonical name using fuzzy matching (difflib, threshold
+0.90):
 
-result = parse_superu_receipt("receipt.pdf", debug=True)
-```
-
-The parser ships with built-in synonyms that expand common receipt abbreviations (e.g.
-`TABS` → `TABLETTES`, `VAISS` → `VAISSELLE`). You can provide extra synonyms that are
-merged on top of the defaults:
-
-```python
-from superslurp import parse_superu_receipt
-
-extra = {"CUSTOM_ABBREV": "CUSTOM EXPANSION"}
-result = parse_superu_receipt("receipt.pdf", synonyms=extra)
-```
-
-CLI:
-
-```bash
-# Uses built-in synonyms (default)
-superu-receipt-parser receipt.pdf
-
-# Merge extra synonyms on top of built-in defaults
-superu-receipt-parser receipt.pdf --synonyms extra.json
-
-# Disable built-in synonyms entirely — only use your own file
-superu-receipt-parser receipt.pdf --no-default-synonyms --synonyms my_synonyms.json
-```
-
-## 2. Aggregate receipts
-
-Compare items across multiple parsed receipts. Products are grouped under a canonical
-name using fuzzy matching (via difflib).
-
-```python
-from pathlib import Path
-
-from superslurp.compare.aggregate import compare_receipt_files
-
-result = compare_receipt_files(
-    paths=[Path("receipt1.json"), Path("receipt2.json")],
-    threshold=0.90,       # difflib threshold (default: 0.90)
-)
-```
-
-Synonyms are applied at parse time (step 1), so the JSON files fed to
-`compare_receipt_files` already contain expanded names.
-
-The result contains stores, sessions, per-session totals, a rolling weekly average, and
-products with their observations:
-
-```json
+```jsonc
 {
   "stores": [{ "id": "123_456", "store_name": "...", "location": "..." }],
   "sessions": [{ "id": 1, "date": "2025-01-15 10:00:00", "store_id": "123_456" }],
   "session_totals": [{ "session_id": 1, "date": "2025-01-15", "total": 42.5 }],
-  "rolling_average": [{ "date": "2025-01-13", "value": 85.3 }, "..."],
+  "session_category_totals": ["..."],
+  "category_rolling_averages": ["..."],
   "products": [
     {
       "canonical_name": "OEUFS",
@@ -112,119 +101,43 @@ products with their observations:
           "original_name": "OEUFS PLEIN AIR MOYEN",
           "session_id": 1,
           "price": 3.15,
-          "quantity": 1,
-          "grams": null,
-          "discount": null,
-          "price_per_kg": null,
-          "volume_ml": null,
-          "price_per_liter": null,
           "unit_count": 12,
           "price_per_unit": 0.2625,
-          "bio": true
-        }
-      ]
-    }
-  ]
+          "bio": true,
+          "...": "...",
+        },
+      ],
+    },
+  ],
 }
 ```
 
-CLI:
+## Developer guide
+
+### Pipeline steps
+
+`superu-report` runs parse → aggregate → HTML in one shot. During development you can
+run each step individually to avoid re-doing everything when iterating on a single
+stage:
 
 ```bash
-superu-aggregate-parsed-receipt receipts/ --output aggregate.json
+# 1. Parse a single receipt PDF → JSON
+superu-receipt-parser receipt.pdf -o receipt.json
+
+# 2. Aggregate multiple parsed JSONs
+superu-aggregate-parsed-receipt receipts/ -o aggregate.json
+
+# 3. Generate report from an existing aggregate
+superu-report-from-aggregate aggregate.json -o report.html
+
+# Or pipe step 2 → 3
+superu-aggregate-parsed-receipt receipts/ | superu-report-from-aggregate - -o report.html
 ```
 
-## 3. Generate an HTML report
+### Python API
 
-### From PDFs directly
-
-Parse receipt PDFs and generate a self-contained HTML dashboard in one step:
-
-```python
-from pathlib import Path
-
-from superslurp import generate_report
-
-synonyms = {"TABS": "TABLETTES", "VAISS": "VAISSELLE"}
-html = generate_report(
-    ["receipt1.pdf", "receipt2.pdf", "receipt3.pdf"],
-    synonyms=synonyms,    # optional
-    threshold=0.90,       # fuzzy matching threshold (default: 0.90)
-)
-Path("report.html").write_text(html)
-```
-
-CLI:
-
-```bash
-superu-report receipts/*.pdf --output report.html
-superu-report receipts/*.pdf --synonyms extra.json --output report.html
-```
-
-### From an existing aggregate JSON
-
-If you already have an aggregate JSON (from step 2):
-
-```python
-from pathlib import Path
-
-from superslurp.compare.html_report import generate_html
-
-html = generate_html(aggregate_result)
-Path("report.html").write_text(html)
-```
-
-```bash
-superu-report-from-aggregate aggregate.json --output report.html
-```
-
-Or pipe directly from aggregate:
-
-```bash
-superu-aggregate-parsed-receipt receipts/ \
-  | superu-report-from-aggregate - --output report.html
-```
-
-## Synonyms
-
-Synonyms are applied during **parsing** (step 1) — the aggregate step (step 2) only does
-fuzzy matching on already-expanded names.
-
-The package ships with built-in synonyms for ~200 common Super U receipt abbreviations.
-Extra synonyms passed via `--synonyms` are merged on top (user entries take precedence
-on conflict). Use `--no-default-synonyms` to disable the built-in set entirely — this is
-useful when you need full control over expansion order, since **insertion order
-matters** (see below).
-
-Synonyms is an ordered `dict[str, str]`. Entries are applied sequentially with
-word-boundary matching — **insertion order matters**. Earlier entries are replaced
-first, so later entries won't match words already consumed.
-
-Dots in both names and keys are normalized to spaces before matching, so `"FROM.BLC"`
-matches `FROM.BLC` on the receipt.
-
-```python
-synonyms = {
-    "FROM.BLC": "FROMAGE BLANC",          # applied 1st: consumes FROM and BLC
-    "CHOCO PATIS": "CHOCOLAT PATISSIER",  # applied 2nd: consumes CHOCO and PATIS
-    "CHOCO": "CHOCOLAT",                  # applied 3rd: only if CHOCO still present
-    "FROM": "FROMAGE",                    # applied 4th: only if FROM still present
-    "PATIS": "PATISSERIE",               # applied 5th: only if PATIS still present
-}
-# "FROM.BLC NAT"         → "FROMAGE BLANC NAT"            (FROM.BLC consumed by 1st)
-# "FROM.RAPE"            → "FROMAGE RAPE"                 (FROM consumed by 4th)
-# "CHOCO.PATIS.NOIR 52%" → "CHOCOLAT PATISSIER NOIR 52%"  (CHOCO PATIS consumed by 2nd)
-# "CHOCO.NOIR"           → "CHOCOLAT NOIR"                (CHOCO consumed by 3rd)
-```
-
-The JSON file is a standard object (key order is preserved since Python 3.7):
-
-```json
-{
-  "FROM.BLC": "FROMAGE BLANC",
-  "CHOCO PATIS": "CHOCOLAT PATISSIER",
-  "CHOCO": "CHOCOLAT",
-  "FROM": "FROMAGE",
-  "PATIS": "PATISSERIE"
-}
-```
+| Function                                             | Description                                   |
+| ---------------------------------------------------- | --------------------------------------------- |
+| `parse_superu_receipt(filename, *, synonyms, debug)` | Parse a PDF receipt → `Receipt` dict          |
+| `compare_receipt_files(paths, *, threshold)`         | Aggregate parsed JSONs → `CompareResult` dict |
+| `generate_report(filenames, *, synonyms)`            | Parse PDFs + aggregate + render HTML string   |

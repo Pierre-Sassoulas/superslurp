@@ -51,20 +51,28 @@ from superslurp import parse_superu_receipt
 result = parse_superu_receipt("receipt.pdf", debug=True)
 ```
 
-Pass a `synonyms` dict to expand receipt abbreviations in item names:
+The parser ships with built-in synonyms that expand common receipt abbreviations (e.g.
+`TABS` → `TABLETTES`, `VAISS` → `VAISSELLE`). You can provide extra synonyms that are
+merged on top of the defaults:
 
 ```python
 from superslurp import parse_superu_receipt
 
-synonyms = {"TABS": "TABLETTES", "VAISS": "VAISSELLE"}
-result = parse_superu_receipt("receipt.pdf", synonyms=synonyms)
-# "TABS LAVE VAISS.STANDARD U" → "TABLETTES LAVE VAISSELLE STANDARD U"
+extra = {"CUSTOM_ABBREV": "CUSTOM EXPANSION"}
+result = parse_superu_receipt("receipt.pdf", synonyms=extra)
 ```
 
 CLI:
 
 ```bash
-superu-receipt-parser receipt.pdf --synonyms synonyms.json
+# Uses built-in synonyms (default)
+superu-receipt-parser receipt.pdf
+
+# Merge extra synonyms on top of built-in defaults
+superu-receipt-parser receipt.pdf --synonyms extra.json
+
+# Disable built-in synonyms entirely — only use your own file
+superu-receipt-parser receipt.pdf --no-default-synonyms --synonyms my_synonyms.json
 ```
 
 ## 2. Aggregate receipts
@@ -148,7 +156,8 @@ Path("report.html").write_text(html)
 CLI:
 
 ```bash
-superu-report receipts/*.pdf --synonyms synonyms.json --output report.html
+superu-report receipts/*.pdf --output report.html
+superu-report receipts/*.pdf --synonyms extra.json --output report.html
 ```
 
 ### From an existing aggregate JSON
@@ -179,6 +188,12 @@ superu-aggregate-parsed-receipt receipts/ \
 
 Synonyms are applied during **parsing** (step 1) — the aggregate step (step 2) only does
 fuzzy matching on already-expanded names.
+
+The package ships with built-in synonyms for ~200 common Super U receipt abbreviations.
+Extra synonyms passed via `--synonyms` are merged on top (user entries take precedence
+on conflict). Use `--no-default-synonyms` to disable the built-in set entirely — this is
+useful when you need full control over expansion order, since **insertion order
+matters** (see below).
 
 Synonyms is an ordered `dict[str, str]`. Entries are applied sequentially with
 word-boundary matching — **insertion order matters**. Earlier entries are replaced

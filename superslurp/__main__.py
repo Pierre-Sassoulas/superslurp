@@ -16,12 +16,19 @@ from superslurp.parse import parse_text
 from superslurp.parse.common import CompiledSynonyms, resolve_synonyms
 from superslurp.serialize.json_dump import make_json_serializable
 
+_DEFAULT_SYNONYMS_PATH = Path(__file__).resolve().parent / "synonyms.json"
+
 
 def _load_synonyms(path: Path) -> dict[str, str]:
     """Load a synonyms JSON file and uppercase all keys and values."""
     with open(path, encoding="utf8") as f:
         raw = json.load(f)
     return {k.upper(): v.upper() for k, v in raw.items()}
+
+
+def _load_default_synonyms() -> dict[str, str]:
+    """Load the built-in synonyms bundled with the package."""
+    return _load_synonyms(_DEFAULT_SYNONYMS_PATH)
 
 
 def parse_superu_receipt(
@@ -76,7 +83,13 @@ def main(args: list[str] | None = None) -> int:
     add_synonyms_arg(parser)
     parsed_args = parser.parse_args(args)
     print(f"Processing file: {parsed_args.filename}")
-    synonyms = _load_synonyms(parsed_args.synonyms) if parsed_args.synonyms else None
+    synonyms: dict[str, str] | None = None
+    if not parsed_args.no_default_synonyms:
+        synonyms = _load_default_synonyms()
+    if parsed_args.synonyms:
+        if synonyms is None:
+            synonyms = {}
+        synonyms.update(_load_synonyms(parsed_args.synonyms))
     parsed_content = parse_superu_receipt(parsed_args.filename, synonyms=synonyms)
     print(f"Result:\n{json.dumps(parsed_content, indent=4, ensure_ascii=False)}")
     return 0
@@ -93,7 +106,13 @@ def main_report(args: list[str] | None = None) -> int:
     add_threshold_arg(parser)
     add_output_arg(parser)
     parsed_args = parser.parse_args(args)
-    synonyms = _load_synonyms(parsed_args.synonyms) if parsed_args.synonyms else None
+    synonyms: dict[str, str] | None = None
+    if not parsed_args.no_default_synonyms:
+        synonyms = _load_default_synonyms()
+    if parsed_args.synonyms:
+        if synonyms is None:
+            synonyms = {}
+        synonyms.update(_load_synonyms(parsed_args.synonyms))
     html = generate_report(
         parsed_args.filenames, synonyms=synonyms, threshold=parsed_args.threshold
     )

@@ -5,12 +5,18 @@ from pathlib import Path
 
 
 def add_synonyms_arg(parser: argparse.ArgumentParser) -> None:
-    """Add the --synonyms argument to an argparse parser."""
+    """Add the --synonyms and --no-default-synonyms arguments to an argparse parser."""
     parser.add_argument(
         "--synonyms",
         type=Path,
         default=None,
-        help="JSON file mapping abbreviations to full names.",
+        help="JSON file with extra abbreviation mappings (merged on top of built-in defaults).",
+    )
+    parser.add_argument(
+        "--no-default-synonyms",
+        action="store_true",
+        default=False,
+        help="Disable built-in synonyms. Only use synonyms from --synonyms if provided.",
     )
 
 

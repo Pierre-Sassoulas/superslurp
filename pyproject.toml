@@ -41,6 +41,7 @@ scripts.superu-report-from-aggregate = "superslurp.compare.cli:main_report"
 
 [tool.setuptools]
 packages = [ "superslurp", "superslurp.compare" ]
+package-data.superslurp = [ "synonyms.json" ]
 
 [tool.setuptools_scm]
 
@@ -89,7 +90,7 @@ main.enable = [
 ]
 
 [tool.codespell]
-ignore-words-list = "superu,thes,jus,rouge,coul"
+ignore-words-list = "superu,thes,jus,rouge,coul,anc,sav,cplt,caract,broc,ptd,fro,complet,caractere,brocoli"
 write-changes = true
 
 [tool.pyproject-fmt]

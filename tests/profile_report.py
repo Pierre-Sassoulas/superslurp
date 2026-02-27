@@ -4,13 +4,13 @@ import cProfile
 import pstats
 from pathlib import Path
 
-from superslurp.__main__ import _load_synonyms, generate_report
+from superslurp.__main__ import _load_default_synonyms, generate_report
 
 
 def main() -> None:
     fixtures = Path(__file__).resolve().parent / "fixtures"
     pdfs: list[str | Path] = sorted(fixtures.glob("Ticket*.pdf"))
-    synonyms = _load_synonyms(fixtures / "synonyms.json")
+    synonyms = _load_default_synonyms()
 
     profiler = cProfile.Profile()
     profiler.enable()

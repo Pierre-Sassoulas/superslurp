@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from superslurp.compare.normalize import compile_synonyms
 from superslurp.parse.common import (
+    CompiledSynonyms,
     _parse_name_attributes,
     build_item,
     post_process_item,
@@ -22,9 +22,9 @@ CATEGORY_PATTERN = re.compile(r"^[A-Z][A-Z0-9 .()\-]+\s*$")
 def parse_items_v2(  # pylint: disable=too-many-locals
     items_text: str,
     expected_number_of_items: int,
-    synonyms: dict[str, str] | None = None,
+    synonyms: CompiledSynonyms | None = None,
 ) -> tuple[Items, float]:
-    compiled_syn = compile_synonyms(synonyms) if synonyms else None
+    compiled_syn = synonyms
     items: dict[Category, list[Item]] = defaultdict(list)
     total_discount = 0.0
     category: Category = Category.UNDEFINED

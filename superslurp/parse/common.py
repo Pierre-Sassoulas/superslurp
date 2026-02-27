@@ -5,6 +5,7 @@ import re
 
 from superslurp.compare.normalize import (
     _BABY_DEFINITE_RE,
+    compile_synonyms,
     expand_synonyms,
     extract_unit_count,
     get_affinage_months,
@@ -25,6 +26,21 @@ from superslurp.compare.normalize import (
     strip_quality_label,
 )
 from superslurp.superslurp_typing import Category, Item, Properties
+
+CompiledSynonyms = list[tuple[re.Pattern[str], str]]
+
+
+def resolve_synonyms(
+    synonyms: dict[str, str] | None = None,
+    compiled_synonyms: CompiledSynonyms | None = None,
+) -> CompiledSynonyms | None:
+    """Return compiled synonyms, preferring pre-compiled over raw dict."""
+    if compiled_synonyms is not None:
+        return compiled_synonyms
+    if synonyms is not None:
+        return compile_synonyms(synonyms)
+    return None
+
 
 # ---------------------------------------------------------------------------
 # Patterns to strip from name once units have been extracted

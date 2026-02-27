@@ -3,19 +3,26 @@ from __future__ import annotations
 import math
 import re
 
+from superslurp.parse.common import CompiledSynonyms, resolve_synonyms
 from superslurp.parse.safe_search import safe_search
 from superslurp.parse.str_to_float import _change_text_to_float
 from superslurp.parse.v2.parse_items import parse_items_v2
 from superslurp.superslurp_typing import Card, Items, Receipt, Store
 
 
-def parse_text_v2(text: str, synonyms: dict[str, str] | None = None) -> Receipt:
+def parse_text_v2(
+    text: str,
+    synonyms: dict[str, str] | None = None,
+    compiled_synonyms: CompiledSynonyms | None = None,
+) -> Receipt:
     store = _parse_store(text)
     date = _parse_date(text)
     items_text = _extract_items_text(text)
     total, number_of_items = _parse_total(text)
     items, total_discount = parse_items_v2(
-        items_text, number_of_items, synonyms=synonyms
+        items_text,
+        number_of_items,
+        synonyms=resolve_synonyms(synonyms, compiled_synonyms),
     )
     card = _parse_card(text)
     subtotal = _parse_subtotal(text)

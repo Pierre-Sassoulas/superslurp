@@ -4,8 +4,8 @@ import logging
 import re
 from collections import defaultdict
 
-from superslurp.compare.normalize import compile_synonyms
 from superslurp.parse.common import (
+    CompiledSynonyms,
     _parse_name_attributes,
     build_item,
     post_process_item,
@@ -36,9 +36,11 @@ items_patterns = [
 
 
 def parse_items(
-    text: str, expected_number_of_items: int, synonyms: dict[str, str] | None = None
+    text: str,
+    expected_number_of_items: int,
+    synonyms: CompiledSynonyms | None = None,
 ) -> Items:
-    compiled_syn = compile_synonyms(synonyms) if synonyms else None
+    compiled_syn = synonyms
     nb_parsed = 0
     items: dict[Category, list[Item]] = defaultdict(list)
     category = Category.UNDEFINED

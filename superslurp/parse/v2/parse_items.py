@@ -19,7 +19,7 @@ PESEE_PATTERN = re.compile(r"^\s+Pesée manuelle\s*$")
 CATEGORY_PATTERN = re.compile(r"^[A-Z][A-Z0-9 .()\-]+\s*$")
 
 
-def parse_items_v2(  # pylint: disable=too-many-locals,too-many-statements
+def parse_items_v2(  # pylint: disable=too-many-locals
     items_text: str,
     expected_number_of_items: int,
     synonyms: dict[str, str] | None = None,

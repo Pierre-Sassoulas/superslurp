@@ -449,7 +449,7 @@ def expand_context_synonyms(item: Item, category: Category) -> None:
 # ---------------------------------------------------------------------------
 # Item construction & post-processing convenience
 # ---------------------------------------------------------------------------
-def build_item(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def build_item(  # pylint: disable=too-many-arguments
     *,
     raw: str,
     raw_name: str,

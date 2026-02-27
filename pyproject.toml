@@ -84,6 +84,9 @@ main.disable = [
     "while-used",                     # while loops are fine
     "consider-using-assignment-expr", # walrus operator preference
 ]
+main.enable = [
+    "useless-suppression",
+]
 main.min-similarity-lines = 6
 
 [tool.codespell]

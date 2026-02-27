@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+
+from superslurp.superslurp_typing import CompareResult
 
 _HTML_TEMPLATE = """\
 <!DOCTYPE html>
@@ -1057,7 +1058,7 @@ renderDegradation();
 """
 
 
-def generate_html(data: dict[str, Any]) -> str:
+def generate_html(data: CompareResult) -> str:
     """Generate a self-contained HTML dashboard from compare result data."""
     data_json = json.dumps(data, ensure_ascii=False)
     return _HTML_TEMPLATE.replace("__DATA_JSON__", data_json)

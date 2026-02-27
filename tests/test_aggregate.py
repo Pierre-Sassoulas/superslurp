@@ -12,6 +12,7 @@ from superslurp.compare.aggregate import (
     compare_receipt_files,
 )
 from superslurp.compare.matcher import FuzzyMatcher
+from superslurp.superslurp_typing import SessionCategoryTotal
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -307,7 +308,9 @@ def test_session_totals_skips_null_date() -> None:
 
 def test_rolling_average_single_week() -> None:
     """A single session produces one rolling avg point."""
-    totals = [{"date": "2025-03-05", "categories": {"Epicerie": 70.0}}]
+    totals: list[SessionCategoryTotal] = [
+        {"date": "2025-03-05", "session_id": 1, "categories": {"Epicerie": 70.0}},
+    ]
     avg = _compute_category_rolling_averages(totals)
     assert len(avg) >= 1
     # The point covering that session should have categories with positive values
@@ -316,9 +319,9 @@ def test_rolling_average_single_week() -> None:
 
 def test_rolling_average_two_consecutive_weeks() -> None:
     """Two sessions in consecutive weeks."""
-    totals = [
-        {"date": "2025-03-03", "categories": {"Epicerie": 100.0}},
-        {"date": "2025-03-10", "categories": {"Epicerie": 50.0}},
+    totals: list[SessionCategoryTotal] = [
+        {"date": "2025-03-03", "session_id": 1, "categories": {"Epicerie": 100.0}},
+        {"date": "2025-03-10", "session_id": 2, "categories": {"Epicerie": 50.0}},
     ]
     avg = _compute_category_rolling_averages(totals)
     assert len(avg) >= 2
@@ -329,9 +332,9 @@ def test_rolling_average_two_consecutive_weeks() -> None:
 
 def test_rolling_average_gap_skipped() -> None:
     """Sessions 6+ months apart should not produce points in the gap."""
-    totals = [
-        {"date": "2025-01-06", "categories": {"Epicerie": 80.0}},
-        {"date": "2025-07-07", "categories": {"Epicerie": 60.0}},
+    totals: list[SessionCategoryTotal] = [
+        {"date": "2025-01-06", "session_id": 1, "categories": {"Epicerie": 80.0}},
+        {"date": "2025-07-07", "session_id": 2, "categories": {"Epicerie": 60.0}},
     ]
     avg = _compute_category_rolling_averages(totals)
     dates = [p["date"] for p in avg]
@@ -342,8 +345,12 @@ def test_rolling_average_gap_skipped() -> None:
 def test_rolling_average_is_smoothed() -> None:
     """Five consecutive weekly sessions: middle point averages all five."""
     # All on Mondays
-    totals = [
-        {"date": f"2025-03-{3 + 7 * i:02d}", "categories": {"Epicerie": float(v)}}
+    totals: list[SessionCategoryTotal] = [
+        {
+            "date": f"2025-03-{3 + 7 * i:02d}",
+            "session_id": i + 1,
+            "categories": {"Epicerie": float(v)},
+        }
         for i, v in enumerate([10, 20, 30, 40, 50])
     ]
     avg = _compute_category_rolling_averages(totals)

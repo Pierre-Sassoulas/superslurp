@@ -8,6 +8,16 @@ from pathlib import Path
 from typing import Any
 
 from superslurp.compare.matcher import FuzzyMatcher
+from superslurp.superslurp_typing import (
+    CategoryRollingAverage,
+    CompareResult,
+    Observation,
+    ProductSummary,
+    SessionCategoryTotal,
+    SessionSummary,
+    SessionTotal,
+    StoreSummary,
+)
 
 _CATEGORY_GROUPS: dict[str, str] = {
     # Fruits & Legumes
@@ -140,7 +150,7 @@ def _extract_location(store: dict[str, Any]) -> str | None:
 
 def _get_store_id(
     store_data: dict[str, Any],
-    stores: dict[str, dict[str, Any]],
+    stores: dict[str, StoreSummary],
 ) -> str | None:
     """Return the store id for this receipt's store, registering it if new.
 
@@ -164,7 +174,7 @@ def _get_store_id(
 def _get_session_id(
     date: str | None,
     store_id: str | None,
-    sessions: dict[tuple[str | None, str | None], dict[str, Any]],
+    sessions: dict[tuple[str | None, str | None], SessionSummary],
 ) -> int:
     """Return the session id for this receipt, registering it if new."""
     if (key := (date, store_id)) not in sessions:
@@ -196,11 +206,11 @@ _OBS_PROP_KEYS = frozenset(
 def _build_observation(
     item: dict[str, Any],
     session_id: int,
-) -> dict[str, Any]:
+) -> Observation:
     price: float = item["price"]
     grams: float | None = item.get("grams")
     volume_ml: float | None = item.get("volume_ml")
-    obs: dict[str, Any] = {
+    obs: Observation = {
         "original_name": item["name"],
         "session_id": session_id,
         "price": price,
@@ -215,7 +225,9 @@ def _build_observation(
     }
     if props := item.get("properties"):
         # Iterate the (small) props dict rather than always checking 10 keys
-        obs.update({k: v for k, v in props.items() if v and k in _OBS_PROP_KEYS})
+        obs.update(
+            {k: v for k, v in props.items() if v and k in _OBS_PROP_KEYS}  # type: ignore[typeddict-item]
+        )
     return obs
 
 
@@ -224,9 +236,9 @@ class _AggregateState:
     """Mutable accumulators shared across receipt processing."""
 
     matcher: FuzzyMatcher
-    products: dict[str, list[dict[str, Any]]] = dataclasses.field(default_factory=dict)
-    stores: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)
-    sessions: dict[tuple[str | None, str | None], dict[str, Any]] = dataclasses.field(
+    products: dict[str, list[Observation]] = dataclasses.field(default_factory=dict)
+    stores: dict[str, StoreSummary] = dataclasses.field(default_factory=dict)
+    sessions: dict[tuple[str | None, str | None], SessionSummary] = dataclasses.field(
         default_factory=dict
     )
     session_totals: dict[int, float] = dataclasses.field(default_factory=dict)
@@ -260,11 +272,11 @@ def _process_receipt(
 
 
 def _compute_session_totals(
-    sessions: list[dict[str, Any]],
+    sessions: list[SessionSummary],
     totals: dict[int, float],
-) -> list[dict[str, Any]]:
+) -> list[SessionTotal]:
     """Format pre-computed session totals into sorted output list."""
-    result = []
+    result: list[SessionTotal] = []
     for session in sessions:
         sid = session["id"]
         if sid in totals and session["date"] is not None:
@@ -280,8 +292,8 @@ def _compute_session_totals(
 
 
 def _compute_category_rolling_averages(  # pylint: disable=too-many-locals
-    session_cat_totals: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+    session_cat_totals: list[SessionCategoryTotal],
+) -> list[CategoryRollingAverage]:
     """Compute 5-week rolling averages per macro category.
 
     Returns one data point per week, each with per-category averaged values.
@@ -317,7 +329,7 @@ def _compute_category_rolling_averages(  # pylint: disable=too-many-locals
     max_gap_secs = timedelta(weeks=4).total_seconds()
     sorted_dts = sorted(dt for dt, _ in session_points)
 
-    result = []
+    result: list[CategoryRollingAverage] = []
     for i in range(num_weeks):
         w_start = min_week + timedelta(weeks=i)
         j = bisect_left(sorted_dts, w_start)
@@ -350,11 +362,11 @@ def _compute_category_rolling_averages(  # pylint: disable=too-many-locals
 
 
 def _compute_session_category_totals(
-    sessions: list[dict[str, Any]],
+    sessions: list[SessionSummary],
     cat_totals: dict[int, dict[str, float]],
-) -> list[dict[str, Any]]:
+) -> list[SessionCategoryTotal]:
     """Format per-category session totals into sorted output list."""
-    result = []
+    result: list[SessionCategoryTotal] = []
     for session in sessions:
         sid = session["id"]
         if sid in cat_totals and session["date"] is not None:
@@ -372,18 +384,18 @@ def _compute_session_category_totals(
 def compare_receipt_dicts(
     receipts: list[dict[str, Any]],
     threshold: float = 0.90,
-) -> dict[str, Any]:
+) -> CompareResult:
     """Aggregate items across parsed receipt dicts into a price comparison."""
     state = _AggregateState(matcher=FuzzyMatcher(threshold=threshold))
 
     for receipt in receipts:
         _process_receipt(receipt, state)
 
-    result = [
+    products: list[ProductSummary] = [
         {"canonical_name": name, "observations": obs}
         for name, obs in state.products.items()
     ]
-    result.sort(key=lambda p: str(p["canonical_name"]))
+    products.sort(key=lambda p: str(p["canonical_name"]))
     session_list = sorted(state.sessions.values(), key=lambda s: s["id"])
     session_totals = _compute_session_totals(session_list, state.session_totals)
     session_cat_totals = _compute_session_category_totals(
@@ -396,14 +408,14 @@ def compare_receipt_dicts(
         "session_totals": session_totals,
         "session_category_totals": session_cat_totals,
         "category_rolling_averages": cat_rolling,
-        "products": result,
+        "products": products,
     }
 
 
 def compare_receipt_files(
     paths: list[Path],
     threshold: float = 0.90,
-) -> dict[str, Any]:
+) -> CompareResult:
     """Load JSON receipt files and aggregate items for price comparison."""
     receipts: list[dict[str, Any]] = []
     for path in paths:

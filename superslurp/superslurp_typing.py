@@ -166,3 +166,80 @@ class Receipt(TypedDict):
     number_of_items: int
     eligible_tr: float | None
     paid_tr: float | None
+
+
+# ---------------------------------------------------------------------------
+# Aggregate / compare output types
+# ---------------------------------------------------------------------------
+
+
+class StoreSummary(TypedDict):
+    id: str
+    store_name: str | None
+    location: str | None
+    siret: str | None
+    naf: str | None
+
+
+class SessionSummary(TypedDict):
+    id: int
+    date: str | None
+    store_id: str | None
+
+
+class SessionTotal(TypedDict):
+    session_id: int
+    date: str
+    total: float
+
+
+class SessionCategoryTotal(TypedDict):
+    date: str
+    session_id: int
+    categories: dict[str, float]
+
+
+class CategoryRollingAverage(TypedDict):
+    date: str
+    categories: dict[str, float]
+
+
+class _ObservationRequired(TypedDict):
+    original_name: str
+    session_id: int
+    price: float
+    quantity: int
+    grams: float | None
+    discount: float | None
+    price_per_kg: float | None
+    volume_ml: float | None
+    price_per_liter: float | None
+    unit_count: float
+    fat_pct: float | None
+
+
+class Observation(_ObservationRequired, total=False):
+    bio: bool
+    milk_treatment: str
+    production: str
+    brand: str
+    label: str
+    packaging: str
+    origin: str
+    affinage_months: int
+    baby_months: int
+    baby_recipe: str
+
+
+class ProductSummary(TypedDict):
+    canonical_name: str
+    observations: list[Observation]
+
+
+class CompareResult(TypedDict):
+    stores: list[StoreSummary]
+    sessions: list[SessionSummary]
+    session_totals: list[SessionTotal]
+    session_category_totals: list[SessionCategoryTotal]
+    category_rolling_averages: list[CategoryRollingAverage]
+    products: list[ProductSummary]

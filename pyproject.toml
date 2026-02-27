@@ -84,7 +84,6 @@ main.disable = [
     "while-used",                     # while loops are fine
     "redefined-variable-type",        # narrowing types is fine
     "consider-using-assignment-expr", # walrus operator preference
-    "unsubscriptable-object",         # false positive with TypedDict
     "duplicate-code",                 # tuple unpacking of _parse_name_attributes at call sites
 ]
 

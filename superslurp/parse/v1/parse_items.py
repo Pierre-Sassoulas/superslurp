@@ -91,7 +91,7 @@ def get_new_category(line: str) -> Category:
 
 def get_item_from_item_infos(
     item_info: re.Match[str],
-    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
+    synonyms: CompiledSynonyms | None = None,
 ) -> Item:
     if (matched_name := item_info.group("name")) is None:
         raise ValueError(f"Nothing matched the name in {item_info}")

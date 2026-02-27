@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from typing import NamedTuple
 
 # Words stripped for matching: variety, color, packaging, origin, brand, qualifiers
 _STRIP_WORDS = frozenset(
@@ -246,31 +247,65 @@ _UNIT_COUNT_PATTERN = re.compile(
 )
 
 
+class CompiledSynonyms(NamedTuple):
+    """Pre-compiled synonym patterns split into multi-word (sequential) and
+    single-word (single alternation regex with dict callback) for performance.
+    """
+
+    multi_word: list[tuple[re.Pattern[str], str]]
+    single_word_re: re.Pattern[str] | None
+    single_word_map: dict[str, str]
+
+
 def compile_synonyms(
     synonyms: dict[str, str],
-) -> list[tuple[re.Pattern[str], str]]:
-    """Pre-compile synonym dict into a list of (compiled_regex, replacement).
+) -> CompiledSynonyms:
+    """Pre-compile synonym dict into a structure optimised for fast expansion.
+
+    Single-word synonyms are collapsed into one alternation regex with a
+    dict callback, reducing per-item cost from O(N) regex subs to O(1).
+    Multi-word synonyms are kept as sequential patterns (order matters).
 
     Call once per synonym dict, then pass the result to :func:`expand_synonyms`.
     """
-    compiled: list[tuple[re.Pattern[str], str]] = []
+    multi_word: list[tuple[re.Pattern[str], str]] = []
+    single_word_map: dict[str, str] = {}
+
     for pattern, replacement in synonyms.items():
         pat = pattern.replace(".", " ").strip()
         if not pat:
             continue
-        escaped_words = [re.escape(w) for w in pat.split()]
-        regex = (
+        words = pat.split()
+        if len(words) > 1:
+            escaped_words = [re.escape(w) for w in words]
+            regex = (
+                r"(?:(?<=[\s.])|(?<=^)|(?<=\b))"
+                + r"[.\s]+".join(escaped_words)
+                + r"(?=[\s.\d]|$|\b)"
+            )
+            multi_word.append((re.compile(regex, re.IGNORECASE), replacement))
+        else:
+            single_word_map[pat.upper()] = replacement
+
+    # Build one alternation regex for all single-word synonyms (longest first
+    # so that e.g. "BLEDIN" matches before "BLED" at the regex level).
+    single_word_re: re.Pattern[str] | None = None
+    if single_word_map:
+        alts = sorted(single_word_map, key=len, reverse=True)
+        alt_pattern = "|".join(re.escape(a) for a in alts)
+        single_word_re = re.compile(
             r"(?:(?<=[\s.])|(?<=^)|(?<=\b))"
-            + r"[.\s]+".join(escaped_words)
-            + r"(?=[\s.\d]|$|\b)"
+            + rf"({alt_pattern})"
+            + r"(?=[\s.\d]|$|\b)",
+            re.IGNORECASE,
         )
-        compiled.append((re.compile(regex, re.IGNORECASE), replacement))
-    return compiled
+
+    return CompiledSynonyms(multi_word, single_word_re, single_word_map)
 
 
 def expand_synonyms(
     name: str,
-    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]],
+    synonyms: dict[str, str] | CompiledSynonyms,
 ) -> str:
     """Expand abbreviations in a product name using an ordered synonym dict.
 
@@ -283,22 +318,27 @@ def expand_synonyms(
     only **after** all synonyms have been applied.
 
     *synonyms* can be either a raw ``dict[str, str]`` (compiled on the fly)
-    or a pre-compiled list from :func:`compile_synonyms` (much faster when
-    called repeatedly).
+    or a pre-compiled :class:`CompiledSynonyms` from :func:`compile_synonyms`
+    (much faster when called repeatedly).
     """
     if isinstance(synonyms, dict):
         compiled = compile_synonyms(synonyms)
     else:
         compiled = synonyms
-    for pattern, replacement in compiled:
+    # Multi-word patterns first (order matters: they take priority)
+    for pattern, replacement in compiled.multi_word:
         name = pattern.sub(replacement, name)
+    # Single-word patterns in one pass via alternation regex
+    if compiled.single_word_re is not None:
+        lookup = compiled.single_word_map
+        name = compiled.single_word_re.sub(lambda m: lookup[m.group(1).upper()], name)
     name = name.replace(".", " ")
     return _MULTI_SPACE.sub(" ", name).strip()
 
 
 def normalize_for_matching(
     name: str,
-    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
+    synonyms: dict[str, str] | CompiledSynonyms | None = None,
 ) -> str:
     """Normalize a product name for fuzzy matching.
 
@@ -525,10 +565,14 @@ _KNOWN_BRANDS_RE = re.compile(
 def get_brand(name: str) -> str | None:
     """Detect a known brand in a product name.
 
-    Returns the brand string or ``None``.
+    When multiple brands match (e.g. ``MARS`` + ``U`` in a laundry product),
+    the **rightmost** match is returned — in receipt names the actual product
+    brand appears after the description, before the quantity info.
     """
-    m = _KNOWN_BRANDS_RE.search(name.upper())
-    return m.group(0) if m else None
+    matches = list(_KNOWN_BRANDS_RE.finditer(name.upper()))
+    if not matches:
+        return None
+    return matches[-1].group(0)
 
 
 def strip_brand(name: str, brand: str) -> str:
@@ -563,7 +607,7 @@ def strip_quality_label(name: str) -> str:
     """Remove quality label tokens (LABEL ROUGE, AOP, IGP, LR) from *name*."""
     for pattern, _ in _QUALITY_LABEL_PATTERNS:
         name = pattern.sub("", name)
-    return re.sub(r"\s+", " ", name).strip()
+    return _MULTI_SPACE.sub(" ", name).strip()
 
 
 _KNOWN_PACKAGING = frozenset(
@@ -588,6 +632,18 @@ _PACKAGING_ALIASES: dict[str, str] = {
     "TUB": "TUBE",
 }
 
+# Build a single alternation regex for packaging detection.  Aliases first
+# (sorted longest-first), then canonical names (sorted longest-first).
+_PACKAGING_ALL_WORDS = sorted(
+    list(_PACKAGING_ALIASES) + list(_KNOWN_PACKAGING), key=len, reverse=True
+)
+_PACKAGING_RE = re.compile(
+    r"\b(" + "|".join(re.escape(w) for w in _PACKAGING_ALL_WORDS) + r")\b"
+)
+# Lookup: word → canonical name (aliases map to their canonical, rest map to self)
+_PACKAGING_LOOKUP: dict[str, str] = {pkg: pkg for pkg in _KNOWN_PACKAGING}
+_PACKAGING_LOOKUP.update(_PACKAGING_ALIASES)
+
 
 def get_packaging(name: str) -> str | None:
     """Detect a known packaging type in a product name.
@@ -596,14 +652,10 @@ def get_packaging(name: str) -> str | None:
     are handled by synonym expansion before this function is called.
     Aliases like TUB → TUBE are resolved to the canonical name.
     """
-    upper = name.upper()
-    for alias, canonical in _PACKAGING_ALIASES.items():
-        if re.search(r"\b" + re.escape(alias) + r"\b", upper):
-            return canonical
-    for pkg in _KNOWN_PACKAGING:
-        if re.search(r"\b" + re.escape(pkg) + r"\b", upper):
-            return pkg
-    return None
+    m = _PACKAGING_RE.search(name.upper())
+    if m is None:
+        return None
+    return _PACKAGING_LOOKUP[m.group(1)]
 
 
 def strip_packaging(name: str, packaging: str) -> str:
@@ -634,16 +686,23 @@ _KNOWN_ORIGINS: dict[str, str] = {
 }
 
 
+_ORIGIN_RE = re.compile(
+    r"\b("
+    + "|".join(re.escape(w) for w in sorted(_KNOWN_ORIGINS, key=len, reverse=True))
+    + r")\b"
+)
+
+
 def get_origin(name: str) -> tuple[str, str] | None:
     """Detect a known origin in a product name.
 
     Returns ``(normalized_country, matched_word)`` or ``None``.
     """
-    upper = name.upper()
-    for word, country in _KNOWN_ORIGINS.items():
-        if re.search(r"\b" + re.escape(word) + r"\b", upper):
-            return country, word
-    return None
+    m = _ORIGIN_RE.search(name.upper())
+    if m is None:
+        return None
+    word = m.group(1)
+    return _KNOWN_ORIGINS[word], word
 
 
 def strip_origin(name: str, origin_word: str) -> str:

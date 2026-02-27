@@ -13,6 +13,7 @@ from superslurp.compare.aggregate import compare_receipt_dicts
 from superslurp.compare.html_report import generate_html
 from superslurp.extract import convert_to_text
 from superslurp.parse import parse_text
+from superslurp.parse.common import CompiledSynonyms, resolve_synonyms
 from superslurp.serialize.json_dump import make_json_serializable
 
 
@@ -28,6 +29,7 @@ def parse_superu_receipt(
     *,
     debug: bool = False,
     synonyms: dict[str, str] | None = None,
+    compiled_synonyms: CompiledSynonyms | None = None,
 ) -> dict[str, Any]:
     """Parse a SuperU receipt PDF into a dict.
 
@@ -37,10 +39,13 @@ def parse_superu_receipt(
     When synonyms is provided (an ordered dict mapping patterns to
     replacements), item names are expanded before output. Iteration order
     matters: put multi-word patterns before single-word fallbacks.
+
+    When *compiled_synonyms* is provided, synonym compilation is skipped
+    (use :func:`resolve_synonyms` to pre-compile once for many receipts).
     """
     text = convert_to_text(filename)
     logging.debug("Extracted text, parsing receipt...")
-    receipt = parse_text(text, synonyms=synonyms)
+    receipt = parse_text(text, synonyms=synonyms, compiled_synonyms=compiled_synonyms)
     logging.debug("Parsing done, checking consistency...")
     check_consistency(receipt)
     logging.debug("Rendering json result...")
@@ -57,7 +62,10 @@ def generate_report(
 
     Returns a self-contained HTML string with an interactive price dashboard.
     """
-    receipts = [parse_superu_receipt(f, synonyms=synonyms) for f in filenames]
+    compiled_syn = resolve_synonyms(synonyms)
+    receipts = [
+        parse_superu_receipt(f, compiled_synonyms=compiled_syn) for f in filenames
+    ]
     aggregate = compare_receipt_dicts(receipts, threshold=threshold)
     return generate_html(aggregate)
 

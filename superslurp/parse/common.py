@@ -3,8 +3,11 @@ from __future__ import annotations
 import dataclasses
 import re
 
+__all__ = ["CompiledSynonyms"]
+
 from superslurp.compare.normalize import (
     _BABY_DEFINITE_RE,
+    CompiledSynonyms,
     compile_synonyms,
     expand_synonyms,
     extract_unit_count,
@@ -26,8 +29,6 @@ from superslurp.compare.normalize import (
     strip_quality_label,
 )
 from superslurp.superslurp_typing import Category, Item, Properties
-
-CompiledSynonyms = list[tuple[re.Pattern[str], str]]
 
 
 def resolve_synonyms(
@@ -66,6 +67,28 @@ _BARE_FAT_PCT_STRIP = re.compile(
 
 _PACKAGING_ABBREV_RE = re.compile(r"\bBK\b")
 _PACKAGING_ABBREV_BL_RE = re.compile(r"\bBL\b")
+
+# Pre-compiled patterns for _get_gram, _get_fat_pct, _infer_milk_fat_pct
+_GRAM_PATTERN = re.compile(
+    r"(?P<multiplier>\d+X)?(?P<grams>\d?[\d+,]?\d+K?GR?(?: ENVIRON)?)"
+    r"(?:\+(?P<bonus>\d+)%)?"
+)
+_FAT_EXTRACT_RE = re.compile(r"(\d+[.,]?\d*)%\s*(?:MG|MAT\.?\s*GR\.?)\b")
+_LAIT_RE = re.compile(r"\bLAIT\b")
+_DEMI_ECREM_RE = re.compile(r"\bDEMI[\s-]?ECREM|1/2\s*ECREM")
+_ECREM_RE = re.compile(r"\bECREM")
+_ENTIER_RE = re.compile(r"\bENTIER\b")
+
+# Pre-compiled patterns for _extract_properties
+_BIO_RE = re.compile(r"\bBIO\b")
+_LAIT_TREATMENT_RE = re.compile(r"\bLAIT\s+(?:PASTEURISE|CRU\s+THERMISE|CRU|UHT)")
+_THERMISE_RE = re.compile(r"\bTHERMISE\w*")
+_PASTEURISE_RE = re.compile(r"\bPASTEURISE\w*")
+_CRU_UHT_RE = re.compile(r"\b(?:CRU|UHT)\b")
+_FERMIER_RE = re.compile(r"\bFERMIER\b", re.IGNORECASE)
+_LAITIER_RE = re.compile(r"\bLAITIER\b", re.IGNORECASE)
+_MULTI_SPACE_RE = re.compile(r"\s+")
+_LEADING_ARITH_RE = re.compile(r"^\d+[+/]\d+\s*")
 
 # ---------------------------------------------------------------------------
 # Category sets
@@ -115,11 +138,7 @@ def _get_offert(name: str) -> int | None:
 def _get_gram(name: str) -> tuple[str, float | None, int | None]:
     grams = None
     units: int | None = None
-    search = re.search(
-        r"(?P<multiplier>\d+X)?(?P<grams>\d?[\d+,]?\d+K?GR?(?: ENVIRON)?)"
-        r"(?:\+(?P<bonus>\d+)%)?",
-        name,
-    )
+    search = _GRAM_PATTERN.search(name)
     if search is None:
         return name, None, None
     if (grams_as_str := search.group("grams")) is not None:
@@ -171,7 +190,7 @@ def _get_volume(name: str) -> tuple[str, float | None, int | None]:
 
 def _get_fat_pct(name: str) -> float | None:
     """Extract fat percentage (%MG or %MAT.GR) from a product name."""
-    m = re.search(r"(\d+[.,]?\d*)%\s*(?:MG|MAT\.?\s*GR\.?)\b", name)
+    m = _FAT_EXTRACT_RE.search(name)
     if m is None:
         return None
     return float(m.group(1).replace(",", "."))
@@ -185,14 +204,14 @@ def _infer_milk_fat_pct(name: str) -> float | None:
     * *Lait écrémé* → 0.5 %
     """
     upper = name.upper()
-    if not re.search(r"\bLAIT\b", upper):
+    if not _LAIT_RE.search(upper):
         return None
     # Demi-écrémé / 1/2 écrémé — check before plain écrémé
-    if re.search(r"\bDEMI[\s-]?ECREM|1/2\s*ECREM", upper):
+    if _DEMI_ECREM_RE.search(upper):
         return 1.5
-    if re.search(r"\bECREM", upper):
+    if _ECREM_RE.search(upper):
         return 0.5
-    if re.search(r"\bENTIER\b", upper):
+    if _ENTIER_RE.search(upper):
         return 3.6
     return None
 
@@ -246,7 +265,7 @@ class ParsedAttributes:  # pylint: disable=too-many-instance-attributes
 
 def _parse_name_attributes(  # pylint: disable=too-many-locals
     raw_name: str,
-    synonyms: dict[str, str] | list[tuple[re.Pattern[str], str]] | None = None,
+    synonyms: dict[str, str] | CompiledSynonyms | None = None,
 ) -> ParsedAttributes:
     """Extract name, grams, units, fat%, bio, milk, volume, brand, label,
     packaging, origin, affinage, production, baby_months, baby_recipe.
@@ -275,7 +294,7 @@ def _parse_name_attributes(  # pylint: disable=too-many-locals
         units = extract_unit_count(raw_name)
         if units is not None:
             name = _UNIT_PATTERN.sub("", name).strip()
-            name = re.sub(r"^\d+[+/]\d+\s*", "", name).strip()
+            name = _LEADING_ARITH_RE.sub("", name).strip()
     fat_pct = _get_fat_pct(name)
     if fat_pct is not None:
         name = _FAT_PCT_PATTERN.sub("", name).strip()
@@ -333,23 +352,23 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many
     baby_recipe = get_baby_recipe(name) or get_baby_recipe(raw_name)
     bio = is_bio(raw_name)
     if bio:
-        name = re.sub(r"\bBIO\b", "", name).strip()
+        name = _BIO_RE.sub("", name).strip()
     milk_treatment = get_milk_treatment(raw_name)
     if milk_treatment is not None:
-        m = re.search(r"\bLAIT\s+(?:PASTEURISE|CRU\s+THERMISE|CRU|UHT)", name)
+        m = _LAIT_TREATMENT_RE.search(name)
         if m and m.start() == 0:
             # LAIT is the product (liquid) — keep it, only strip treatment word
             name = name[: m.start()] + "LAIT" + name[m.end() :]
         elif m:
             # LAIT is a qualifier (cheese, etc.) — strip entirely
             name = name[: m.start()] + name[m.end() :]
-        name = re.sub(r"\bTHERMISE\w*", "", name).strip()
-        name = re.sub(r"\bPASTEURISE\w*", "", name).strip()
-        name = re.sub(r"\b(?:CRU|UHT)\b", "", name).strip()
+        name = _THERMISE_RE.sub("", name).strip()
+        name = _PASTEURISE_RE.sub("", name).strip()
+        name = _CRU_UHT_RE.sub("", name).strip()
     production = get_production(raw_name)
     if production is not None:
-        name = re.sub(r"\bFERMIER\b", "", name, flags=re.IGNORECASE).strip()
-        name = re.sub(r"\bLAITIER\b", "", name, flags=re.IGNORECASE).strip()
+        name = _FERMIER_RE.sub("", name).strip()
+        name = _LAITIER_RE.sub("", name).strip()
     brand = get_brand(raw_name) or get_brand(name)
     if brand is not None:
         stripped = strip_brand(name, brand)
@@ -378,7 +397,7 @@ def _extract_properties(  # pylint: disable=too-many-locals,too-complex,too-many
             baby_type = get_baby_food_type(raw_name) or get_baby_food_type(name)
             if baby_type is not None:
                 name = baby_type
-    name = re.sub(r"\s+", " ", name).strip()
+    name = _MULTI_SPACE_RE.sub(" ", name).strip()
     return (
         name,
         bio,

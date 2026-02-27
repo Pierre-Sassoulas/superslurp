@@ -8,6 +8,120 @@ from typing import Any
 
 from superslurp.compare.matcher import FuzzyMatcher
 
+_CATEGORY_GROUPS: dict[str, str] = {
+    # Fruits & Legumes
+    "FRUITS ET LEGUMES": "Fruits & Legumes",
+    "FRUITS": "Fruits & Legumes",
+    "LEGUMES": "Fruits & Legumes",
+    # Fromage
+    "FROMAGE A LA COUPE": "Fromage",
+    "FROMAGE COUPE": "Fromage",
+    "FROMAGE COUPE EMBALLE": "Fromage",
+    "FROMAGE LS": "Fromage",
+    # Cremerie
+    "CREMERIE L.S.": "Cremerie",
+    "LAITS ET DERIVES": "Cremerie",
+    "BEURRE": "Cremerie",
+    "MARGARINES ET COMPOSES": "Cremerie",
+    "OEUFS": "Cremerie",
+    "ULTRA FRAIS": "Cremerie",
+    "DESSERTS TOUT PRETS": "Cremerie",
+    # Viande & Charcuterie
+    "BOUCH.LS.INDUST.": "Viande & Charcuterie",
+    "BOUCH.VOL.ATELIER": "Viande & Charcuterie",
+    "BOUCHERIE FRAICHE PREEMB": "Viande & Charcuterie",
+    "BOUCH.LS (UVCI)": "Viande & Charcuterie",
+    "VOL.LS INDUST.": "Viande & Charcuterie",
+    "VOL.LS STANDARD": "Viande & Charcuterie",
+    "CHARC.TRAIT.SAUC.SECS L": "Viande & Charcuterie",
+    "CHARCT.LS UVCI": "Viande & Charcuterie",
+    "CHARCT.TRAIT.TRADT.": "Viande & Charcuterie",
+    "CHARCUTERIE FRAICH EMBAL": "Viande & Charcuterie",
+    "TRAITEUR FRAIS EMBALLE": "Viande & Charcuterie",
+    "TRAITEUR LS UVCI": "Viande & Charcuterie",
+    # Poisson
+    "POISSON LS UVCI": "Poisson",
+    "POISSON TRADITIONNEL": "Poisson",
+    "POISSONNERIE": "Poisson",
+    "VENTE DIVERSE POISSON AR": "Poisson",
+    "CONSERVES DE POISSON": "Poisson",
+    # Boulangerie
+    "BOULANGERIE": "Boulangerie",
+    "BVP": "Boulangerie",
+    "VIENNOISERIE": "Boulangerie",
+    "VIENNOISERIE INDUSTRIELLE": "Boulangerie",
+    "PATISSERIE": "Boulangerie",
+    "PATIS.INDUSTRIELLE": "Boulangerie",
+    "PAT INDUSTRIELLE": "Boulangerie",
+    "PAIN DE MIE (LS)": "Boulangerie",
+    "AIDE PATISSERIE": "Boulangerie",
+    # Epicerie
+    "EPICERIE": "Epicerie",
+    "PATES": "Epicerie",
+    "FARINES ET FECULENTS": "Epicerie",
+    "COUSCOUS PUREE LEG SECS BLE": "Epicerie",
+    "CONSERVES DE LEGUMES": "Epicerie",
+    "CONSERVES DE VIANDES": "Epicerie",
+    "CEREALES ET POUDRES CHOCOLAT": "Epicerie",
+    "CONFITURES MIEL P.A.TARTINER": "Epicerie",
+    "HUILES": "Epicerie",
+    "SEL": "Epicerie",
+    "SUCRES": "Epicerie",
+    "VINAIGRES ET VINAIGRETTES": "Epicerie",
+    "CONDIMENTS-SAUCES FROIDE": "Epicerie",
+    "SAUCES CHAUDES": "Epicerie",
+    "PRODUITS ETRANGERS": "Epicerie",
+    # Sucre
+    "BISCUITS SUCRES": "Sucre",
+    "CHOCOLATS TABLETTES": "Sucre",
+    "CONFISERIE CAISSE": "Sucre",
+    # Boissons
+    "LIQUIDES": "Boissons",
+    "BOISSONS SANS ALCOOL": "Boissons",
+    "JUS DE FRUITS FRAIS": "Boissons",
+    "JUS ET NECTARS": "Boissons",
+    "SIROPS": "Boissons",
+    "THES ET INFUSIONS": "Boissons",
+    # Surgeles
+    "SURGELES": "Surgeles",
+    "SURGELE SALE": "Surgeles",
+    "SURGELE SUCRE": "Surgeles",
+    # Bebe
+    "ALIMENTS POUR ENFANTS": "Bebe",
+    # Hygiene
+    "BEAUTE SANTE": "Hygiene",
+    "HYGIENE FEMININE": "Hygiene",
+    "PARFUMERIE": "Hygiene",
+    "PETITE PARAPHARMACIE": "Hygiene",
+    "COTON": "Hygiene",
+    # Entretien
+    "ENTRETIEN": "Entretien",
+    "ENTRETIEN DU LINGE": "Entretien",
+    "PRODUITS VAISSELLE": "Entretien",
+    "EMBALLAGE MENAGER": "Entretien",
+    "PAPIER TOILETTE": "Entretien",
+    # Maison
+    "EQUIPEMENT DE LA MAISON": "Maison",
+    "BRICOLAGE": "Maison",
+    "BRICOLAGE JARDINAGE AUT": "Maison",
+    "BAZAR A SERVICE": "Maison",
+    "LA CUISINE": "Maison",
+    "LINGE DE MAISON": "Maison",
+    "CULTURE": "Maison",
+    "LOISIRS": "Maison",
+    "JOUETS": "Maison",
+    "PAPETERIE ECRITURE": "Maison",
+    "CHIEN-CHAT": "Maison",
+    # Textile
+    "VETEMENT": "Textile",
+    "VETEMENT FEMME": "Textile",
+    "CHAUSSURE": "Textile",
+    "COLLANT-CHAUSSETTES": "Textile",
+    "EQUIPEMENT": "Textile",
+    "SOUS-VETEMENT": "Textile",
+    "S.VETEMENT LAYETTE": "Textile",
+}
+
 
 def _extract_location(store: dict[str, Any]) -> str | None:
     """Extract city/location from a store's address lines."""
@@ -111,6 +225,7 @@ def _process_receipt(  # pylint: disable=too-many-arguments,too-many-positional-
     stores: dict[str, dict[str, Any]],
     sessions: dict[tuple[str | None, str | None], dict[str, Any]],
     session_totals: dict[int, float],
+    session_cat_totals: dict[int, dict[str, float]],
 ) -> None:
     date = receipt.get("date")
     store_data: dict[str, Any] = receipt.get("store", {})
@@ -118,12 +233,16 @@ def _process_receipt(  # pylint: disable=too-many-arguments,too-many-positional-
     session_id = _get_session_id(date, store_id, sessions)
     items_by_category: dict[str, list[dict[str, Any]]] = receipt.get("items", {})
     session_total = 0.0
-    for category_items in items_by_category.values():
+    for category, category_items in items_by_category.items():
+        group = _CATEGORY_GROUPS.get(category, "Autre")
         for item in category_items:
             key = matcher.match(item["name"])
             obs = _build_observation(item, session_id)
             products.setdefault(key, []).append(obs)
-            session_total += obs["price"] * obs["quantity"]
+            spent = obs["price"] * obs["quantity"]
+            session_total += spent
+            cat_acc = session_cat_totals.setdefault(session_id, {})
+            cat_acc[group] = cat_acc.get(group, 0) + spent
     session_totals[session_id] = session_totals.get(session_id, 0) + session_total
 
 
@@ -147,49 +266,47 @@ def _compute_session_totals(
     return result
 
 
-def _build_weekly_sums(
-    points: list[tuple[datetime, float]],
-) -> tuple[list[datetime], list[float]]:
-    """Bucket session totals into Monday-aligned weeks."""
-    first_dt = points[0][0]
-    min_week = first_dt - timedelta(days=first_dt.weekday())
-    max_dt = points[-1][0]
-    # Bucket points by week offset in O(P)
-    buckets: dict[int, float] = {}
-    for dt, total in points:
-        idx = (dt - min_week).days // 7
-        buckets[idx] = buckets.get(idx, 0) + total
-    # Build contiguous week list in O(W)
-    num_weeks = (max_dt - min_week).days // 7 + 2
-    week_starts: list[datetime] = []
-    week_sums: list[float] = []
-    for i in range(num_weeks):
-        week_starts.append(min_week + timedelta(weeks=i))
-        week_sums.append(buckets.get(i, 0))
-    return week_starts, week_sums
-
-
-def _compute_rolling_average(
-    session_totals: list[dict[str, Any]],
+def _compute_category_rolling_averages(  # pylint: disable=too-many-locals
+    session_cat_totals: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Compute a 5-week rolling average (current week +/- 2 weeks).
+    """Compute 5-week rolling averages per macro category.
 
-    Returns one data point per week. Weeks more than 4 weeks away from
-    any session are skipped (data gaps).
+    Returns one data point per week, each with per-category averaged values.
+    Weeks more than 4 weeks away from any session are skipped (data gaps).
     """
-    if not session_totals:
+    if not session_cat_totals:
         return []
 
-    points = [
-        (datetime.strptime(e["date"], "%Y-%m-%d"), e["total"]) for e in session_totals
-    ]
-    week_starts, week_sums = _build_weekly_sums(points)
+    # Parse all session dates and collect category names
+    all_cats: set[str] = set()
+    session_points: list[tuple[datetime, dict[str, float]]] = []
+    for entry in session_cat_totals:
+        dt = datetime.strptime(entry["date"], "%Y-%m-%d")
+        session_points.append((dt, entry["categories"]))
+        all_cats.update(entry["categories"])
 
+    session_points.sort(key=lambda p: p[0])
+
+    # Monday-aligned week grid
+    first_dt = session_points[0][0]
+    min_week = first_dt - timedelta(days=first_dt.weekday())
+    max_dt = session_points[-1][0]
+    num_weeks = (max_dt - min_week).days // 7 + 2
+
+    # Bucket spending per category per week
+    cat_week_sums: dict[str, list[float]] = {cat: [0.0] * num_weeks for cat in all_cats}
+    for dt, categories in session_points:
+        idx = (dt - min_week).days // 7
+        for cat, val in categories.items():
+            cat_week_sums[cat][idx] += val
+
+    # Gap detection via bisect (skip weeks >4 weeks from any session)
     max_gap_secs = timedelta(weeks=4).total_seconds()
-    # Pre-sort session datetimes for O(log P) nearest-point lookup via bisect
-    sorted_dts = sorted(dt for dt, _ in points)
+    sorted_dts = sorted(dt for dt, _ in session_points)
+
     result = []
-    for i, w_start in enumerate(week_starts):
+    for i in range(num_weeks):
+        w_start = min_week + timedelta(weeks=i)
         j = bisect_left(sorted_dts, w_start)
         nearest = min(
             (
@@ -200,15 +317,42 @@ def _compute_rolling_average(
         )
         if nearest > max_gap_secs:
             continue
-        window = [
-            week_sums[j] for j in range(max(0, i - 2), min(len(week_sums), i + 3))
-        ]
-        result.append(
-            {
-                "date": w_start.strftime("%Y-%m-%d"),
-                "value": round(sum(window) / len(window), 2),
-            }
-        )
+
+        lo = max(0, i - 2)
+        hi = min(num_weeks, i + 3)
+        window_len = hi - lo
+        cats: dict[str, float] = {}
+        for cat in all_cats:
+            if (avg := sum(cat_week_sums[cat][lo:hi]) / window_len) > 0:
+                cats[cat] = round(avg, 2)
+
+        if cats:
+            result.append(
+                {
+                    "date": w_start.strftime("%Y-%m-%d"),
+                    "categories": cats,
+                }
+            )
+    return result
+
+
+def _compute_session_category_totals(
+    sessions: list[dict[str, Any]],
+    cat_totals: dict[int, dict[str, float]],
+) -> list[dict[str, Any]]:
+    """Format per-category session totals into sorted output list."""
+    result = []
+    for session in sessions:
+        sid = session["id"]
+        if sid in cat_totals and session["date"] is not None:
+            result.append(
+                {
+                    "date": session["date"][:10],
+                    "session_id": sid,
+                    "categories": {k: round(v, 2) for k, v in cat_totals[sid].items()},
+                }
+            )
+    result.sort(key=lambda e: str(e["date"]))
     return result
 
 
@@ -222,10 +366,17 @@ def compare_receipt_dicts(
     stores: dict[str, dict[str, Any]] = {}
     sessions: dict[tuple[str | None, str | None], dict[str, Any]] = {}
     session_totals_acc: dict[int, float] = {}
+    session_cat_totals_acc: dict[int, dict[str, float]] = {}
 
     for receipt in receipts:
         _process_receipt(
-            receipt, matcher, products, stores, sessions, session_totals_acc
+            receipt,
+            matcher,
+            products,
+            stores,
+            sessions,
+            session_totals_acc,
+            session_cat_totals_acc,
         )
 
     result = [
@@ -234,12 +385,16 @@ def compare_receipt_dicts(
     result.sort(key=lambda p: str(p["canonical_name"]))
     session_list = sorted(sessions.values(), key=lambda s: s["id"])
     session_totals = _compute_session_totals(session_list, session_totals_acc)
-    rolling_avg = _compute_rolling_average(session_totals)
+    session_cat_totals = _compute_session_category_totals(
+        session_list, session_cat_totals_acc
+    )
+    cat_rolling = _compute_category_rolling_averages(session_cat_totals)
     return {
         "stores": list(stores.values()),
         "sessions": session_list,
         "session_totals": session_totals,
-        "rolling_average": rolling_avg,
+        "session_category_totals": session_cat_totals,
+        "category_rolling_averages": cat_rolling,
         "products": result,
     }
 

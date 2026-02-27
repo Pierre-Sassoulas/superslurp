@@ -295,37 +295,76 @@ function showSessionDetail(entry) {
 
 const sessionTotals = buildSessionTotals();
 
-// Rolling average (pre-computed in Python)
-const rollingAvg = DATA.rolling_average;
+// --- Category color palette ---
+const CATEGORY_COLORS = {
+  "Fruits & Legumes": "#22c55e",
+  "Fromage": "#eab308",
+  "Cremerie": "#06b6d4",
+  "Viande & Charcuterie": "#ef4444",
+  "Poisson": "#3b82f6",
+  "Boulangerie": "#a855f7",
+  "Epicerie": "#78716c",
+  "Sucre": "#ec4899",
+  "Boissons": "#14b8a6",
+  "Surgeles": "#6366f1",
+  "Bebe": "#f472b6",
+  "Hygiene": "#8b5cf6",
+  "Entretien": "#64748b",
+  "Maison": "#d97706",
+  "Textile": "#0ea5e9",
+  "Autre": "#a3a3a3",
+};
+
+// --- Build stacked category datasets from rolling averages ---
+const catRolling = DATA.category_rolling_averages || [];
+const allCats = new Set();
+catRolling.forEach(e => Object.keys(e.categories).forEach(c => allCats.add(c)));
+// Stable ordering: match CATEGORY_COLORS key order, then alphabetical for extras
+const catOrder = Object.keys(CATEGORY_COLORS);
+const sortedCats = Array.from(allCats).sort((a, b) => {
+  const ia = catOrder.indexOf(a);
+  const ib = catOrder.indexOf(b);
+  if (ia !== -1 && ib !== -1) return ia - ib;
+  if (ia !== -1) return -1;
+  if (ib !== -1) return 1;
+  return a.localeCompare(b);
+});
 
 // x-labels: union of rolling avg dates + session dates, sorted
-const allDates = new Set(rollingAvg.map(r => r.date));
+const allDates = new Set(catRolling.map(r => r.date));
 sessionTotals.forEach(e => allDates.add(e.date.slice(0, 10)));
 const xLabels = Array.from(allDates).sort();
 
+const catDatasets = sortedCats.map(cat => ({
+  label: cat,
+  type: "line",
+  data: xLabels.map(d => {
+    const entry = catRolling.find(e => e.date === d);
+    if (!entry) return null;
+    return entry.categories[cat] || 0;
+  }),
+  borderColor: CATEGORY_COLORS[cat] || "#a3a3a3",
+  backgroundColor: (CATEGORY_COLORS[cat] || "#a3a3a3") + "40",
+  fill: true,
+  stack: "categories",
+  tension: 0.3,
+  spanGaps: true,
+  pointRadius: 0,
+  borderWidth: 1.5,
+  order: 10,
+}));
+
+// Session dots dataset index = catDatasets.length (after all category datasets)
+const sessionDsIndex = catDatasets.length;
+
 const sessionChart = new Chart(document.getElementById("sessionChart"), {
-  type: "bar",
+  type: "line",
   data: {
     labels: xLabels,
     datasets: [
+      ...catDatasets,
       {
-        label: "EUR/week (5-week rolling avg)",
-        type: "line",
-        data: xLabels.map(d => {
-          const r = rollingAvg.find(r => r.date === d);
-          return r ? r.value : null;
-        }),
-        borderColor: "#2563eb",
-        backgroundColor: "rgba(37,99,235,0.08)",
-        fill: true,
-        tension: 0.3,
-        pointRadius: 0,
-        borderWidth: 2,
-        spanGaps: true,
-        order: 2,
-      },
-      {
-        label: "Session (click for details)",
+        label: "Session total (click for details)",
         type: "line",
         data: xLabels.map(d => {
           const s = sessionTotals.find(
@@ -339,15 +378,21 @@ const sessionChart = new Chart(document.getElementById("sessionChart"), {
         pointHoverRadius: 8,
         pointBackgroundColor: "rgba(220,38,38,0.7)",
         showLine: false,
+        stack: false,
+        fill: false,
         order: 1,
-      }
+      },
     ]
   },
   options: {
     responsive: true,
+    interaction: {
+      mode: "nearest",
+      intersect: false,
+    },
     onClick: function(evt, elements) {
       const sessionEls = elements.filter(
-        el => el.datasetIndex === 1
+        el => el.datasetIndex === sessionDsIndex
       );
       if (sessionEls.length > 0) {
         const date = xLabels[sessionEls[0].index];
@@ -360,11 +405,16 @@ const sessionChart = new Chart(document.getElementById("sessionChart"), {
     plugins: {
       tooltip: {
         filter: function(item) {
-          return item.raw !== null;
+          return item.raw !== null && item.raw !== 0;
         },
         callbacks: {
+          label: function(ctx) {
+            const val = ctx.raw;
+            if (val == null) return null;
+            return ctx.dataset.label + ": " + val.toFixed(2) + " EUR";
+          },
           afterLabel: function(ctx) {
-            if (ctx.datasetIndex === 1) {
+            if (ctx.datasetIndex === sessionDsIndex) {
               const date = xLabels[ctx.dataIndex];
               const entry = sessionTotals.find(
                 e => e.date.slice(0, 10) === date
@@ -376,10 +426,15 @@ const sessionChart = new Chart(document.getElementById("sessionChart"), {
             return "";
           }
         }
-      }
+      },
+      legend: {
+        position: "top",
+        labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } },
+      },
     },
     scales: {
       y: {
+        stacked: true,
         beginAtZero: true,
         title: { display: true, text: "EUR" }
       },

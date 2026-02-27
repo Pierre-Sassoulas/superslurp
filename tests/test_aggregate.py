@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from superslurp.compare.aggregate import (
-    _compute_rolling_average,
+    _compute_category_rolling_averages,
     compare_receipt_dicts,
     compare_receipt_files,
 )
@@ -307,35 +307,33 @@ def test_session_totals_skips_null_date() -> None:
 
 def test_rolling_average_single_week() -> None:
     """A single session produces one rolling avg point."""
-    totals = [{"session_id": 1, "date": "2025-03-05", "total": 70.0}]
-    avg = _compute_rolling_average(totals)
+    totals = [{"date": "2025-03-05", "categories": {"Epicerie": 70.0}}]
+    avg = _compute_category_rolling_averages(totals)
     assert len(avg) >= 1
-    # The point covering that session should have value based on
-    # a window that includes the session's week
-    values = [p["value"] for p in avg]
-    assert any(v > 0 for v in values)
+    # The point covering that session should have categories with positive values
+    assert any(sum(p["categories"].values()) > 0 for p in avg)
 
 
 def test_rolling_average_two_consecutive_weeks() -> None:
     """Two sessions in consecutive weeks."""
     totals = [
-        {"session_id": 1, "date": "2025-03-03", "total": 100.0},
-        {"session_id": 2, "date": "2025-03-10", "total": 50.0},
+        {"date": "2025-03-03", "categories": {"Epicerie": 100.0}},
+        {"date": "2025-03-10", "categories": {"Epicerie": 50.0}},
     ]
-    avg = _compute_rolling_average(totals)
+    avg = _compute_category_rolling_averages(totals)
     assert len(avg) >= 2
-    # Both points should be positive
+    # Both points should have positive category totals
     for point in avg:
-        assert point["value"] > 0
+        assert sum(point["categories"].values()) > 0
 
 
 def test_rolling_average_gap_skipped() -> None:
     """Sessions 6+ months apart should not produce points in the gap."""
     totals = [
-        {"session_id": 1, "date": "2025-01-06", "total": 80.0},
-        {"session_id": 2, "date": "2025-07-07", "total": 60.0},
+        {"date": "2025-01-06", "categories": {"Epicerie": 80.0}},
+        {"date": "2025-07-07", "categories": {"Epicerie": 60.0}},
     ]
-    avg = _compute_rolling_average(totals)
+    avg = _compute_category_rolling_averages(totals)
     dates = [p["date"] for p in avg]
     # No point should fall in the gap (e.g. April)
     assert not any("2025-04" in d for d in dates)
@@ -345,18 +343,18 @@ def test_rolling_average_is_smoothed() -> None:
     """Five consecutive weekly sessions: middle point averages all five."""
     # All on Mondays
     totals = [
-        {"session_id": i + 1, "date": f"2025-03-{3 + 7 * i:02d}", "total": float(v)}
+        {"date": f"2025-03-{3 + 7 * i:02d}", "categories": {"Epicerie": float(v)}}
         for i, v in enumerate([10, 20, 30, 40, 50])
     ]
-    avg = _compute_rolling_average(totals)
+    avg = _compute_category_rolling_averages(totals)
     # The middle week (2025-03-17) should average all 5 = 30.0
     mid = next((p for p in avg if p["date"] == "2025-03-17"), None)
     assert mid is not None
-    assert mid["value"] == 30.0
+    assert mid["categories"]["Epicerie"] == 30.0
 
 
 def test_compare_output_contains_totals_and_rolling() -> None:
-    """compare_receipt_dicts includes session_totals and rolling_average."""
+    """compare_receipt_dicts includes session_totals and category_rolling_averages."""
     receipts = [
         {
             "date": "2025-01-15 10:00:00",
@@ -365,9 +363,9 @@ def test_compare_output_contains_totals_and_rolling() -> None:
     ]
     result = compare_receipt_dicts(receipts)
     assert "session_totals" in result
-    assert "rolling_average" in result
+    assert "category_rolling_averages" in result
     assert len(result["session_totals"]) == 1
-    assert len(result["rolling_average"]) >= 1
+    assert len(result["category_rolling_averages"]) >= 1
 
 
 # --- unit count & price per unit in observations ---
@@ -564,6 +562,74 @@ def test_compare_receipt_dicts_affinage() -> None:
 
 
 # --- production in observations ---
+
+
+def test_session_category_totals() -> None:
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "EPICERIE": [
+                    {"name": "SUCRE POUDRE", "price": 1.50, "bought": 2, "grams": None},
+                ],
+                "FROMAGE LS": [
+                    {"name": "COMTE AOP", "price": 5.20, "bought": 1, "grams": 200.0},
+                ],
+            },
+        },
+        {
+            "date": "2025-02-20 11:00:00",
+            "items": {
+                "EPICERIE": [
+                    {"name": "SUCRE POUDRE", "price": 1.60, "bought": 1, "grams": None},
+                ],
+            },
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    cat_totals = result["session_category_totals"]
+    assert len(cat_totals) == 2
+    # First session: Epicerie 1.50*2=3.00, Fromage 5.20*1=5.20
+    first = cat_totals[0]
+    assert first["date"] == "2025-01-15"
+    assert first["categories"]["Epicerie"] == 3.0
+    assert first["categories"]["Fromage"] == 5.2
+    # Second session: Epicerie 1.60*1=1.60
+    second = cat_totals[1]
+    assert second["date"] == "2025-02-20"
+    assert second["categories"]["Epicerie"] == 1.6
+    assert "Fromage" not in second["categories"]
+
+
+def test_session_category_totals_unmapped_category() -> None:
+    """Unmapped categories fall into 'Autre'."""
+    receipts = [
+        {
+            "date": "2025-01-15 10:00:00",
+            "items": {
+                "SOME UNKNOWN CATEGORY": [
+                    {"name": "MYSTERY ITEM", "price": 7.50, "bought": 1, "grams": None},
+                ],
+            },
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    cat_totals = result["session_category_totals"]
+    assert len(cat_totals) == 1
+    assert cat_totals[0]["categories"]["Autre"] == 7.5
+
+
+def test_session_category_totals_skips_null_date() -> None:
+    receipts: list[dict[str, Any]] = [
+        {
+            "date": None,
+            "items": {
+                "EPICERIE": [{"name": "X", "price": 1.0, "bought": 1, "grams": None}]
+            },
+        },
+    ]
+    result = compare_receipt_dicts(receipts)
+    assert not result["session_category_totals"]
 
 
 def test_compare_receipt_dicts_production() -> None:

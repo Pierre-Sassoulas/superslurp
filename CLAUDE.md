@@ -7,8 +7,9 @@ HTML reports.
 ## Quick Reference
 
 ```bash
-pytest tests/                        # Run all tests (258+)
+pytest tests/                        # Run all tests (265+)
 pytest tests/test_compare.py         # Unit tests (normalization, matching, aggregation)
+pytest tests/test_aggregate.py       # Aggregation, category totals, rolling averages
 pytest tests/test_parse_text.py      # Fixture-based parse tests (auto-regenerates JSONs)
 ```
 
@@ -25,13 +26,15 @@ PDF → extract (pypdf) → text → parse (v1/v2) → Receipt JSON → compare 
 | Module                               | Purpose                                                                                        |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------- |
 | `superslurp/__main__.py`             | CLI entry points: `superu-receipt-parser`, `superu-report`                                     |
-| `superslurp/parse/v1/parse_items.py` | Core parser — `_parse_name_attributes()` extracts all item attributes                          |
-| `superslurp/parse/v2/parse_items.py` | V2 format parser (imports `_parse_name_attributes` from v1)                                    |
+| `superslurp/parse/common.py`         | Shared parse logic — `_parse_name_attributes()`, `ParsedAttributes`, post-processing           |
+| `superslurp/parse/v1/parse_items.py` | V1 receipt format parser                                                                       |
+| `superslurp/parse/v2/parse_items.py` | V2 receipt format parser (imports `_parse_name_attributes` from common)                        |
 | `superslurp/compare/normalize.py`    | Name normalization, synonym expansion, property extraction (bio, brand, milk, baby food, etc.) |
 | `superslurp/compare/matcher.py`      | `FuzzyMatcher` — groups similar names via token index + SequenceMatcher                        |
-| `superslurp/compare/aggregate.py`    | Builds observations, sessions, rolling averages across receipts                                |
-| `superslurp/compare/html_report.py`  | Jinja2 HTML dashboard with Chart.js                                                            |
-| `superslurp/superslurp_typing.py`    | TypedDict models: `Item`, `Properties`, `Category`, `Receipt`                                  |
+| `superslurp/compare/aggregate.py`    | `_AggregateState`, observations, sessions, category totals, rolling averages                   |
+| `superslurp/compare/html_report.py`  | Self-contained HTML dashboard (Chart.js stacked area + line charts)                            |
+| `superslurp/compare/cli.py`          | CLI entry points: `superu-aggregate`, `superu-report` (from JSON)                              |
+| `superslurp/superslurp_typing.py`    | TypedDicts for input (`Item`, `Receipt`) and output (`CompareResult`, `Observation`, etc.)     |
 
 ### Parse Pipeline (`_parse_name_attributes`)
 
@@ -64,6 +67,8 @@ wins (insertion order).
 
 ## Data Model
 
+### Input types (parse pipeline)
+
 **Item** fields: `raw`, `raw_name`, `name`, `price`, `bought`, `units`, `grams`,
 `volume_ml`, `fat_pct`, `tr`, `way_of_paying`, `discount`, `properties`.
 
@@ -73,6 +78,30 @@ wins (insertion order).
 **Baby food types**: Baby food items get `name` set to normalized type (`PLAT BEBE`,
 `CEREALES BEBE`, `LAIT BEBE`) with recipe details in `baby_recipe`. Guard: requires
 `baby_months` or a BLEDI-keyword to avoid false positives on generic `BOL`/`POT` words.
+
+### Output types (aggregate pipeline)
+
+All defined in `superslurp_typing.py`:
+
+**`CompareResult`** — root return type of `compare_receipt_dicts()`:
+
+- `stores: list[StoreSummary]` — id, store_name, location, siret, naf
+- `sessions: list[SessionSummary]` — id, date, store_id
+- `session_totals: list[SessionTotal]` — per-session EUR total
+- `session_category_totals: list[SessionCategoryTotal]` — per-session per-category EUR
+- `category_rolling_averages: list[CategoryRollingAverage]` — 5-week rolling avg per
+  category (Monday-aligned weeks, gaps >4 weeks skipped)
+- `products: list[ProductSummary]` — canonical_name + observations list
+
+**`Observation`** — required fields (price, grams, volume_ml, unit_count, fat_pct, etc.)
+plus optional property fields (bio, brand, label, etc.) only present when truthy. Uses
+TypedDict inheritance pattern: `_ObservationRequired` (total=True) base + `Observation`
+(total=False) for optional property keys.
+
+### Category grouping
+
+`_CATEGORY_GROUPS` in `aggregate.py` maps raw receipt categories (e.g. `"FROMAGE LS"`)
+to 16 macro groups (e.g. `"Fromage"`) for the stacked chart. Unmapped → `"Autre"`.
 
 ## Tests & Fixtures
 
@@ -91,6 +120,9 @@ wins (insertion order).
 - `_BABY_FOOD_REPLACEMENTS` (dict in normalize.py) — Baby keyword → placeholder mapping
 - `_STRIP_WORDS` (frozenset in normalize.py) — Words stripped during normalization
 - `_PROTECTED_COMPOUNDS` (dict in normalize.py) — Compounds that must not be split
+- `_CATEGORY_GROUPS` (dict in aggregate.py) — Raw receipt category → macro group mapping
+- `_AggregateState` (dataclass in aggregate.py) — Mutable accumulators (matcher,
+  products, stores, sessions, totals) shared across `_process_receipt` calls
 - `synonyms.json` — Abbreviation → expansion dictionary (order matters: multi-word
   before single-word)
 
@@ -100,3 +132,6 @@ wins (insertion order).
 - Pre-commit hooks: ruff (format+lint), mypy (strict), pylint, codespell, prettier
 - Line length: 88 (format), 120 (lint)
 - Required: `from __future__ import annotations` in all files
+- mypy strict mode: dict literals with mixed value types need explicit TypedDict
+  annotations (mypy infers `dict[str, object]` otherwise). Pre-commit only checks staged
+  files — run `mypy superslurp/ tests/` to catch issues in unstaged files.

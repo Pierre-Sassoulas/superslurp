@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 from bisect import bisect_left
 from datetime import datetime, timedelta
@@ -218,32 +219,44 @@ def _build_observation(
     return obs
 
 
-def _process_receipt(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+@dataclasses.dataclass
+class _AggregateState:
+    """Mutable accumulators shared across receipt processing."""
+
+    matcher: FuzzyMatcher
+    products: dict[str, list[dict[str, Any]]] = dataclasses.field(default_factory=dict)
+    stores: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)
+    sessions: dict[tuple[str | None, str | None], dict[str, Any]] = dataclasses.field(
+        default_factory=dict
+    )
+    session_totals: dict[int, float] = dataclasses.field(default_factory=dict)
+    session_cat_totals: dict[int, dict[str, float]] = dataclasses.field(
+        default_factory=dict
+    )
+
+
+def _process_receipt(
     receipt: dict[str, Any],
-    matcher: FuzzyMatcher,
-    products: dict[str, list[dict[str, Any]]],
-    stores: dict[str, dict[str, Any]],
-    sessions: dict[tuple[str | None, str | None], dict[str, Any]],
-    session_totals: dict[int, float],
-    session_cat_totals: dict[int, dict[str, float]],
+    state: _AggregateState,
 ) -> None:
     date = receipt.get("date")
-    store_data: dict[str, Any] = receipt.get("store", {})
-    store_id = _get_store_id(store_data, stores)
-    session_id = _get_session_id(date, store_id, sessions)
+    store_id = _get_store_id(receipt.get("store", {}), state.stores)
+    session_id = _get_session_id(date, store_id, state.sessions)
     items_by_category: dict[str, list[dict[str, Any]]] = receipt.get("items", {})
     session_total = 0.0
     for category, category_items in items_by_category.items():
         group = _CATEGORY_GROUPS.get(category, "Autre")
         for item in category_items:
-            key = matcher.match(item["name"])
+            key = state.matcher.match(item["name"])
             obs = _build_observation(item, session_id)
-            products.setdefault(key, []).append(obs)
+            state.products.setdefault(key, []).append(obs)
             spent = obs["price"] * obs["quantity"]
             session_total += spent
-            cat_acc = session_cat_totals.setdefault(session_id, {})
+            cat_acc = state.session_cat_totals.setdefault(session_id, {})
             cat_acc[group] = cat_acc.get(group, 0) + spent
-    session_totals[session_id] = session_totals.get(session_id, 0) + session_total
+    state.session_totals[session_id] = (
+        state.session_totals.get(session_id, 0) + session_total
+    )
 
 
 def _compute_session_totals(
@@ -361,36 +374,24 @@ def compare_receipt_dicts(
     threshold: float = 0.90,
 ) -> dict[str, Any]:
     """Aggregate items across parsed receipt dicts into a price comparison."""
-    matcher = FuzzyMatcher(threshold=threshold)
-    products: dict[str, list[dict[str, Any]]] = {}
-    stores: dict[str, dict[str, Any]] = {}
-    sessions: dict[tuple[str | None, str | None], dict[str, Any]] = {}
-    session_totals_acc: dict[int, float] = {}
-    session_cat_totals_acc: dict[int, dict[str, float]] = {}
+    state = _AggregateState(matcher=FuzzyMatcher(threshold=threshold))
 
     for receipt in receipts:
-        _process_receipt(
-            receipt,
-            matcher,
-            products,
-            stores,
-            sessions,
-            session_totals_acc,
-            session_cat_totals_acc,
-        )
+        _process_receipt(receipt, state)
 
     result = [
-        {"canonical_name": name, "observations": obs} for name, obs in products.items()
+        {"canonical_name": name, "observations": obs}
+        for name, obs in state.products.items()
     ]
     result.sort(key=lambda p: str(p["canonical_name"]))
-    session_list = sorted(sessions.values(), key=lambda s: s["id"])
-    session_totals = _compute_session_totals(session_list, session_totals_acc)
+    session_list = sorted(state.sessions.values(), key=lambda s: s["id"])
+    session_totals = _compute_session_totals(session_list, state.session_totals)
     session_cat_totals = _compute_session_category_totals(
-        session_list, session_cat_totals_acc
+        session_list, state.session_cat_totals
     )
     cat_rolling = _compute_category_rolling_averages(session_cat_totals)
     return {
-        "stores": list(stores.values()),
+        "stores": list(state.stores.values()),
         "sessions": session_list,
         "session_totals": session_totals,
         "session_category_totals": session_cat_totals,

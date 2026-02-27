@@ -82,7 +82,6 @@ main.disable = [
     "logging-fstring-interpolation",  # useless in our time and age
     "consider-ternary-expression",    # no nuance at all
     "while-used",                     # while loops are fine
-    "redefined-variable-type",        # narrowing types is fine
     "consider-using-assignment-expr", # walrus operator preference
     "duplicate-code",                 # tuple unpacking of _parse_name_attributes at call sites
 ]

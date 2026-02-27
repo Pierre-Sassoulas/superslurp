@@ -28,7 +28,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals,too-many-statements
     compiled_syn = compile_synonyms(synonyms) if synonyms else None
     items: dict[Category, list[Item]] = defaultdict(list)
     total_discount = 0.0
-    category = Category.UNDEFINED
+    category: Category = Category.UNDEFINED
     last_item: Item | None = None
     nb_parsed = 0
 

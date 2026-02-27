@@ -19,7 +19,7 @@ from superslurp.compare.normalize import (
     normalize_for_matching,
     strip_affinage,
 )
-from superslurp.parse.v1.parse_items import (
+from superslurp.parse.common import (
     _get_volume,
     _infer_milk_fat_pct,
     _parse_name_attributes,

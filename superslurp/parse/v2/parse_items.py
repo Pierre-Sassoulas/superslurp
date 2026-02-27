@@ -4,13 +4,11 @@ import re
 from collections import defaultdict
 
 from superslurp.compare.normalize import compile_synonyms
-from superslurp.parse.v1.parse_items import (
+from superslurp.parse.common import (
     _parse_name_attributes,
+    build_item,
     build_properties,
-    expand_context_synonyms,
-    extract_bare_fat_pct,
-    extract_packaging_abbrev,
-    extract_standalone_affinage_months,
+    post_process_item,
 )
 from superslurp.superslurp_typing import Category, Item, Items
 
@@ -94,20 +92,19 @@ def parse_items_v2(  # pylint: disable=too-many-locals,too-many-statements
             else:
                 price = total_price
 
-            item: Item = {
-                "raw": line.strip(),
-                "raw_name": raw_name,
-                "name": name,
-                "price": price,
-                "bought": quantity,
-                "units": units,
-                "grams": grams,
-                "volume_ml": volume_ml,
-                "fat_pct": fat_pct,
-                "tr": tr,
-                "way_of_paying": way_of_paying,
-                "discount": None,
-                "properties": build_properties(
+            item = build_item(
+                raw=line.strip(),
+                raw_name=raw_name,
+                name=name,
+                price=price,
+                bought=quantity,
+                units=units,
+                grams=grams,
+                volume_ml=volume_ml,
+                fat_pct=fat_pct,
+                tr=tr,
+                way_of_paying=way_of_paying,
+                properties=build_properties(
                     bio,
                     milk_treatment,
                     brand,
@@ -119,11 +116,8 @@ def parse_items_v2(  # pylint: disable=too-many-locals,too-many-statements
                     baby_months,
                     baby_recipe,
                 ),
-            }
-            extract_bare_fat_pct(item, category)
-            extract_packaging_abbrev(item, category)
-            extract_standalone_affinage_months(item, category)
-            expand_context_synonyms(item, category)
+            )
+            post_process_item(item, category)
             items[category].append(item)
             last_item = item
             nb_parsed += quantity

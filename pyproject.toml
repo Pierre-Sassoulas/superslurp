@@ -85,7 +85,7 @@ main.disable = [
     "redefined-variable-type",        # narrowing types is fine
     "consider-using-assignment-expr", # walrus operator preference
     "unsubscriptable-object",         # false positive with TypedDict
-    "duplicate-code",                 # v1/v2 parsers both call build_item
+    "duplicate-code",                 # tuple unpacking of _parse_name_attributes at call sites
 ]
 
 [tool.codespell]

@@ -470,6 +470,7 @@ _KNOWN_BRANDS = frozenset(
         "LE RUSTIQUE",
         "BONNE MAMAN",
         "JACQUET",
+        "ARBRE VERT",
     }
 )
 

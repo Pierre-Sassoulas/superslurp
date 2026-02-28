@@ -14,6 +14,21 @@ Reblochon _fermier_ from a _laitier_, as per the French government's
 Useful when you want to display cheese consumption intensity in €/day inside Grafana, or
 detect sneaky shrinkflation via fat-content drift on your favorite _fromage blanc_.
 
+## Report examples
+
+Track price inflation over time — here baking chocolate doubling from ~0.85€ to ~1.85€
+while weight stays constant at 200g:
+
+![Price and weight tracking for Chocolat Patissier](img/inflation.png)
+
+Monitor product quality evolution across price, weight and fat content:
+
+![Price, weight and fat % evolution for Mozzarella](img/product_quality_evolution.png)
+
+Detect product degradation, either shrunk for the same price or fat content dropping:
+
+![Product degradation detected](img/product_degradation.png)
+
 ## Quick start
 
 ### Install

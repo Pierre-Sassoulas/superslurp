@@ -35,6 +35,7 @@ CATEGORY_GROUPS: dict[str, str] = {
     "TRAITEUR FRAIS EMBALLE": "Viande & Charcuterie",
     "TRAITEUR LS UVCI": "Viande & Charcuterie",
     # Poisson
+    "POISSON FRAIS PREEMBALLE": "Poisson",
     "POISSON LS UVCI": "Poisson",
     "POISSON TRADITIONNEL": "Poisson",
     "POISSONNERIE": "Poisson",
@@ -66,6 +67,7 @@ CATEGORY_GROUPS: dict[str, str] = {
     "CONDIMENTS-SAUCES FROIDE": "Epicerie",
     "SAUCES CHAUDES": "Epicerie",
     "PRODUITS ETRANGERS": "Epicerie",
+    "AIDES A LA CUISINE": "Epicerie",
     # Sucre
     "BISCUITS SUCRES": "Sucre",
     "CHOCOLATS TABLETTES": "Sucre",

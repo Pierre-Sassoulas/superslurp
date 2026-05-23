@@ -10,6 +10,7 @@ from superslurp.parse.common import (
     build_item,
     post_process_item,
 )
+from superslurp.parse.str_to_float import parse_price
 from superslurp.superslurp_typing import Category, Item, Items
 
 ITEM_PATTERN = re.compile(r"^(.+?)\s{2,}(\(T\)\s+)?([\d,]+ €)\s+(\d{2})\s*$")
@@ -42,7 +43,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
             continue
 
         if m := DISCOUNT_PATTERN.match(line):
-            discount_price = _parse_price(m.group(2))
+            discount_price = parse_price(m.group(2))
             total_discount -= discount_price
             if last_item is None:
                 raise ValueError("Discount line found before any item")
@@ -61,7 +62,7 @@ def parse_items_v2(  # pylint: disable=too-many-locals
         if m := ITEM_PATTERN.match(line):
             raw_name = m.group(1).strip()
             tr = m.group(2) is not None
-            total_price = _parse_price(m.group(3).replace(" €", ""))
+            total_price = parse_price(m.group(3))
             way_of_paying = m.group(4)
 
             quantity, unit_price, grams_from_weight = _parse_detail_lines(lines, i + 1)
@@ -121,7 +122,7 @@ def _parse_detail_lines(lines: list[str], start: int) -> DetailLineResult:
             continue
         if m := QUANTITY_PATTERN.match(line):
             quantity = int(m.group(1))
-            unit_price = _parse_price(m.group(2))
+            unit_price = parse_price(m.group(2))
             i += 1
             break
         if m := WEIGHT_PATTERN.match(line):
@@ -143,7 +144,3 @@ def _parse_category(line: str) -> Category:
             f"Unknown V2 category: {name!r}. "
             f"Add it to the Category enum in superslurp/superslurp_typing.py"
         ) from e
-
-
-def _parse_price(price_str: str) -> float:
-    return float(price_str.replace(",", "."))

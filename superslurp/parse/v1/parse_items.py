@@ -10,6 +10,7 @@ from superslurp.parse.common import (
     build_item,
     post_process_item,
 )
+from superslurp.parse.str_to_float import parse_price
 from superslurp.parse.v1.parse_categories import iter_categories_and_items
 from superslurp.repr.items import repr_items
 from superslurp.superslurp_typing import Category, Item, Items
@@ -56,7 +57,7 @@ def parse_items(
             for item_info in matched_items:
                 logging.debug(f"Item found in {category}: {item_info}")
                 if (discount_str := _get_discount(item_info)) is not None:
-                    items[category][-1]["discount"] = _get_price(discount_str)
+                    items[category][-1]["discount"] = parse_price(discount_str)
                     continue
                 item = get_item_from_item_infos(item_info, synonyms=compiled_syn)
                 post_process_item(item, category)
@@ -111,7 +112,7 @@ def get_item_from_item_infos(
         raw=item_info.group(0).strip(),
         raw_name=raw_name,
         attrs=attrs,
-        price=_get_price(price),
+        price=parse_price(price),
         bought=quantity,
         tr=_get_tr(item_info.group("tr")),
         way_of_paying=item_info.group("way_of_paying"),
@@ -147,11 +148,6 @@ def _get_discount(item_info: re.Match[str]) -> str | None:
         if value is not None:
             return value
     return None
-
-
-def _get_price(price: str) -> float:
-    price = price.split(" €")[0].replace(",", ".")
-    return float(price)
 
 
 def _get_tr(tr: str) -> bool:

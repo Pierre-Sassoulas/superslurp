@@ -13,6 +13,7 @@ from superslurp.superslurp_typing import (
     CompareResult,
     Observation,
     ProductSummary,
+    Properties,
     SessionCategoryTotal,
     SessionSummary,
     SessionTotal,
@@ -187,20 +188,7 @@ def _get_session_id(
     return int(sessions[key]["id"])
 
 
-_OBS_PROP_KEYS = frozenset(
-    {
-        "bio",
-        "milk_treatment",
-        "production",
-        "brand",
-        "label",
-        "packaging",
-        "origin",
-        "affinage_months",
-        "baby_months",
-        "baby_recipe",
-    }
-)
+_OBS_PROP_KEYS = frozenset(Properties.__optional_keys__)  # pylint: disable=no-member
 
 
 def _build_observation(

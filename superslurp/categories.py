@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+# Maps raw receipt categories (e.g. "FROMAGE LS") to display macro groups
+# (e.g. "Fromage") used by the HTML report's stacked-area chart. Categories
+# not present here fall through to "Autre" at aggregation time.
+CATEGORY_GROUPS: dict[str, str] = {
+    # Fruits & Legumes
+    "FRUITS ET LEGUMES": "Fruits & Legumes",
+    "FRUITS": "Fruits & Legumes",
+    "LEGUMES": "Fruits & Legumes",
+    # Fromage
+    "FROMAGE A LA COUPE": "Fromage",
+    "FROMAGE COUPE": "Fromage",
+    "FROMAGE COUPE EMBALLE": "Fromage",
+    "FROMAGE LS": "Fromage",
+    # Cremerie
+    "CREMERIE L.S.": "Cremerie",
+    "LAITS ET DERIVES": "Cremerie",
+    "BEURRE": "Cremerie",
+    "MARGARINES ET COMPOSES": "Cremerie",
+    "OEUFS": "Cremerie",
+    "ULTRA FRAIS": "Cremerie",
+    "DESSERTS TOUT PRETS": "Cremerie",
+    # Viande & Charcuterie
+    "BOUCH.LS.INDUST.": "Viande & Charcuterie",
+    "BOUCH.VOL.ATELIER": "Viande & Charcuterie",
+    "BOUCHERIE FRAICHE PREEMB": "Viande & Charcuterie",
+    "BOUCH.LS (UVCI)": "Viande & Charcuterie",
+    "VOL.LS INDUST.": "Viande & Charcuterie",
+    "VOL.LS STANDARD": "Viande & Charcuterie",
+    "CHARC.TRAIT.SAUC.SECS L": "Viande & Charcuterie",
+    "CHARCT.LS UVCI": "Viande & Charcuterie",
+    "CHARCT.TRAIT.TRADT.": "Viande & Charcuterie",
+    "CHARCUTERIE FRAICH EMBAL": "Viande & Charcuterie",
+    "TRAITEUR FRAIS EMBALLE": "Viande & Charcuterie",
+    "TRAITEUR LS UVCI": "Viande & Charcuterie",
+    # Poisson
+    "POISSON LS UVCI": "Poisson",
+    "POISSON TRADITIONNEL": "Poisson",
+    "POISSONNERIE": "Poisson",
+    "VENTE DIVERSE POISSON AR": "Poisson",
+    "CONSERVES DE POISSON": "Poisson",
+    # Boulangerie
+    "BOULANGERIE": "Boulangerie",
+    "BVP": "Boulangerie",
+    "VIENNOISERIE": "Boulangerie",
+    "VIENNOISERIE INDUSTRIELLE": "Boulangerie",
+    "PATISSERIE": "Boulangerie",
+    "PATIS.INDUSTRIELLE": "Boulangerie",
+    "PAT INDUSTRIELLE": "Boulangerie",
+    "PAIN DE MIE (LS)": "Boulangerie",
+    "AIDE PATISSERIE": "Boulangerie",
+    # Epicerie
+    "EPICERIE": "Epicerie",
+    "PATES": "Epicerie",
+    "FARINES ET FECULENTS": "Epicerie",
+    "COUSCOUS PUREE LEG SECS BLE": "Epicerie",
+    "CONSERVES DE LEGUMES": "Epicerie",
+    "CONSERVES DE VIANDES": "Epicerie",
+    "CEREALES ET POUDRES CHOCOLAT": "Epicerie",
+    "CONFITURES MIEL P.A.TARTINER": "Epicerie",
+    "HUILES": "Epicerie",
+    "SEL": "Epicerie",
+    "SUCRES": "Epicerie",
+    "VINAIGRES ET VINAIGRETTES": "Epicerie",
+    "CONDIMENTS-SAUCES FROIDE": "Epicerie",
+    "SAUCES CHAUDES": "Epicerie",
+    "PRODUITS ETRANGERS": "Epicerie",
+    # Sucre
+    "BISCUITS SUCRES": "Sucre",
+    "CHOCOLATS TABLETTES": "Sucre",
+    "CONFISERIE CAISSE": "Sucre",
+    # Boissons
+    "LIQUIDES": "Boissons",
+    "BOISSONS SANS ALCOOL": "Boissons",
+    "JUS DE FRUITS FRAIS": "Boissons",
+    "JUS ET NECTARS": "Boissons",
+    "SIROPS": "Boissons",
+    "THES ET INFUSIONS": "Boissons",
+    # Surgeles
+    "SURGELES": "Surgeles",
+    "SURGELE SALE": "Surgeles",
+    "SURGELE SUCRE": "Surgeles",
+    # Bebe
+    "ALIMENTS POUR ENFANTS": "Bebe",
+    # Hygiene
+    "BEAUTE SANTE": "Hygiene",
+    "HYGIENE FEMININE": "Hygiene",
+    "PARFUMERIE": "Hygiene",
+    "PETITE PARAPHARMACIE": "Hygiene",
+    "COTON": "Hygiene",
+    # Entretien
+    "ENTRETIEN": "Entretien",
+    "ENTRETIEN DU LINGE": "Entretien",
+    "PRODUITS VAISSELLE": "Entretien",
+    "EMBALLAGE MENAGER": "Entretien",
+    "PAPIER TOILETTE": "Entretien",
+    # Maison
+    "EQUIPEMENT DE LA MAISON": "Maison",
+    "BRICOLAGE": "Maison",
+    "BRICOLAGE JARDINAGE AUT": "Maison",
+    "BAZAR A SERVICE": "Maison",
+    "LA CUISINE": "Maison",
+    "LINGE DE MAISON": "Maison",
+    "CULTURE": "Maison",
+    "LOISIRS": "Maison",
+    "JOUETS": "Maison",
+    "PAPETERIE ECRITURE": "Maison",
+    "CHIEN-CHAT": "Maison",
+    # Textile
+    "VETEMENT": "Textile",
+    "VETEMENT FEMME": "Textile",
+    "CHAUSSURE": "Textile",
+    "COLLANT-CHAUSSETTES": "Textile",
+    "EQUIPEMENT": "Textile",
+    "SOUS-VETEMENT": "Textile",
+    "S.VETEMENT LAYETTE": "Textile",
+}

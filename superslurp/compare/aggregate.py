@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from superslurp.categories import CATEGORY_GROUPS
 from superslurp.compare.matcher import FuzzyMatcher
 from superslurp.superslurp_typing import (
     CategoryRollingAverage,
@@ -19,120 +20,6 @@ from superslurp.superslurp_typing import (
     SessionTotal,
     StoreSummary,
 )
-
-_CATEGORY_GROUPS: dict[str, str] = {
-    # Fruits & Legumes
-    "FRUITS ET LEGUMES": "Fruits & Legumes",
-    "FRUITS": "Fruits & Legumes",
-    "LEGUMES": "Fruits & Legumes",
-    # Fromage
-    "FROMAGE A LA COUPE": "Fromage",
-    "FROMAGE COUPE": "Fromage",
-    "FROMAGE COUPE EMBALLE": "Fromage",
-    "FROMAGE LS": "Fromage",
-    # Cremerie
-    "CREMERIE L.S.": "Cremerie",
-    "LAITS ET DERIVES": "Cremerie",
-    "BEURRE": "Cremerie",
-    "MARGARINES ET COMPOSES": "Cremerie",
-    "OEUFS": "Cremerie",
-    "ULTRA FRAIS": "Cremerie",
-    "DESSERTS TOUT PRETS": "Cremerie",
-    # Viande & Charcuterie
-    "BOUCH.LS.INDUST.": "Viande & Charcuterie",
-    "BOUCH.VOL.ATELIER": "Viande & Charcuterie",
-    "BOUCHERIE FRAICHE PREEMB": "Viande & Charcuterie",
-    "BOUCH.LS (UVCI)": "Viande & Charcuterie",
-    "VOL.LS INDUST.": "Viande & Charcuterie",
-    "VOL.LS STANDARD": "Viande & Charcuterie",
-    "CHARC.TRAIT.SAUC.SECS L": "Viande & Charcuterie",
-    "CHARCT.LS UVCI": "Viande & Charcuterie",
-    "CHARCT.TRAIT.TRADT.": "Viande & Charcuterie",
-    "CHARCUTERIE FRAICH EMBAL": "Viande & Charcuterie",
-    "TRAITEUR FRAIS EMBALLE": "Viande & Charcuterie",
-    "TRAITEUR LS UVCI": "Viande & Charcuterie",
-    # Poisson
-    "POISSON LS UVCI": "Poisson",
-    "POISSON TRADITIONNEL": "Poisson",
-    "POISSONNERIE": "Poisson",
-    "VENTE DIVERSE POISSON AR": "Poisson",
-    "CONSERVES DE POISSON": "Poisson",
-    # Boulangerie
-    "BOULANGERIE": "Boulangerie",
-    "BVP": "Boulangerie",
-    "VIENNOISERIE": "Boulangerie",
-    "VIENNOISERIE INDUSTRIELLE": "Boulangerie",
-    "PATISSERIE": "Boulangerie",
-    "PATIS.INDUSTRIELLE": "Boulangerie",
-    "PAT INDUSTRIELLE": "Boulangerie",
-    "PAIN DE MIE (LS)": "Boulangerie",
-    "AIDE PATISSERIE": "Boulangerie",
-    # Epicerie
-    "EPICERIE": "Epicerie",
-    "PATES": "Epicerie",
-    "FARINES ET FECULENTS": "Epicerie",
-    "COUSCOUS PUREE LEG SECS BLE": "Epicerie",
-    "CONSERVES DE LEGUMES": "Epicerie",
-    "CONSERVES DE VIANDES": "Epicerie",
-    "CEREALES ET POUDRES CHOCOLAT": "Epicerie",
-    "CONFITURES MIEL P.A.TARTINER": "Epicerie",
-    "HUILES": "Epicerie",
-    "SEL": "Epicerie",
-    "SUCRES": "Epicerie",
-    "VINAIGRES ET VINAIGRETTES": "Epicerie",
-    "CONDIMENTS-SAUCES FROIDE": "Epicerie",
-    "SAUCES CHAUDES": "Epicerie",
-    "PRODUITS ETRANGERS": "Epicerie",
-    # Sucre
-    "BISCUITS SUCRES": "Sucre",
-    "CHOCOLATS TABLETTES": "Sucre",
-    "CONFISERIE CAISSE": "Sucre",
-    # Boissons
-    "LIQUIDES": "Boissons",
-    "BOISSONS SANS ALCOOL": "Boissons",
-    "JUS DE FRUITS FRAIS": "Boissons",
-    "JUS ET NECTARS": "Boissons",
-    "SIROPS": "Boissons",
-    "THES ET INFUSIONS": "Boissons",
-    # Surgeles
-    "SURGELES": "Surgeles",
-    "SURGELE SALE": "Surgeles",
-    "SURGELE SUCRE": "Surgeles",
-    # Bebe
-    "ALIMENTS POUR ENFANTS": "Bebe",
-    # Hygiene
-    "BEAUTE SANTE": "Hygiene",
-    "HYGIENE FEMININE": "Hygiene",
-    "PARFUMERIE": "Hygiene",
-    "PETITE PARAPHARMACIE": "Hygiene",
-    "COTON": "Hygiene",
-    # Entretien
-    "ENTRETIEN": "Entretien",
-    "ENTRETIEN DU LINGE": "Entretien",
-    "PRODUITS VAISSELLE": "Entretien",
-    "EMBALLAGE MENAGER": "Entretien",
-    "PAPIER TOILETTE": "Entretien",
-    # Maison
-    "EQUIPEMENT DE LA MAISON": "Maison",
-    "BRICOLAGE": "Maison",
-    "BRICOLAGE JARDINAGE AUT": "Maison",
-    "BAZAR A SERVICE": "Maison",
-    "LA CUISINE": "Maison",
-    "LINGE DE MAISON": "Maison",
-    "CULTURE": "Maison",
-    "LOISIRS": "Maison",
-    "JOUETS": "Maison",
-    "PAPETERIE ECRITURE": "Maison",
-    "CHIEN-CHAT": "Maison",
-    # Textile
-    "VETEMENT": "Textile",
-    "VETEMENT FEMME": "Textile",
-    "CHAUSSURE": "Textile",
-    "COLLANT-CHAUSSETTES": "Textile",
-    "EQUIPEMENT": "Textile",
-    "SOUS-VETEMENT": "Textile",
-    "S.VETEMENT LAYETTE": "Textile",
-}
 
 
 def _extract_location(store: dict[str, Any]) -> str | None:
@@ -224,6 +111,7 @@ class _AggregateState:
     """Mutable accumulators shared across receipt processing."""
 
     matcher: FuzzyMatcher
+    category_groups: dict[str, str] = dataclasses.field(default_factory=dict)
     products: dict[str, list[Observation]] = dataclasses.field(default_factory=dict)
     stores: dict[str, StoreSummary] = dataclasses.field(default_factory=dict)
     sessions: dict[tuple[str | None, str | None], SessionSummary] = dataclasses.field(
@@ -245,7 +133,7 @@ def _process_receipt(
     items_by_category: dict[str, list[dict[str, Any]]] = receipt.get("items", {})
     session_total = 0.0
     for category, category_items in items_by_category.items():
-        group = _CATEGORY_GROUPS.get(category, "Autre")
+        group = state.category_groups.get(category, "Autre")
         for item in category_items:
             key = state.matcher.match(item["name"])
             obs = _build_observation(item, session_id)
@@ -372,9 +260,19 @@ def _compute_session_category_totals(
 def compare_receipt_dicts(
     receipts: list[dict[str, Any]],
     threshold: float = 0.90,
+    category_groups: dict[str, str] | None = None,
 ) -> CompareResult:
-    """Aggregate items across parsed receipt dicts into a price comparison."""
-    state = _AggregateState(matcher=FuzzyMatcher(threshold=threshold))
+    """Aggregate items across parsed receipt dicts into a price comparison.
+
+    *category_groups* maps raw receipt categories to display macro groups for
+    the stacked-area chart; defaults to :data:`superslurp.categories.CATEGORY_GROUPS`.
+    """
+    state = _AggregateState(
+        matcher=FuzzyMatcher(threshold=threshold),
+        category_groups=category_groups
+        if category_groups is not None
+        else CATEGORY_GROUPS,
+    )
 
     for receipt in receipts:
         _process_receipt(receipt, state)
@@ -403,6 +301,7 @@ def compare_receipt_dicts(
 def compare_receipt_files(
     paths: list[Path],
     threshold: float = 0.90,
+    category_groups: dict[str, str] | None = None,
 ) -> CompareResult:
     """Load JSON receipt files and aggregate items for price comparison."""
     receipts: list[dict[str, Any]] = []
@@ -412,4 +311,6 @@ def compare_receipt_files(
         if not isinstance(data, dict) or "items" not in data:
             continue
         receipts.append(data)
-    return compare_receipt_dicts(receipts, threshold=threshold)
+    return compare_receipt_dicts(
+        receipts, threshold=threshold, category_groups=category_groups
+    )

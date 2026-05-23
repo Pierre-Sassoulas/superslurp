@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from superslurp.normalize import (
+from superslurp.attributes import (
     compile_synonyms,
     expand_synonyms,
     extract_unit_count,
@@ -16,9 +16,9 @@ from superslurp.normalize import (
     get_production,
     get_quality_label,
     is_bio,
-    normalize_for_matching,
     strip_affinage,
 )
+from superslurp.normalize import normalize_for_matching
 from superslurp.parse.common import (
     _get_volume,
     _infer_milk_fat_pct,

@@ -6,7 +6,7 @@ from typing import NamedTuple
 
 __all__ = ["CompiledSynonyms"]
 
-from superslurp.normalize import (
+from superslurp.attributes import (
     _BABY_DEFINITE_RE,
     CompiledSynonyms,
     compile_synonyms,

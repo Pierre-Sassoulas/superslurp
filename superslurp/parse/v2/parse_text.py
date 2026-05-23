@@ -3,7 +3,12 @@ from __future__ import annotations
 import math
 import re
 
-from superslurp.parse.common import CompiledSynonyms, resolve_synonyms
+from superslurp.parse.common import (
+    CompiledSynonyms,
+    build_card,
+    build_receipt,
+    resolve_synonyms,
+)
 from superslurp.parse.safe_search import safe_search
 from superslurp.parse.str_to_float import _change_text_to_float
 from superslurp.parse.v2.parse_items import parse_items_v2
@@ -29,18 +34,18 @@ def parse_text_v2(
     eligible_tr = _parse_eligible_tr(text)
     paid_tr = _parse_paid_tr(text)
     eligible_tr = _infer_tr_flags(items, eligible_tr, total)
-    return {
-        "date": date,
-        "store": store,
-        "card": card,
-        "items": items,
-        "subtotal": subtotal,
-        "total_discount": total_discount if total_discount != 0.0 else None,
-        "total": total,
-        "number_of_items": number_of_items,
-        "eligible_tr": eligible_tr,
-        "paid_tr": paid_tr,
-    }
+    return build_receipt(
+        store=store,
+        date=date,
+        card=card,
+        items=items,
+        subtotal=subtotal,
+        total_discount=total_discount if total_discount != 0.0 else None,
+        total=total,
+        number_of_items=number_of_items,
+        eligible_tr=eligible_tr,
+        paid_tr=paid_tr,
+    )
 
 
 def _infer_tr_flags(
@@ -129,24 +134,20 @@ def _parse_total(text: str) -> tuple[float, int]:
 
 
 def _parse_card(text: str) -> Card:
-    previous_str = safe_search(
-        r"VOTRE SOLDE\s+€ CARTE U PRECEDENT\s*:\s*([\d,]+)\s*€", text
+    return build_card(
+        previous=_change_text_to_float(
+            safe_search(r"VOTRE SOLDE\s+€ CARTE U PRECEDENT\s*:\s*([\d,]+)\s*€", text)
+        ),
+        earned=_change_text_to_float(
+            safe_search(r"VOS € CARTE U GAGNES\s*:\s*([\d,]+)\s*€", text)
+        ),
+        used=_change_text_to_float(
+            safe_search(r"VOS € CARTE U UTILISES\s*:\s*([\d,]+)\s*€", text)
+        ),
+        new=_change_text_to_float(
+            safe_search(r"VOTRE NOUVEAU SOLDE € CARTE U\s*:\s*([\d,]+)\s*€", text)
+        ),
     )
-    earned_str = safe_search(r"VOS € CARTE U GAGNES\s*:\s*([\d,]+)\s*€", text)
-    used_str = safe_search(r"VOS € CARTE U UTILISES\s*:\s*([\d,]+)\s*€", text)
-    new_str = safe_search(r"VOTRE NOUVEAU SOLDE € CARTE U\s*:\s*([\d,]+)\s*€", text)
-    previous = _change_text_to_float(previous_str)
-    earned = _change_text_to_float(earned_str)
-    used = _change_text_to_float(used_str)
-    new = _change_text_to_float(new_str)
-    assert previous is not None, "Card balance previous not found"
-    assert new is not None, "Card balance new not found"
-    return {
-        "balance_previous": previous,
-        "balance_earned": earned if earned is not None else 0.0,
-        "balance_used": used if used is not None else 0.0,
-        "balance_new": new,
-    }
 
 
 def _parse_subtotal(text: str) -> float | None:

@@ -29,7 +29,15 @@ from superslurp.normalize import (
     strip_packaging,
     strip_quality_label,
 )
-from superslurp.superslurp_typing import Category, Item, Properties
+from superslurp.superslurp_typing import (
+    Card,
+    Category,
+    Item,
+    Items,
+    Properties,
+    Receipt,
+    Store,
+)
 
 
 def resolve_synonyms(
@@ -42,6 +50,55 @@ def resolve_synonyms(
     if synonyms is not None:
         return compile_synonyms(synonyms)
     return None
+
+
+def build_card(
+    *,
+    previous: float | None,
+    earned: float | None,
+    used: float | None,
+    new: float | None,
+) -> Card:
+    """Assemble a Card TypedDict, asserting required balances and defaulting
+    optional ones to 0.0. Shared by V1 and V2 card parsers."""
+    assert previous is not None, "Card balance previous not found"
+    assert new is not None, "Card balance new not found"
+    return {
+        "balance_previous": previous,
+        "balance_earned": earned if earned is not None else 0.0,
+        "balance_used": used if used is not None else 0.0,
+        "balance_new": new,
+    }
+
+
+def build_receipt(  # pylint: disable=too-many-arguments
+    *,
+    store: Store,
+    date: str | None,
+    card: Card,
+    items: Items,
+    subtotal: float | None,
+    total_discount: float | None,
+    total: float,
+    number_of_items: int,
+    eligible_tr: float | None,
+    paid_tr: float | None,
+) -> Receipt:
+    """Assemble a Receipt TypedDict from its fields. Single construction site
+    shared by V1 and V2 parsers so adding a field to Receipt only touches the
+    TypedDict definition plus this builder."""
+    return {
+        "store": store,
+        "date": date,
+        "card": card,
+        "items": items,
+        "subtotal": subtotal,
+        "total_discount": total_discount,
+        "total": total,
+        "number_of_items": number_of_items,
+        "eligible_tr": eligible_tr,
+        "paid_tr": paid_tr,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import re
 
-from superslurp.parse.common import CompiledSynonyms, resolve_synonyms
+from superslurp.parse.common import (
+    CompiledSynonyms,
+    build_card,
+    build_receipt,
+    resolve_synonyms,
+)
 from superslurp.parse.safe_search import safe_search
 from superslurp.parse.str_to_float import _change_text_to_float
 from superslurp.parse.v1.parse_date import parse_date
 from superslurp.parse.v1.parse_items import parse_items
-from superslurp.superslurp_typing import Card, Receipt
+from superslurp.superslurp_typing import Card, Receipt, Store
 
 everything_pattern = re.compile(
     r"(?P<store_name>[\S ]*)\n"
@@ -52,38 +57,33 @@ def parse_text_v1(
     )
     total_discount = _change_text_to_float(safe_search(r"REMISE TOTALE(.+?)€", text))
     subtotal = _change_text_to_float(safe_search(r"SOUS TOTAL(.+?)€", text))
-    return {
-        "store": {
-            "store_name": matches.group("store_name"),
-            "address": matches.group("address"),
-            "phone": matches.group("telephone"),
-            "siret": matches.group("siret"),
-            "naf": matches.group("naf"),
-        },
-        "items": items,
-        "date": str(receipt_date) if receipt_date else None,
-        "subtotal": subtotal,
-        "total_discount": total_discount,
-        "number_of_items": number_of_items,
-        "total": total_as_float,
-        "eligible_tr": eligible_tr,
-        "paid_tr": paid_tr,
-        "card": _parse_card(matches),
+    store: Store = {
+        "store_name": matches.group("store_name"),
+        "address": matches.group("address"),
+        "phone": matches.group("telephone"),
+        "siret": matches.group("siret"),
+        "naf": matches.group("naf"),
     }
+    return build_receipt(
+        store=store,
+        date=str(receipt_date) if receipt_date else None,
+        card=_parse_card(matches),
+        items=items,
+        subtotal=subtotal,
+        total_discount=total_discount,
+        total=total_as_float,
+        number_of_items=number_of_items,
+        eligible_tr=eligible_tr,
+        paid_tr=paid_tr,
+    )
 
 
 def _parse_card(matches: re.Match[str]) -> Card:
-    previous = _change_text_to_float(matches.group("previous_u"))
-    new = _change_text_to_float(matches.group("new_u"))
-    used = _change_text_to_float(matches.group("u_used"))
-    earned = _change_text_to_float(
-        matches.group("u_won") or matches.group("u_won_when_used")
+    return build_card(
+        previous=_change_text_to_float(matches.group("previous_u")),
+        new=_change_text_to_float(matches.group("new_u")),
+        used=_change_text_to_float(matches.group("u_used")),
+        earned=_change_text_to_float(
+            matches.group("u_won") or matches.group("u_won_when_used")
+        ),
     )
-    assert previous is not None, "Card balance previous not found"
-    assert new is not None, "Card balance new not found"
-    return {
-        "balance_previous": previous,
-        "balance_earned": earned if earned is not None else 0.0,
-        "balance_used": used if used is not None else 0.0,
-        "balance_new": new,
-    }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from difflib import SequenceMatcher
 
-from superslurp.compare.normalize import normalize_for_matching
+from superslurp.normalize import normalize_for_matching
 
 
 class FuzzyMatcher:  # pylint: disable=too-few-public-methods

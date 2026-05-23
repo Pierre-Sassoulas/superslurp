@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from superslurp.compare.normalize import (
+from superslurp.normalize import (
     compile_synonyms,
     expand_synonyms,
     extract_unit_count,

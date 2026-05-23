@@ -23,18 +23,18 @@ PDF → extract (pypdf) → text → parse (v1/v2) → Receipt JSON → compare 
 
 ### Key Modules
 
-| Module                               | Purpose                                                                                        |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `superslurp/__main__.py`             | CLI entry points: `superu-receipt-parser`, `superu-report`                                     |
-| `superslurp/parse/common.py`         | Shared parse logic — `_parse_name_attributes()`, `ParsedAttributes`, post-processing           |
-| `superslurp/parse/v1/parse_items.py` | V1 receipt format parser                                                                       |
-| `superslurp/parse/v2/parse_items.py` | V2 receipt format parser (imports `_parse_name_attributes` from common)                        |
-| `superslurp/compare/normalize.py`    | Name normalization, synonym expansion, property extraction (bio, brand, milk, baby food, etc.) |
-| `superslurp/compare/matcher.py`      | `FuzzyMatcher` — groups similar names via token index + SequenceMatcher                        |
-| `superslurp/compare/aggregate.py`    | `_AggregateState`, observations, sessions, category totals, rolling averages                   |
-| `superslurp/compare/html_report.py`  | Self-contained HTML dashboard (Chart.js stacked area + line charts)                            |
-| `superslurp/compare/cli.py`          | CLI entry points: `superu-aggregate`, `superu-report` (from JSON)                              |
-| `superslurp/superslurp_typing.py`    | TypedDicts for input (`Item`, `Receipt`) and output (`CompareResult`, `Observation`, etc.)     |
+| Module                               | Purpose                                                                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `superslurp/__main__.py`             | CLI entry points: `superu-receipt-parser`, `superu-report`                                                                                       |
+| `superslurp/parse/common.py`         | Shared parse logic — `_parse_name_attributes()`, `ParsedAttributes`, post-processing                                                             |
+| `superslurp/parse/v1/parse_items.py` | V1 receipt format parser                                                                                                                         |
+| `superslurp/parse/v2/parse_items.py` | V2 receipt format parser (imports `_parse_name_attributes` from common)                                                                          |
+| `superslurp/normalize.py`            | Name normalization, synonym expansion, property extraction (bio, brand, milk, baby food, etc.) — package-root module shared by parse and compare |
+| `superslurp/compare/matcher.py`      | `FuzzyMatcher` — groups similar names via token index + SequenceMatcher                                                                          |
+| `superslurp/compare/aggregate.py`    | `_AggregateState`, observations, sessions, category totals, rolling averages                                                                     |
+| `superslurp/compare/html_report.py`  | Self-contained HTML dashboard (Chart.js stacked area + line charts)                                                                              |
+| `superslurp/compare/cli.py`          | CLI entry points: `superu-aggregate`, `superu-report` (from JSON)                                                                                |
+| `superslurp/superslurp_typing.py`    | TypedDicts for input (`Item`, `Receipt`) and output (`CompareResult`, `Observation`, etc.)                                                       |
 
 ### Parse Pipeline (`_parse_name_attributes`)
 

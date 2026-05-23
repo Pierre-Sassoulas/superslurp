@@ -3,15 +3,10 @@ from __future__ import annotations
 import re
 
 from superslurp.parse.common import CompiledSynonyms, resolve_synonyms
+from superslurp.parse.safe_search import safe_search
 from superslurp.parse.str_to_float import _change_text_to_float
 from superslurp.parse.v1.parse_date import parse_date
 from superslurp.parse.v1.parse_items import parse_items
-from superslurp.parse.v1.parse_totals import (
-    _match_eligible_tr,
-    _match_sub_total,
-    _match_total_discount,
-    _match_tr_paid,
-)
 from superslurp.superslurp_typing import Card, Receipt
 
 everything_pattern = re.compile(
@@ -49,10 +44,14 @@ def parse_text_v1(
         expected_number_of_items=number_of_items,
         synonyms=resolve_synonyms(synonyms, compiled_synonyms),
     )
-    paid_tr = _change_text_to_float(_match_tr_paid(text))
-    eligible_tr = _change_text_to_float(_match_eligible_tr(text))
-    total_discount = _change_text_to_float(_match_total_discount(text))
-    subtotal = _change_text_to_float(_match_sub_total(text))
+    paid_tr = _change_text_to_float(
+        safe_search(r"Payé en TITRES RESTAURANT(.+?)€", text)
+    )
+    eligible_tr = _change_text_to_float(
+        safe_search(r"Dont articles éligibles TR(.+?)€", text)
+    )
+    total_discount = _change_text_to_float(safe_search(r"REMISE TOTALE(.+?)€", text))
+    subtotal = _change_text_to_float(safe_search(r"SOUS TOTAL(.+?)€", text))
     return {
         "store": {
             "store_name": matches.group("store_name"),

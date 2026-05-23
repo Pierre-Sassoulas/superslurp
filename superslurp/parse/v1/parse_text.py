@@ -12,7 +12,7 @@ from superslurp.parse.v1.parse_totals import (
     _match_total_discount,
     _match_tr_paid,
 )
-from superslurp.superslurp_typing import Receipt
+from superslurp.superslurp_typing import Card, Receipt
 
 everything_pattern = re.compile(
     r"(?P<store_name>[\S ]*)\n"
@@ -69,45 +69,22 @@ def parse_text_v1(
         "total": total_as_float,
         "eligible_tr": eligible_tr,
         "paid_tr": paid_tr,
-        "card": {
-            "balance_previous": _handle_card_balance_previous(matches),
-            "balance_earned": _handle_card_balance_earned(matches),
-            "balance_used": _handle_card_balance_used(matches),
-            "balance_new": _handle_card_balance_new(matches),
-        },
+        "card": _parse_card(matches),
     }
 
 
-def _handle_card_balance_new(matches: re.Match[str]) -> float:
-    card_balance_new = _change_text_to_float(matches.group("new_u"))
-    assert card_balance_new is not None
-    return card_balance_new
-
-
-def _handle_card_balance_previous(matches: re.Match[str]) -> float:
-    card_balance_previous = _change_text_to_float(matches.group("previous_u"))
-    assert card_balance_previous is not None
-    return card_balance_previous
-
-
-def _handle_card_balance_used(matches: re.Match[str]) -> float:
-    card_balance_used = (
-        _change_text_to_float(matches.group("u_used"))
-        if matches.group("u_used")
-        else 0.0
+def _parse_card(matches: re.Match[str]) -> Card:
+    previous = _change_text_to_float(matches.group("previous_u"))
+    new = _change_text_to_float(matches.group("new_u"))
+    used = _change_text_to_float(matches.group("u_used"))
+    earned = _change_text_to_float(
+        matches.group("u_won") or matches.group("u_won_when_used")
     )
-    assert card_balance_used is not None
-    return card_balance_used
-
-
-def _handle_card_balance_earned(matches: re.Match[str]) -> float:
-    u_won = matches.group("u_won")
-    u_won_when_used = matches.group("u_won_when_used")
-    if u_won:
-        card_balance_earned = _change_text_to_float(u_won)
-    elif u_won_when_used:
-        card_balance_earned = _change_text_to_float(u_won_when_used)
-    else:
-        card_balance_earned = 0.0
-    assert card_balance_earned is not None
-    return card_balance_earned
+    assert previous is not None, "Card balance previous not found"
+    assert new is not None, "Card balance new not found"
+    return {
+        "balance_previous": previous,
+        "balance_earned": earned if earned is not None else 0.0,
+        "balance_used": used if used is not None else 0.0,
+        "balance_new": new,
+    }
